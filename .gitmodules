@@ -1,0 +1,3 @@
+[submodule "Morton-Z-Code-C-library"]
+	path = Morton-Z-Code-C-library
+	url = https://github.com/inkblot-sdnbhd/Morton-Z-Code-C-library
