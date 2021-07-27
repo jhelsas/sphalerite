@@ -59,7 +59,7 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 		lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;
 		lsph[i].F.z = 0.0;  lsph[i].F.t = 0.0;
 
-		lsph[i].nu = 1.0/N; lsph[i].rho = 0.0;
+		lsph[i].nu = 1.0/N; lsph[i].rho  = 0.0;
 		lsph[i].id = i;     lsph[i].hash = 0;
 	}
 
@@ -198,16 +198,16 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 		
 		fprintf(fp,"base   hash %lu : (%d,%d,%d) \n",lsph[i].hash,kx,ky,kz);
 		fprintf(fp,"origin hash %lu : (%d,%d,%d) \n",lsph[i].hash,ullMC3DdecodeX(lsph[i].hash),
-					         									  ullMC3DdecodeY(lsph[i].hash),
-							    								  ullMC3DdecodeZ(lsph[i].hash));
+					         									  												ullMC3DdecodeY(lsph[i].hash),
+							    								  													ullMC3DdecodeZ(lsph[i].hash));
 
 		
 		
 		for(unsigned int j=0;j<(2*width+1)*(2*width+1)*(2*width+1);j+=1)
 			if(nblist[j]>=0){
 				fprintf(fp,"  %lu:(%d,%d,%d)",nblist[j],ullMC3DdecodeX(nblist[j]),
-														ullMC3DdecodeY(nblist[j]),
-														ullMC3DdecodeZ(nblist[j]));
+																								ullMC3DdecodeY(nblist[j]),
+																								ullMC3DdecodeZ(nblist[j]));
 				if(j<(2*width+1)*(2*width+1)*(2*width+1)-1)
 					fprintf(fp,",");
 			}
