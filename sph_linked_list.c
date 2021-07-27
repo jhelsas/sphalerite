@@ -11,8 +11,87 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_heapsort.h>
 
+#include "klib/khash.h"
 #include "mzc/MZC3D64.h"
 #include "sph_data_types.h"
+
+KHASH_MAP_INIT_INT64(0, size_t)
+KHASH_MAP_INIT_INT64(1, size_t)
+int main(){
+	int ret, is_missing;
+	khiter_t k,kbegin,kend;
+	khash_t(0) *hbegin = kh_init(0);
+	khash_t(1) *hend   = kh_init(1);
+	size_t key=5,val0=0,val1=0;
+
+	key = 1; val0 = 123; val1=1000000+123;
+	k = kh_put(0, hbegin, key, &ret); kh_value(hbegin, k) = val0;
+	k = kh_put(1, hend  , key, &ret); kh_value(hend  , k) = val1;
+	printf("ret %d\n",ret);
+
+	key = 3; val0 = 456; val1=1000000+456;
+	k = kh_put(0, hbegin, key, &ret); kh_value(hbegin, k) = val0;
+	k = kh_put(1, hend  , key, &ret); kh_value(hend  , k) = val1;
+	printf("ret %d\n",ret);
+
+	key = 5; val0 = 789; val1=1000000+789;
+	k = kh_put(0, hbegin, key, &ret); kh_value(hbegin, k) = val0;
+	k = kh_put(1, hend  , key, &ret); kh_value(hend  , k) = val1;
+	printf("ret %d\n",ret);
+
+	///////////////////////////////////////
+
+	key = 5;
+	k = kh_get(0, hbegin, key);
+	is_missing = (k == kh_end(hbegin));
+	printf("k=%d is_missing=%d kh_end=%d\n",k,is_missing,kh_end(hbegin));
+
+	key = 1;
+	k = kh_get(0, hbegin, key);
+	is_missing = (k == kh_end(hbegin));
+	printf("k=%d is_missing=%d kh_end=%d\n",k,is_missing,kh_end(hbegin));
+
+	key = 2;
+	k = kh_get(0, hbegin, key);
+	is_missing = (k == kh_end(hbegin));
+	printf("k=%d is_missing=%d kh_end=%d\n",k,is_missing,kh_end(hbegin));
+
+	key = 3;
+	k = kh_get(0, hbegin, key);
+	is_missing = (k == kh_end(hbegin));
+	printf("k=%d is_missing=%d kh_end=%d\n",k,is_missing,kh_end(hbegin));
+
+	key = 4;
+	k = kh_get(0, hbegin, key);
+	is_missing = (k == kh_end(hbegin));
+	printf("k=%d is_missing=%d kh_end=%d\n",k,is_missing,kh_end(hbegin));
+
+	key = 3;
+	k = kh_get(0, hbegin, key);
+	kh_del(0, hbegin, k);
+	/*
+	for (kbegin = kh_begin(hbegin); kbegin != kh_end(hbegin); ++kbegin){
+		printf("hkey = %lu\n",kh_key(hbegin, k));
+		if (kh_exist(hbegin, kbegin)){
+			kend = kh_get(1, hend, kh_key(hbegin, k));
+			printf("-key=%lu exists! val = %lu\n",kh_key(hbegin, k),kh_value(hbegin, k));
+			printf("----key=%lu exists! val = %lu\n",kh_key(hend, kend),kh_value(hend, kend));
+		}
+	}*/
+
+	for (kbegin = kh_begin(hbegin); kbegin != kh_end(hbegin); ++kbegin){
+		printf("hkey = %lu\n",kh_key(hbegin, k));
+		if (kh_exist(hbegin, kbegin)){
+			//kend = kh_get(1, hend, kh_key(hbegin, k));
+			printf("-key=%lu exists! val = %lu\n",kh_key(hbegin, k),kh_value(hbegin, k));
+			//printf("----key=%lu exists! val = %lu\n",kh_key(hend, kend),kh_value(hend, kend));
+		}
+	}
+
+	kh_destroy(0, hbegin);
+	kh_destroy(1, hend);
+	return 0;
+}
 
 int compare_SPHparticle(const void *p,const void *q){
 	SPHparticle *data1,*data2;
@@ -46,6 +125,7 @@ int neighbour_hash_3d(uint64_t hash,uint64_t *nblist,int width){
 	return 0;
 }
 
+/*
 int main(){
 
 	int j=0,numThreads=6;
@@ -62,8 +142,6 @@ int main(){
 	T = gsl_rng_default;
 	r = gsl_rng_alloc(T);
 	gsl_rng_set(r,123123123);
-
-   /*********************************/
 
 	printf("sizeof keyval : %lu\n",sizeof(keyval));
 	printf("sizeof double4: %lu\n",sizeof(double4));
@@ -104,42 +182,10 @@ int main(){
 
 	qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
-	box->box = (keyval*)malloc(box->N*sizeof(keyval));
-
 	dshift = (size_t*)malloc(N*sizeof(size_t));
 	dshift[0] = 0;
 	for(size_t i=1;i<N;i+=1)
 		dshift[i] = lsph[i].hash - lsph[i-1].hash;
-
-	/*
-	for(size_t i=0;i<3000;i+=1){
-		if(dshift[i]>0)
-			printf("%lu : %lu / %lu\n",i,lsph[i].hash,lsph[i].id);
-	}*/
-
-	/*
-	for(size_t i=0;i<N;i+=5000){
-		uint32_t kx,ky,kz;
-		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
-		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
-		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
-
-		printf("----------------------------------------\n");
-		printf("(%d,%d,%d) = (%d,%d,%d)\n",kx,ky,kz,ullMC3DdecodeX(lsph[i].hash)
-																 ,ullMC3DdecodeY(lsph[i].hash)
-																 ,ullMC3DdecodeZ(lsph[i].hash));
-		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky+0,kz+0)-ullMC3Dxplusv(lsph[i].hash,1)
-									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz+0)-ullMC3Dyplusv(lsph[i].hash,1)
-									      ,(int64_t) ullMC3Dencode(kx+0,ky+0,kz+1)-ullMC3Dzplusv(lsph[i].hash,1));
-
-		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky+1,kz+0)-ullMC3Dyplusv(ullMC3Dxplusv(lsph[i].hash,1),1)
-									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz+1)-ullMC3Dzplusv(ullMC3Dyplusv(lsph[i].hash,1),1)
-									      ,(int64_t) ullMC3Dencode(kx+1,ky+0,kz+1)-ullMC3Dxplusv(ullMC3Dzplusv(lsph[i].hash,1),1));
-
-		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky-1,kz+0)-ullMC3Dyminusv(ullMC3Dxplusv(lsph[i].hash,1),1)
-									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz-1)-ullMC3Dzminusv(ullMC3Dyplusv(lsph[i].hash,1),1)
-									      ,(int64_t) ullMC3Dencode(kx-1,ky+0,kz-1)-ullMC3Dxminusv(ullMC3Dzminusv(lsph[i].hash,1),1));
-	}*/
 
 	uint64_t nblist[5*5*5]={0};
 	for(size_t i=0;i<N;i+=35000){
@@ -153,14 +199,8 @@ int main(){
 		printf("\n\n");
 	}
 
-	/*********************************/
-
 	printf("sizeof size_t : %lu\n",sizeof(size_t));
   
-	/**********************************/
-
-	/**********************************/
-
 	uint64_t *hash_arr;
 
 	hash_arr = (uint64_t*)malloc(N*sizeof(uint64_t));
@@ -168,14 +208,12 @@ int main(){
 	for(int k=0;k<N;k+=1)
 		hash_arr[k] = gsl_rng_get(r) % N;
 
-	/**********************************/
-
 	gsl_rng_free(r);
 	free(box);
 	free(lsph);
 
 	return 0;
-}
+}*/
 
 /********************************************************************************/
 
