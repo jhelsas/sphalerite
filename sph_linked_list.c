@@ -15,112 +15,6 @@
 #include "mzc/MZC3D64.h"
 #include "sph_data_types.h"
 
-/*
-
-KHASH_MAP_INIT_INT64(0, size_t)
-KHASH_MAP_INIT_INT64(1, size_t)
-
-int main(){
-	int ret, is_missing;
-	khiter_t kbegin,kend;
-	khash_t(0) *hbegin = kh_init(0);
-	khash_t(1) *hend   = kh_init(1);
-	size_t key=5,val0=0,val1=0;
-
-	key = 1; val0 = 123; val1=1000000+123;
-	kbegin = kh_put(0, hbegin, key, &ret); kh_value(hbegin, kbegin) = val0;
-	kend   = kh_put(1, hend  , key, &ret); kh_value(hend  , kend)   = val1;
-	printf("ret %d\n",ret);
-
-	key = 3; val0 = 456; val1=1000000+456;
-	kbegin = kh_put(0, hbegin, key, &ret); kh_value(hbegin, kbegin) = val0;
-	kend   = kh_put(1, hend  , key, &ret); kh_value(hend  , kend)   = val1;
-	printf("ret %d\n",ret);
-
-	key = 5; val0 = 789; val1=1000000+789;
-	kbegin = kh_put(0, hbegin, key, &ret); kh_value(hbegin, kbegin) = val0;
-	kend   = kh_put(1, hend  , key, &ret); kh_value(hend  , kend)   = val1;
-	printf("ret %d\n",ret);
-
-	///////////////////////////////////////
-
-	key = 0;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	key = 1;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	key = 2;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	key = 3;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	key = 4;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	key = 5;
-	kbegin = kh_get(0, hbegin, key);
-	kend = kh_get(1, hend, key);
-	is_missing = (kbegin == kh_end(hbegin));
-	printf("k=%d is_missing=%d kh_end=%d\n",kbegin,is_missing,kh_end(hbegin));
-	if (is_missing==0){
-		printf("--- key %lu val %lu\n",kh_key(hbegin, kbegin),kh_val(hbegin, kbegin));
-		printf("--- key %lu val %lu\n",kh_key(hend,kend),kh_val(hend,kend));
-	}
-
-	///////////////////////////////////////
-
-	printf("kh b/e = %d %d\n",kh_begin(hbegin),kh_end(hbegin));
-	for (kbegin = kh_begin(hbegin); kbegin != kh_end(hbegin); kbegin++){
-		printf("iter = %d hkey = %lu\n",kbegin,kh_key(hbegin, kbegin));
-		if (kh_exist(hbegin, kbegin)){
-			kend = kh_get(1, hend, kh_key(hbegin, kbegin));
-			printf("-key=%lu exists! val = %lu\n",kh_key(hbegin, kbegin),kh_value(hbegin, kbegin));
-			printf("----key=%lu exists! val = %lu\n",kh_key(hend, kend),kh_value(hend, kend));
-		}
-	}
-
-	kh_destroy(0, hbegin);
-	kh_destroy(1, hend);
-	return 0;
-}*/
-
 int compare_SPHparticle(const void *p,const void *q){
 	SPHparticle *data1,*data2;
 	data1 = (SPHparticle*)p;
@@ -133,7 +27,7 @@ int compare_SPHparticle(const void *p,const void *q){
 		return 1;
 }
 
-int neighbour_hash_3d(uint64_t hash,uint64_t *nblist,int width){
+int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width){
 	int idx=0,kx=0,ky=0,kz=0;
 
 	kx = ullMC3DdecodeX(hash);
@@ -153,14 +47,19 @@ int neighbour_hash_3d(uint64_t hash,uint64_t *nblist,int width){
 	return 0;
 }
 
-KHASH_MAP_INIT_INT64(0, size_t)
-KHASH_MAP_INIT_INT64(1, size_t)
+int gen_unif_rdn_pos(){
+
+
+	return 0;
+}
+
+KHASH_MAP_INIT_INT64(0, int64_t)
+KHASH_MAP_INIT_INT64(1, int64_t)
 
 int main(){
 
 	int j=0,numThreads=6;
-	int N = 10000000;
-	size_t *dshift;
+	int N = 100000;
 	const gsl_rng_type *T=NULL;
 	gsl_rng *r=NULL;
 	double S=0.,S2=0.;
@@ -184,7 +83,7 @@ int main(){
 
 	lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
-	for(size_t i=0;i<N;i+=1){
+	for(int64_t i=0;i<N;i+=1){
 		lsph[i].r.x = gsl_rng_uniform(r); lsph[i].r.y = gsl_rng_uniform(r);
 		lsph[i].r.z = gsl_rng_uniform(r); lsph[i].r.t = gsl_rng_uniform(r);
 
@@ -205,7 +104,7 @@ int main(){
 	box->Xmin.x = 0.0; box->Xmin.y = 0.0; box->Xmin.z = 0.0;
 	box->Xmax.x = 1.0; box->Xmax.y = 1.0; box->Xmax.z = 1.0;
 
-	for(size_t i=0;i<N;i+=1){
+	for(int64_t i=0;i<N;i+=1){
 		uint32_t kx,ky,kz;
 		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
 		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
@@ -217,23 +116,15 @@ int main(){
 
 	qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
-	//dshift = (size_t*)malloc(N*sizeof(size_t));
-	//dshift[0] = 0;
-	//for(size_t i=1;i<N;i+=1)
-	//	dshift[i] = lsph[i].hash - lsph[i-1].hash;
-
-	
-	kbegin = kh_put(0, hbegin, lsph[0].hash, &ret); kh_value(hbegin, kbegin) = (size_t)0;
+	kbegin = kh_put(0, hbegin, lsph[0].hash, &ret); kh_value(hbegin, kbegin) = (int64_t)0;
 	int idx_key=0;
-	size_t hash0 = lsph[0].hash;
+	int64_t hash0 = lsph[0].hash;
 	for(int i=0;i<N;i+=1){
 		if(lsph[i].hash == hash0)
 			continue;
 		hash0 = lsph[i].hash;
 		kend   = kh_put(1, hend  , lsph[i-1].hash, &ret); kh_value(hend  , kend)   = i;
 		kbegin = kh_put(0, hbegin, lsph[i  ].hash, &ret); kh_value(hbegin, kbegin) = i;
-
-		//printf("%lu\n",lsph[i].hash);
 	}
 	kend   = kh_put(1, hend  , lsph[N-1].hash, &ret); kh_value(hend  , kend)   = N;
 
@@ -249,24 +140,26 @@ int main(){
 		}
 	}
 
-	/*
-	uint64_t nblist[5*5*5]={0};
-	for(size_t i=0;i<N;i+=35000){
+	
+	int64_t nblist[3*3*3]={0};
+	for(int64_t i=0;i<3;i+=1){
 		int res = neighbour_hash_3d(lsph[i].hash,nblist,1);
 
 		printf("origin hash %lu : (%d,%d,%d) \n",lsph[i].hash,ullMC3DdecodeX(lsph[i].hash),ullMC3DdecodeY(lsph[i].hash),ullMC3DdecodeZ(lsph[i].hash));
-		for(size_t j=0;j<5*5*5;j+=1){
+		for(int64_t j=0;j<3*3*3;j+=1){
 			if(nblist[j]>=0)
 				printf("    neighbour hash %lu : (%d,%d,%d) \n",nblist[j],ullMC3DdecodeX(nblist[j]),ullMC3DdecodeY(nblist[j]),ullMC3DdecodeZ(nblist[j]));
+			else
+				printf("no neighbour here\n");
 		}
 		printf("\n\n");
-	}*/
+	}
 
-	printf("sizeof size_t : %lu\n",sizeof(size_t));
+	printf("sizeof int64_t : %lu\n",sizeof(int64_t));
   
-	uint64_t *hash_arr;
+	int64_t *hash_arr;
 
-	hash_arr = (uint64_t*)malloc(N*sizeof(uint64_t));
+	hash_arr = (int64_t*)malloc(N*sizeof(int64_t));
 
 	for(int k=0;k<N;k+=1)
 		hash_arr[k] = gsl_rng_get(r) % N;

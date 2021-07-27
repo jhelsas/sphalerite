@@ -1,8 +1,8 @@
 #include <stdint.h>
 
 typedef struct size_t2{
-    size_t begin;
-    size_t end;
+    int64_t begin;
+    int64_t end;
 } size_t2;
 
 typedef struct double4 {
@@ -15,7 +15,7 @@ typedef struct double4 {
 typedef struct SPHparticle
 {
     double4 r,u,F;
-	size_t id,hash;
+	int64_t id,hash;
 	double nu,rho;
 } SPHparticle;
 
