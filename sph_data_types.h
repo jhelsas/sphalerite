@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "klib/khash.h"
 
 typedef struct size_t2{
     int64_t begin;
@@ -19,7 +20,12 @@ typedef struct SPHparticle
 	double nu,rho;
 } SPHparticle;
 
+KHASH_MAP_INIT_INT64(0, int64_t)
+KHASH_MAP_INIT_INT64(1, int64_t)
+
 typedef struct linkedListBox{
     int Nx,Ny,Nz,N;
     double4 Xmin,Xmax;
+    khash_t(0) *hbegin;
+    khash_t(1) *hend ;
 } linkedListBox;
