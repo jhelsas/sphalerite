@@ -11,8 +11,9 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_heapsort.h>
 
-#include "mzc/MZC3D64.h"
+#include "../mzc/MZC3D64.h"
 #include "sph_data_types.h"
+#include "sph_linked_list.h"
 
 int safe_free_box(linkedListBox *box){
 	kh_destroy(0, box->hbegin);
@@ -32,28 +33,6 @@ int compare_SPHparticle(const void *p,const void *q){
 		return 0;
 	else
 		return 1;
-}
-
-int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box){
-	int idx=0,kx=0,ky=0,kz=0;
-
-	kx = ullMC3DdecodeX(hash);
-	ky = ullMC3DdecodeY(hash);
-	kz = ullMC3DdecodeZ(hash);
-
-	for(int ix=-width;ix<=width;ix+=1){
-		for(int iy=-width;iy<=width;iy+=1){
-			for(int iz=-width;iz<=width;iz+=1){
-				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))
-					nblist[idx++] = -1;
-				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx)||(kz+iz>=box->Nx))
-					nblist[idx++] = -1;
-				else
-					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
-			}
-		}
-	}
-	return 0;
 }
 
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
@@ -103,7 +82,12 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
 		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
 
-		lsph[i].hash = ullMC3Dencode(kx,ky,kz);
+		if((kx<0)||(ky<0)||(kz<0))
+			return 1;
+		else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx))
+			return 1;
+		else
+			lsph[i].hash = ullMC3Dencode(kx,ky,kz);
 	}
 
 	return 0;
@@ -134,6 +118,27 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 	return 0;
 }
 
+int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box){
+	int idx=0,kx=0,ky=0,kz=0;
+
+	kx = ullMC3DdecodeX(hash);
+	ky = ullMC3DdecodeY(hash);
+	kz = ullMC3DdecodeZ(hash);
+
+	for(int ix=-width;ix<=width;ix+=1){
+		for(int iy=-width;iy<=width;iy+=1){
+			for(int iz=-width;iz<=width;iz+=1){
+				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))
+					nblist[idx++] = -1;
+				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx)||(kz+iz>=box->Nx))
+					nblist[idx++] = -1;
+				else
+					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
+			}
+		}
+	}
+	return 0;
+}
 
 int print_boxes_populations(linkedListBox *box){
 	khiter_t kbegin,kend;
@@ -215,39 +220,40 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 	return 0;
 }
 
+/*
 int main(){
 
-	int j=0,numThreads=6,err;
-	int64_t N = 100000;
-	double S=0.,S2=0.;
-	linkedListBox *box;
-	SPHparticle *lsph;
+  int j=0,numThreads=6,err;
+  int64_t N = 100000;
+  double S=0.,S2=0.;
+  linkedListBox *box;
+  SPHparticle *lsph;
 
-	lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
+  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
-	err = gen_unif_rdn_pos( N,123123123,lsph);
+  err = gen_unif_rdn_pos( N,123123123,lsph);
 
-	box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
+  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
-	box->Nx = box->Ny = box->Nz = 10;
-	box->N  = (box->Nx)*(box->Ny)*(box->Nz);
-	box->Xmin.x = 0.0; box->Xmin.y = 0.0; box->Xmin.z = 0.0;
-	box->Xmax.x = 1.0; box->Xmax.y = 1.0; box->Xmax.z = 1.0;
-	box->hbegin = kh_init(0);
-	box->hend = kh_init(1);
+  box->Nx = box->Ny = box->Nz = 10;
+  box->N  = (box->Nx)*(box->Ny)*(box->Nz);
+  box->Xmin.x = 0.0; box->Xmin.y = 0.0; box->Xmin.z = 0.0;
+  box->Xmax.x = 1.0; box->Xmax.y = 1.0; box->Xmax.z = 1.0;
+  box->hbegin = kh_init(0);
+  box->hend = kh_init(1);
 
-	err = compute_hash_MC3D(N,lsph,box);
+  err = compute_hash_MC3D(N,lsph,box);
 
-	qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
+  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
-	err = setup_interval_hashtables(N,lsph,box);
+  err = setup_interval_hashtables(N,lsph,box);
 
-	//print_boxes_populations(box);
-	//print_neighbour_list_MC3D(N,1,N/13,lsph,box);
-	print_neighbour_list_MC3D_lsph_file(N,1,1,lsph,box);
+  //print_boxes_populations(box);
+  //print_neighbour_list_MC3D(N,1,N/13,lsph,box);
+  print_neighbour_list_MC3D_lsph_file(N,1,1,lsph,box);
 
-	free(lsph);
-	safe_free_box(box);
+  free(lsph);
+  safe_free_box(box);
 
-	return 0;
-}
+  return 0;
+}*/
