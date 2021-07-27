@@ -176,6 +176,45 @@ int print_neighbour_list_MC3D(int64_t Nmax,unsigned int width,unsigned int strid
 	return 0;
 }
 
+int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box){
+	FILE *fp;
+	int64_t nblist[(2*width+1)*(2*width+1)*(2*width+1)];
+
+	fp = fopen("data/nblist_MC3D.csv","w");
+
+	for(int64_t i=0;i<Nmax;i+=(int64_t)stride){
+		uint32_t kx,ky,kz;
+		int res = neighbour_hash_3d(lsph[i].hash,nblist,width,box);
+
+		
+		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
+		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
+		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
+		
+		fprintf(fp,"base   hash %lu : (%d,%d,%d) \n",lsph[i].hash,kx,ky,kz);
+		fprintf(fp,"origin hash %lu : (%d,%d,%d) \n",lsph[i].hash,ullMC3DdecodeX(lsph[i].hash),
+					         									  ullMC3DdecodeY(lsph[i].hash),
+							    								  ullMC3DdecodeZ(lsph[i].hash));
+
+		
+		
+		for(unsigned int j=0;j<(2*width+1)*(2*width+1)*(2*width+1);j+=1)
+			if(nblist[j]>=0){
+				fprintf(fp,"  %lu:(%d,%d,%d)",nblist[j],ullMC3DdecodeX(nblist[j]),
+														ullMC3DdecodeY(nblist[j]),
+														ullMC3DdecodeZ(nblist[j]));
+				if(j<(2*width+1)*(2*width+1)*(2*width+1)-1)
+					fprintf(fp,",");
+			}
+		
+		fprintf(fp,"\n\n");
+	}
+
+	fclose(fp);
+
+	return 0;
+}
+
 int main(){
 
 	int j=0,numThreads=6,err;
@@ -204,7 +243,8 @@ int main(){
 	err = setup_interval_hashtables(N,lsph,box);
 
 	//print_boxes_populations(box);
-	print_neighbour_list_MC3D(N,1,1,lsph,box);
+	//print_neighbour_list_MC3D(N,1,N/13,lsph,box);
+	print_neighbour_list_MC3D_lsph_file(N,1,1,lsph,box);
 
 	free(lsph);
 	safe_free_box(box);
