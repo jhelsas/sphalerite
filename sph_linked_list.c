@@ -26,10 +26,31 @@ int compare_SPHparticle(const void *p,const void *q){
 		return 1;
 }
 
+int neighbour_hash_3d(uint64_t hash,uint64_t *nblist,int width){
+	int idx=0,kx=0,ky=0,kz=0;
+
+	kx = ullMC3DdecodeX(hash);
+	ky = ullMC3DdecodeY(hash);
+	kz = ullMC3DdecodeZ(hash);
+
+	for(int ix=-width;ix<=width;ix+=1){
+		for(int iy=-width;iy<=width;iy+=1){
+			for(int iz=-width;iz<=width;iz+=1){
+				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))
+					nblist[idx++] = -1;
+				else
+					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
+			}
+		}
+	}
+	return 0;
+}
+
 int main(){
 
 	int j=0,numThreads=6;
 	int N = 1000000;
+	size_t *dshift;
 	const gsl_rng_type *T=NULL;
 	gsl_rng *r=NULL;
 	double S=0.,S2=0.;
@@ -50,7 +71,7 @@ int main(){
 
 	lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
-	for(int i=0;i<N;i+=1){
+	for(size_t i=0;i<N;i+=1){
 		lsph[i].r.x = gsl_rng_uniform(r); lsph[i].r.y = gsl_rng_uniform(r);
 		lsph[i].r.z = gsl_rng_uniform(r); lsph[i].r.t = gsl_rng_uniform(r);
 
@@ -60,7 +81,7 @@ int main(){
 		lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;
 		lsph[i].F.z = 0.0;  lsph[i].F.t = 0.0;
 
-		lsph[i].nu = 1.0/N; lsph[i].rho = 0.0; 
+		lsph[i].nu = 1.0/N; lsph[i].rho = 0.0;
 		lsph[i].id = i;     lsph[i].hash = 0;
 	}
 
@@ -71,9 +92,9 @@ int main(){
 	box->Xmin.x = 0.0; box->Xmin.y = 0.0; box->Xmin.z = 0.0;
 	box->Xmax.x = 1.0; box->Xmax.y = 1.0; box->Xmax.z = 1.0;
 
-	for(int i=0;i<N;i+=1){
+	for(size_t i=0;i<N;i+=1){
 		uint32_t kx,ky,kz;
-		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x)); 
+		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
 		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
 		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
 
@@ -84,12 +105,52 @@ int main(){
 	qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
 	box->box = (keyval*)malloc(box->N*sizeof(keyval));
-	
-	for(int i=0;i<40;i+=1)
-		printf("%lu : %lu\n",lsph[i].id,lsph[i].hash);
 
-	for(int i=0;i<N;i+=1){
-		
+	dshift = (size_t*)malloc(N*sizeof(size_t));
+	dshift[0] = 0;
+	for(size_t i=1;i<N;i+=1)
+		dshift[i] = lsph[i].hash - lsph[i-1].hash;
+
+	/*
+	for(size_t i=0;i<3000;i+=1){
+		if(dshift[i]>0)
+			printf("%lu : %lu / %lu\n",i,lsph[i].hash,lsph[i].id);
+	}*/
+
+	/*
+	for(size_t i=0;i<N;i+=5000){
+		uint32_t kx,ky,kz;
+		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
+		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
+		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
+
+		printf("----------------------------------------\n");
+		printf("(%d,%d,%d) = (%d,%d,%d)\n",kx,ky,kz,ullMC3DdecodeX(lsph[i].hash)
+																 ,ullMC3DdecodeY(lsph[i].hash)
+																 ,ullMC3DdecodeZ(lsph[i].hash));
+		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky+0,kz+0)-ullMC3Dxplusv(lsph[i].hash,1)
+									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz+0)-ullMC3Dyplusv(lsph[i].hash,1)
+									      ,(int64_t) ullMC3Dencode(kx+0,ky+0,kz+1)-ullMC3Dzplusv(lsph[i].hash,1));
+
+		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky+1,kz+0)-ullMC3Dyplusv(ullMC3Dxplusv(lsph[i].hash,1),1)
+									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz+1)-ullMC3Dzplusv(ullMC3Dyplusv(lsph[i].hash,1),1)
+									      ,(int64_t) ullMC3Dencode(kx+1,ky+0,kz+1)-ullMC3Dxplusv(ullMC3Dzplusv(lsph[i].hash,1),1));
+
+		printf("%ld | %ld | %ld \n",(int64_t) ullMC3Dencode(kx+1,ky-1,kz+0)-ullMC3Dyminusv(ullMC3Dxplusv(lsph[i].hash,1),1)
+									      ,(int64_t) ullMC3Dencode(kx+0,ky+1,kz-1)-ullMC3Dzminusv(ullMC3Dyplusv(lsph[i].hash,1),1)
+									      ,(int64_t) ullMC3Dencode(kx-1,ky+0,kz-1)-ullMC3Dxminusv(ullMC3Dzminusv(lsph[i].hash,1),1));
+	}*/
+
+	uint64_t nblist[5*5*5]={0};
+	for(size_t i=0;i<N;i+=35000){
+		int res = neighbour_hash_3d(lsph[i].hash,nblist,1);
+
+		printf("origin hash %lu : (%d,%d,%d) \n",lsph[i].hash,ullMC3DdecodeX(lsph[i].hash),ullMC3DdecodeY(lsph[i].hash),ullMC3DdecodeZ(lsph[i].hash));
+		for(size_t j=0;j<5*5*5;j+=1){
+			if(nblist[j]>=0)
+				printf("    neighbour hash %lu : (%d,%d,%d) \n",nblist[j],ullMC3DdecodeX(nblist[j]),ullMC3DdecodeY(nblist[j]),ullMC3DdecodeZ(nblist[j]));
+		}
+		printf("\n\n");
 	}
 
 	/*********************************/
