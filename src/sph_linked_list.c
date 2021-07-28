@@ -132,6 +132,8 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 					nblist[idx++] = -1;
 				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx)||(kz+iz>=box->Nx))
 					nblist[idx++] = -1;
+				else if(kh_get(0, box->hbegin, ullMC3Dencode(kx+ix,ky+iy,kz+iz)) == kh_end(box->hbegin) )
+					nblist[idx++] = -1;
 				else
 					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
 			}
