@@ -86,3 +86,39 @@ int compute_density_3d(int N, SPH_particle *lsph, linkedListBox *box){
   return 0;
 }
 
+int compute_density_2d(int N, SPH_particle *lsph, linkedListBox *box){
+  int res;
+  double dist = 0.0;
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0,node_end=0;
+  int64_t nb_hash=-1, nb_begin= 0, nb_end = 0;
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)];
+
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    if (kh_exist(box->hbegin, kbegin)){
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      res = neighbour_hash_3d(node_hash,nblist,width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0,box->begin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend, nblist[j]) );
+
+          for(int64_t i=node_begin;i<node_end;i+=1){
+            lsph[i].rho = 0.0;
+            for(int64_t j=nb_begin;j<nb_end;j+=1){
+              dist = sph_distance_2d(&(lsph[i]),&(lsph[j]));
+              lsph[i].rho += (lsph[i].nu)*(box->w(r,h));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}

@@ -12,6 +12,7 @@
 #include <gsl/gsl_heapsort.h>
 
 #include "../mzc/MZC3D64.h"
+#include "../mzc/MZC2D64.h"
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 
@@ -93,6 +94,31 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 	return 0;
 }
 
+int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box){
+
+	if(lsph==NULL)
+		return 1;
+
+	if(box==NULL)
+		return 1;
+
+	for(int64_t i=0;i<N;i+=1){
+		uint32_t kx,ky,kz;
+		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
+		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
+		kz = -1;
+
+		if((kx<0)||(ky<0))
+			return 1;
+		else if((kx>=box->Nx)||(ky>=box->Nx))
+			return 1;
+		else
+			lsph[i].hash = ullMC3Dencode(kx,ky);
+	}
+
+	return 0;
+}
+
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 
 	int ret, is_missing;
@@ -142,6 +168,27 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 	return 0;
 }
 
+int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box){
+	int idx=0,kx=0,ky=0;
+
+	kx = ullMC2DdecodeX(hash);
+	ky = ullMC2DdecodeY(hash);
+
+	for(int ix=-width;ix<=width;ix+=1){
+		for(int iy=-width;iy<=width;iy+=1){
+				if((kx+ix<0)||(ky+iy<0))
+					nblist[idx++] = -1;
+				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx))
+					nblist[idx++] = -1;
+				else if( kh_get(0, box->hbegin, ullMC2Dencode(kx+ix,ky+iy)) == kh_end(box->hbegin) )
+					nblist[idx++] = -1;
+				else
+					nblist[idx++] = ullMC2Dencode(kx+ix,ky+iy);
+		}
+	}
+	return 0;
+}
+
 int print_boxes_populations(linkedListBox *box){
 	khiter_t kbegin,kend;
 
@@ -183,6 +230,28 @@ int print_neighbour_list_MC3D(int64_t Nmax,unsigned int width,unsigned int strid
 	return 0;
 }
 
+int print_neighbour_list_MC2D(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box){
+
+	int64_t nblist[(2*width+1)*(2*width+1)];
+	
+	for(int64_t i=0;i<Nmax;i+=(int64_t)stride){
+		int res = neighbour_hash_2d(lsph[i].hash,nblist,width,box);
+
+		printf("origin hash %lu : (%d,%d) \n",lsph[i].hash,ullMC2DdecodeX(lsph[i].hash),
+															  											 ullMC2DdecodeY(lsph[i].hash));
+		for(unsigned int j=0;j<(2*width+1)*(2*width+1);j+=1){
+			if(nblist[j]>=0)
+				printf("    neighbour hash %lu : (%d,%d) \n",nblist[j],ullMC3DdecodeX(nblist[j]),
+																		  												 ullMC3DdecodeY(nblist[j]));
+			else
+				printf("no neighbour here\n");
+		}
+		printf("\n\n");
+	}
+
+	return 0;
+}
+
 int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box){
 	FILE *fp;
 	int64_t nblist[(2*width+1)*(2*width+1)*(2*width+1)];
@@ -192,7 +261,6 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 	for(int64_t i=0;i<Nmax;i+=(int64_t)stride){
 		uint32_t kx,ky,kz;
 		int res = neighbour_hash_3d(lsph[i].hash,nblist,width,box);
-
 		
 		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
 		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
@@ -203,14 +271,45 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 					         									  												ullMC3DdecodeY(lsph[i].hash),
 							    								  													ullMC3DdecodeZ(lsph[i].hash));
 
-		
-		
 		for(unsigned int j=0;j<(2*width+1)*(2*width+1)*(2*width+1);j+=1)
 			if(nblist[j]>=0){
 				fprintf(fp,"  %lu:(%d,%d,%d)",nblist[j],ullMC3DdecodeX(nblist[j]),
 																								ullMC3DdecodeY(nblist[j]),
 																								ullMC3DdecodeZ(nblist[j]));
 				if(j<(2*width+1)*(2*width+1)*(2*width+1)-1)
+					fprintf(fp,",");
+			}
+		
+		fprintf(fp,"\n\n");
+	}
+
+	fclose(fp);
+
+	return 0;
+}
+
+int print_neighbour_list_MC2D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box){
+	FILE *fp;
+	int64_t nblist[(2*width+1)*(2*width+1)];
+
+	fp = fopen("data/nblist_MC2D.csv","w");
+
+	for(int64_t i=0;i<Nmax;i+=(int64_t)stride){
+		uint32_t kx,ky;
+		int res = neighbour_hash_2d(lsph[i].hash,nblist,width,box);
+		
+		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
+		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
+		
+		fprintf(fp,"base   hash %lu : (%d,%d) \n",lsph[i].hash,kx,ky);
+		fprintf(fp,"origin hash %lu : (%d,%d) \n",lsph[i].hash, ullMC2DdecodeX(lsph[i].hash),
+					         									  											ullMC2DdecodeY(lsph[i].hash));		
+		
+		for(unsigned int j=0;j<(2*width+1)*(2*width+1);j+=1)
+			if(nblist[j]>=0){
+				fprintf(fp,"  %lu:(%d,%d)",nblist[j], ullMC2DdecodeX(nblist[j]),
+																    					ullMC2DdecodeY(nblist[j]));
+				if(j<(2*width+1)*(2*width+1)-1)
 					fprintf(fp,",");
 			}
 		
