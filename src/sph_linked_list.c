@@ -113,7 +113,7 @@ int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		else if((kx>=box->Nx)||(ky>=box->Nx))
 			return 1;
 		else
-			lsph[i].hash = ullMC3Dencode(kx,ky);
+			lsph[i].hash = ullMC2Dencode(kx,ky);
 	}
 
 	return 0;
