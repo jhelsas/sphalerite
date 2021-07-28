@@ -16,12 +16,12 @@
 
 double w_bspline_3d(double r,double h)
 {
-  double R,A_d=0.;
-  if(h<=0.) exit(10);
+  double R=0.,A_d=0.;
+  if(r<0||h<=0.) exit(10);
   
   A_d = 3.0/(2.0*M_PI);
   
-  R=fabs(r)/h;
+  R = r/h;
   if(R>=2.)
     return 0;
   else if((1.<=R)&&(R<2.))
@@ -85,3 +85,4 @@ int compute_density_3d(int N, SPH_particle *lsph, linkedListBox *box){
 
   return 0;
 }
+
