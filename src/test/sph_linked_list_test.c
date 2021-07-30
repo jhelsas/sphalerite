@@ -17,7 +17,7 @@
 int main(){
 
   int j=0,numThreads=6,err;
-  int64_t N = 10000;
+  int64_t N = 30000;
   double h=0.1;
   linkedListBox *box;
   SPHparticle *lsph;

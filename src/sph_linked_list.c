@@ -345,7 +345,10 @@ int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedList
           		fprintf(fp,"%ld, ",lsph[jj].id);
       		}
       	}
-      	fprintf(fp,"-1],\n");
+      	if((kbegin==kh_end(box->hbegin)-1)&&(ii==node_end-1))
+      		fprintf(fp,"-1]\n");
+    		else
+    			fprintf(fp,"-1],\n");
       }
 
       /*
@@ -368,6 +371,7 @@ int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedList
 
     }
   }
+  fprintf(fp,"}");
 
   fflush(fp);
   fclose(fp);
