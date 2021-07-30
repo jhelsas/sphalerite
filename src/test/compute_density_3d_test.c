@@ -97,10 +97,10 @@ int main(){
       double dist = 0.;
 
       dist += (lsph[ii].r.x-lsph[jj].r.x)*(lsph[ii].r.x-lsph[jj].r.x);
-      dist += (lsph[ii].r.y-lsph[jj].r.x)*(lsph[ii].r.y-lsph[jj].r.x);
-      dist += (lsph[ii].r.z-lsph[jj].r.x)*(lsph[ii].r.z-lsph[jj].r.x);
+      dist += (lsph[ii].r.y-lsph[jj].r.y)*(lsph[ii].r.y-lsph[jj].r.y);
+      dist += (lsph[ii].r.z-lsph[jj].r.z)*(lsph[ii].r.z-lsph[jj].r.z);
 
-      lsph[ii].F.x += (lsph[jj].nu)*w_bspline_3d(dist,h);
+      lsph[ii].F.x += (lsph[jj].nu)*box->w(sqrt(dist),h);
     }
   }
 
@@ -115,7 +115,7 @@ int main(){
     r += (lsph[i].r.x)*(lsph[i].r.x);
     r += (lsph[i].r.y)*(lsph[i].r.y);
     r += (lsph[i].r.z)*(lsph[i].r.z);
-    fprintf(fp,"%ld %lf %.12lf %.12lf\n",i,sqrt(r),lsph[i].rho,lsph[i].F.x);
+    fprintf(fp,"%ld %lf %.12lf %.12lf %.12lf\n",i,sqrt(r),lsph[i].rho,lsph[i].F.x,fabs(lsph[i].rho-lsph[i].F.x));
   }
   fclose(fp);
 
