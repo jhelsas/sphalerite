@@ -15,19 +15,19 @@
 #include "sph_linked_list.h"
 
 double w_bspline_3d(double r,double h){
-  const double A_d = (3.0/(2.0*(M_PI)));
-  double R=0.;
+  const double A_d = 1.0/;
+  double q=0.;
   
   if(r<0||h<=0.)
     exit(10);
   
-  R = r/h;
-  if(R>=2.)
+  q = r/h;
+  if(q>=2.)
     return 0;
-  else if((1.<=R)&&(R<2.))
-    return (A_d)*(1./6.)*(2.-R)*(2.-R)*(2.-R)/(h*h*h);
+  else if((1.<=q)&&(q<2.))
+    return ;
   else
-    return ((A_d)*((2./3.)-(R*R) + (R*R*R/2.0)))/(h*h*h);
+    return ;
 }
 
 double sph_distance_2d(SPHparticle *pi,SPHparticle *pj){

@@ -79,9 +79,11 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 
 	for(int64_t i=0;i<N;i+=1){
 		uint32_t kx,ky,kz;
-		kx = (int)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
-		ky = (int)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
-		kz = (int)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
+		kx = (uint32_t)((lsph[i].r.x - box->Xmin.x)*box->Nx/(box->Xmax.x - box->Xmin.x));
+		ky = (uint32_t)((lsph[i].r.y - box->Xmin.y)*box->Ny/(box->Xmax.y - box->Xmin.y));
+		kz = (uint32_t)((lsph[i].r.z - box->Xmin.z)*box->Nz/(box->Xmax.z - box->Xmin.z));
+
+		//printf("%")
 
 		if((kx<0)||(ky<0)||(kz<0))
 			return 1;
@@ -156,9 +158,9 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 			for(int iz=-width;iz<=width;iz+=1){
 				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))
 					nblist[idx++] = -1;
-				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx)||(kz+iz>=box->Nx))
+				else if( (kx+ix>=box->Nx)||(ky+iy>=box->Ny)||(kz+iz>=box->Nz) )
 					nblist[idx++] = -1;
-				else if(kh_get(0, box->hbegin, ullMC3Dencode(kx+ix,ky+iy,kz+iz)) == kh_end(box->hbegin) )
+				else if( kh_get(0, box->hbegin, ullMC3Dencode(kx+ix,ky+iy,kz+iz)) == kh_end(box->hbegin) )
 					nblist[idx++] = -1;
 				else
 					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
@@ -178,7 +180,7 @@ int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 		for(int iy=-width;iy<=width;iy+=1){
 				if((kx+ix<0)||(ky+iy<0))
 					nblist[idx++] = -1;
-				else if((kx+ix>=box->Nx)||(ky+iy>=box->Nx))
+				else if((kx+ix>=box->Nx)||(ky+iy>=box->Ny))
 					nblist[idx++] = -1;
 				else if( kh_get(0, box->hbegin, ullMC2Dencode(kx+ix,ky+iy)) == kh_end(box->hbegin) )
 					nblist[idx++] = -1;
@@ -284,6 +286,91 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 	}
 
 	fclose(fp);
+
+	return 0;
+}
+
+int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedListBox *box){
+	int err, res;
+  double dist = 0.0;
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0, node_end=0;
+  int64_t nb_hash=-1  , nb_begin= 0, nb_end = 0;
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+  FILE *fp = fopen("data/nblist_ll.json","w");
+  fprintf(fp,"{\n");
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    
+    if (kh_exist(box->hbegin, kbegin)){
+
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      /*
+      printf("hash bg/nd : %ld %ld/%ld\n",node_hash,node_begin,node_end);
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)
+      	printf("%lu %lu\n",lsph[ii].id,lsph[ii].hash);
+      printf("\n");
+      */
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      /*
+      printf("%ld: \n",node_hash);
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+      	printf("   %ld: ",nblist[j]);
+      	if(nblist[j]>=0){
+      		nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
+          	printf("%ld ",lsph[jj].id);
+      	}
+      	printf("\n\n");
+      }
+      printf("\n");*/
+      for(int64_t ii=node_begin;ii<node_end;ii+=1){
+
+      	fprintf(fp,"\"%ld\":[",lsph[ii].id);
+      	for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+      		if(nblist[j]>=0){
+      			nb_hash  = nblist[j];
+          	nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          	nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          	for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
+          		fprintf(fp,"%ld, ",lsph[jj].id);
+      		}
+      	}
+      	fprintf(fp,"-1],\n");
+      }
+
+      /*
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+      	//printf("nblist[%d]=%ld\n",j,nblist[j]);
+        if(nblist[j]>=0){
+          nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          
+          for(int64_t ii=node_begin;ii<node_end;ii+=1){
+            fprintf(fp,"%ld:[",ii);
+            for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
+            	fprintf(fp,"%ld, ",jj);
+            fprintf(fp,"-1]\n");
+          }
+        }
+      }*/
+
+    }
+  }
+
+  fflush(fp);
+  fclose(fp);
 
 	return 0;
 }
