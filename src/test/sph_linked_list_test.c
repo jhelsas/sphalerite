@@ -17,8 +17,8 @@
 int main(){
 
   int j=0,numThreads=6,err;
-  int64_t N = 30000;
-  double h=0.1;
+  int64_t N = 100000;
+  double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
 
@@ -46,11 +46,10 @@ int main(){
 
   err = setup_interval_hashtables(N,lsph,box);
 
-  //print_boxes_populations(box);
-  //print_neighbour_list_MC3D(N,1,N/13,lsph,box);
-  //print_neighbour_list_MC3D_lsph_file(N,1,1,lsph,box);
+  
   print_neighbour_list_MC3D_lsph_ids_file(N,lsph,box);
 
+  /*
   FILE *fp = fopen("data/nblist_ref.json","w");
   fprintf(fp,"{\n");
   for(int64_t i=0;i<N;i+=1){
@@ -74,7 +73,7 @@ int main(){
       fprintf(fp,"-1]\n");
   }
   fprintf(fp,"}\n");
-  fclose(fp);
+  fclose(fp);*/
 
   free(lsph);
   safe_free_box(box);

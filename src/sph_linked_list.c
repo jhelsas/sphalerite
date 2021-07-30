@@ -309,29 +309,7 @@ int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedList
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      /*
-      printf("hash bg/nd : %ld %ld/%ld\n",node_hash,node_begin,node_end);
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)
-      	printf("%lu %lu\n",lsph[ii].id,lsph[ii].hash);
-      printf("\n");
-      */
-
       res = neighbour_hash_3d(node_hash,nblist,box->width,box);
-      /*
-      printf("%ld: \n",node_hash);
-      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-      	printf("   %ld: ",nblist[j]);
-      	if(nblist[j]>=0){
-      		nb_hash  = nblist[j];
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-          for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
-          	printf("%ld ",lsph[jj].id);
-      	}
-      	printf("\n\n");
-      }
-      printf("\n");*/
       for(int64_t ii=node_begin;ii<node_end;ii+=1){
 
       	fprintf(fp,"\"%ld\":[",lsph[ii].id);
@@ -350,25 +328,6 @@ int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedList
     		else
     			fprintf(fp,"-1],\n");
       }
-
-      /*
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-      	//printf("nblist[%d]=%ld\n",j,nblist[j]);
-        if(nblist[j]>=0){
-          nb_hash  = nblist[j];
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-          
-          for(int64_t ii=node_begin;ii<node_end;ii+=1){
-            fprintf(fp,"%ld:[",ii);
-            for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
-            	fprintf(fp,"%ld, ",jj);
-            fprintf(fp,"-1]\n");
-          }
-        }
-      }*/
-
     }
   }
   fprintf(fp,"}");
