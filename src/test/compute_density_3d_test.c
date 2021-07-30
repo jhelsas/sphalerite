@@ -51,14 +51,15 @@ int gen_gaussian_pos(int64_t N, int seed, double sigma, SPHparticle *lsph){
 int main(){
 
   int j=0,err=0,seed=123123123;
-  int64_t N = 10000;
-  double sigma = 1.0,h=0.1,min_val;
+  int64_t N = 100000;
+  double sigma = 1.0,h=0.1/(2.15443469),min_val;
   linkedListBox *box;
   SPHparticle *lsph;
 
   lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
-  err = gen_gaussian_pos( N,seed,sigma,lsph);
+  //err = gen_gaussian_pos( N,seed,sigma,lsph);
+  err = gen_unif_rdn_pos(N,seed,lsph);
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
@@ -72,14 +73,23 @@ int main(){
   box->width = (int)( 0.5 + 2*h/min_val );
   box->w = w_bspline_3d;
 
+  printf("computing hashes\n");
+
   err = compute_hash_MC3D(N,lsph,box);
+
+  printf("sorting the main array\n");
 
   qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
+  printf("setuping hash tables\n");
+
   err = setup_interval_hashtables(N,lsph,box);
+
+  printf("computing 3d density\n");
 
   err = compute_density_3d(N,h,lsph,box);
 
+  
   FILE *fp = fopen("data/sph_density_compute.csv","w");
   for(int64_t i=0;i<N;i+=1){
     double r=0;
@@ -91,6 +101,7 @@ int main(){
   }
   fclose(fp);
 
+  
   for(int64_t ii=0;ii<N;ii+=1){
     lsph[ii].F.x = 0;
     for(int64_t jj=0;jj<N;jj+=1){
@@ -103,10 +114,6 @@ int main(){
       lsph[ii].F.x += (lsph[jj].nu)*box->w(sqrt(dist),h);
     }
   }
-
-  int Nw = 10000;
-  double *dens=NULL;
-  dens = (double*)malloc(Nw*sizeof(double));
 
   fp = fopen("data/sph_density_compute_ref.csv","w");
   for(int64_t i=0;i<N;i+=1){
