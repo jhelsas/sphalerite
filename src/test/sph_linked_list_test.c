@@ -128,7 +128,6 @@ int main(){
   qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
   err = setup_interval_hashtables(N,lsph,box);
-
   
   print_neighbour_list_MC3D_lsph_ids_file(N,lsph,box);
 
