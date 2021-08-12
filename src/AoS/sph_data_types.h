@@ -28,6 +28,7 @@ typedef struct linkedListBox{
     double h;
     double4 Xmin,Xmax;
     double (*w)(double,double);
+    double (*dwdq)(double,double);
     khash_t(0) *hbegin;
     khash_t(1) *hend ;
 } linkedListBox;

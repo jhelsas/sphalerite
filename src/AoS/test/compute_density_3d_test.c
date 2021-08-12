@@ -51,8 +51,8 @@ int gen_gaussian_pos(int64_t N, int seed, double sigma, SPHparticle *lsph){
 int main(){
 
   int j=0,err=0,seed=123123123;
-  int64_t N = 100000;
-  double sigma = 1.0,h=0.1/(2.15443469),min_val;
+  int64_t N = 10000;
+  double sigma = 1.0,h=0.1,min_val;
   linkedListBox *box;
   SPHparticle *lsph;
 
