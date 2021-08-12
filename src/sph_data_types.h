@@ -1,24 +1,13 @@
 #include <stdint.h>
 #include "../klib/khash.h"
 
-typedef struct size_t2{
-    int64_t begin;
-    int64_t end;
-} size_t2;
-
-typedef struct double4 {
-    double x;
-    double y;
-    double z;
-    double t;
-} double4;
-
-typedef struct SPHparticle
-{
-    double4 r,u,F;
-	int64_t id,hash;
-	double nu,rho;
-} SPHparticle;
+typedef struct SPHparticle{
+  int64_t *id,*hash;
+  double *nu,*rho;
+  double *x,*y,*z;
+  double *ux,*uy,*uz;
+  double *Fx,*Fy,*Fz;
+}
 
 KHASH_MAP_INIT_INT64(0, int64_t)
 KHASH_MAP_INIT_INT64(1, int64_t)

@@ -46,31 +46,23 @@ double dwdq_bspline_3d(double r,double h){
     return 0.;
 }
 
-double sph_distance_2d(SPHparticle *pi,SPHparticle *pj){
+double distance_2d(double ix,double iy,
+                   double jx,double jy){
   double dist = 0.0;
 
-  dist += (pi->r.x-pj->r.x)*(pi->r.x-pj->r.x);
-  dist += (pi->r.y-pj->r.y)*(pi->r.y-pj->r.y);
+  dist += (ix-jx)*(ix-jx);
+  dist += (iy-jy)*(iy-jy);
 
   return sqrt(dist);
 }
 
-double sph_distance_3d(SPHparticle *pi,SPHparticle *pj){
+double distance_3d(double ix,double iy,double iz,
+                   double jx,double jy,double jz){
   double dist = 0.0;
 
-  dist += (pi->r.x-pj->r.x)*(pi->r.x-pj->r.x);
-  dist += (pi->r.y-pj->r.y)*(pi->r.y-pj->r.y);
-  dist += (pi->r.z-pj->r.z)*(pi->r.z-pj->r.z);
-
-  return sqrt(dist);
-}
-
-double double4_distance_3d(double4 *ri,double4 *rj){
-  double dist = 0.0;
-
-  dist += (ri->x-rj->x)*(ri->x-rj->x);
-  dist += (ri->y-rj->y)*(ri->y-rj->y);
-  dist += (ri->z-rj->z)*(ri->z-rj->z);
+  dist += (ix-jx)*(ix-jx);
+  dist += (iy-jy)*(iy-jy);
+  dist += (iz-jz)*(iz-jz);
 
   return sqrt(dist);
 }
