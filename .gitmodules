@@ -1,6 +1,6 @@
 [submodule "Morton-Z-Code-C-library"]
-	path = mzc
+	path = lib/mzc
 	url = https://github.com/inkblot-sdnbhd/Morton-Z-Code-C-library
 [submodule "klib"]
-	path = klib
+	path = lib/klib
 	url = https://github.com/attractivechaos/klib
