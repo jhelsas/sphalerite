@@ -84,7 +84,7 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
       node_end   = kh_value(box->hend, kend);
 
       for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
-        lsph[ii].rho = 0.0; 
+        lsph->rho[ii] = 0.0; 
 
       res = neighbour_hash_3d(node_hash,nblist,box->width,box);
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
@@ -95,9 +95,9 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
 
           for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
             for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-              //dist = sph_distance_3d(&(lsph[ii]),&(lsph[jj]));
-              dist = double4_distance_3d(&(lsph[ii].r),&(lsph[jj].r));
-              lsph[ii].rho += (lsph[jj].nu)*(box->w(dist,h));
+              dist = distance_3d(lsph->x[i],lsph->y[i],lsph->z[i],
+                                 lsph->x[j],lsph->y[j],lsph->z[j]);
+              lsph->rho[ii] += (lsph->nu[jj])*(box->w(dist,h));
             }
           }
         }
@@ -108,6 +108,48 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
   return 0;
 }
 
+int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int err, res;
+  double dist = 0.0;
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0, node_end=0;
+  int64_t nb_hash=-1  , nb_begin= 0, nb_end = 0;
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    
+    if (kh_exist(box->hbegin, kbegin)){
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+        lsph->rho[ii] = 0.0; 
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
+            for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+              dist = distance_3d(lsph->x[i],lsph->y[i],lsph->z[i],
+                                 lsph->x[j],lsph->y[j],lsph->z[j]);
+              lsph->rho[ii] += (lsph->nu[jj])*(box->w(dist,h));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*
 int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int err, res;
   double dist = 0.0;
@@ -153,4 +195,4 @@ int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
 
   return 0;
 }
-
+*/
