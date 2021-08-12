@@ -46,23 +46,23 @@ double dwdq_bspline_3d(double r,double h){
     return 0.;
 }
 
-double distance_2d(double ix,double iy,
-                   double jx,double jy){
+double distance_2d(double xi,double yi,
+                   double xj,double yj){
   double dist = 0.0;
 
-  dist += (ix-jx)*(ix-jx);
-  dist += (iy-jy)*(iy-jy);
+  dist += (xi-xj)*(xi-xj);
+  dist += (yi-yj)*(yi-yj);
 
   return sqrt(dist);
 }
 
-double distance_3d(double ix,double iy,double iz,
-                   double jx,double jy,double jz){
+double distance_3d(double xi,double yi,double zi,
+                   double xj,double yj,double zj){
   double dist = 0.0;
 
-  dist += (ix-jx)*(ix-jx);
-  dist += (iy-jy)*(iy-jy);
-  dist += (iz-jz)*(iz-jz);
+  dist += (xi-xj)*(xi-xj);
+  dist += (yi-yj)*(yi-yj);
+  dist += (zi-zj)*(zi-zj);
 
   return sqrt(dist);
 }
