@@ -14,6 +14,84 @@
 #include "../sph_data_types.h"
 #include "../sph_linked_list.h"
 
+/* 
+typedef struct SPHparticle{
+  int64_t *id,*hash;
+  double *nu,*rho;
+  double *x,*y,*z;
+  double *ux,*uy,*uz;
+  double *Fx,*Fy,*Fz;
+}
+*/
+
+int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
+  bool success=true;
+  (*lsph) = (SPHparticle*)malloc(1*sizeof(SPHparticle));
+
+  (*lsph).x    = (double*)malloc(N*sizeof(double));
+  (*lsph).y    = (double*)malloc(N*sizeof(double));
+  (*lsph).z    = (double*)malloc(N*sizeof(double));
+
+  (*lsph).ux   = (double*)malloc(N*sizeof(double));
+  (*lsph).uy   = (double*)malloc(N*sizeof(double));
+  (*lsph).uz   = (double*)malloc(N*sizeof(double));
+
+  (*lsph).Fx   = (double*)malloc(N*sizeof(double));
+  (*lsph).Fy   = (double*)malloc(N*sizeof(double));
+  (*lsph).Fz   = (double*)malloc(N*sizeof(double));
+
+  (*lsph).nu   = (double*)malloc(N*sizeof(double));
+  (*lsph).rho  = (double*)malloc(N*sizeof(double));
+  
+  (*lsph).id   = (int64_t*)malloc(N*sizeof(int64_t));
+  (*lsph).hash = (int64_t*)malloc(N*sizeof(int64_t));
+
+  if(success)
+    return false;
+  else{
+    if((*lsph).x != NULL)
+      free((*lsph).x);
+
+    if((*lsph).y != NULL)
+      free((*lsph).y);
+
+    if((*lsph).z != NULL)
+      free((*lsph).z);
+
+    if((*lsph).ux != NULL)
+      free((*lsph).ux);
+
+    if((*lsph).uy != NULL)
+      free((*lsph).uy);
+
+    if((*lsph).uz != NULL)
+      free((*lsph).uz);
+
+    if((*lsph).Fx != NULL)
+      free((*lsph).Fx);
+
+    if((*lsph).Fy != NULL)
+      free((*lsph).Fz);
+
+    if((*lsph).Fz != NULL)
+      free((*lsph).Fz);
+
+    if((*lsph).nu != NULL)
+      free((*lsph).nu);
+
+    if((*lsph).rho != NULL)
+      free((*lsph).rho);
+
+    if((*lsph).id != NULL)
+      free((*lsph).id);
+
+    if((*lsph).hash != NULL)
+      free((*lsph).hash);
+
+    return true;
+  }
+}
+
 int main(){
 
   int j=0,numThreads=6,err;
@@ -22,9 +100,14 @@ int main(){
   linkedListBox *box;
   SPHparticle *lsph;
 
-  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
+  //lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
+  err = SPHparticle_SoA_malloc(&lsph);
+  if(err)
+    printf("error in SPHparticle_SoA_malloc\n");
 
   err = gen_unif_rdn_pos( N,123123123,lsph);
+  if(err)
+    printf("error in gen_unif_rdn_pos\n");
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
