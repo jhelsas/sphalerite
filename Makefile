@@ -1,9 +1,10 @@
-CC = gcc#
-BUILD_DIR = ./build#
-SRC_DIR = ./src#
-TEST_DIR = ./src/tests#
-CFLAGS = -Wall#
-LDFLAGS = -lz -lm -lgsl -lcurl -pthread#
+# https://stackoverflow.com/questions/23854810/makefile-for-multiple-executables-with-folders
+CC = gcc
+BUILD_DIR = build
+SRC_DIR = src
+TEST_DIR = src/tests
+CFLAGS = -Wall
+LDFLAGS = -lm -lgsl 
 
 # Every folder in ./src will need to be passed to GCC so that it can find header files
 INC_DIRS = $(shell find $(SRC_DIR) -type d)
@@ -29,14 +30,18 @@ $(BUILD_DIR)/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/$(TEST_DIR)/%.o: $(TEST_DIR)/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
 #$(BUILD_DIR)/$(TEST_DIR)/%.o: $(TEST_DIR)/%.c
 #	mkdir -p $(dir $@)
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/sph_linked_list_test: $(BASE_OBJS) #$(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o
-	echo $(TESTS)
-	#echo $(TSTS)
-	#$(CC) $(BASE_OBJS) $(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o -o $@ $(LDFLAGS)
+$(BUILD_DIR)/sph_linked_list_test: $(BASE_OBJS) $(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o
+	$(CC) $(BASE_OBJS) $(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o -o $@ $(LDFLAGS)
+
+#all : $(BASE_OBJS)
 
 .PHONY: clean
 clean:
