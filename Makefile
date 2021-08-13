@@ -1,49 +1,43 @@
-# Thanks to Job Vranish (https://spin.atomicobject.com/2016/08/26/makefile-c-projects/)
-TARGET_EXEC := final_program
-
-BUILD_DIR := ./build
-SRC_DIRS := ./src
-
-# Find all the C and C++ files we want to compile
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c)
-
-# String substitution for every C/C++ file.
-# As an example, hello.cpp turns into ./build/hello.cpp.o
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
-
-# String substitution (suffix version without %).
-# As an example, ./build/hello.cpp.o turns into ./build/hello.cpp.d
-DEPS := $(OBJS:.o=.d)
+CC = gcc#
+BUILD_DIR = ./build#
+SRC_DIR = ./src#
+TEST_DIR = ./src/tests#
+CFLAGS = -Wall#
+LDFLAGS = -lz -lm -lgsl -lcurl -pthread#
 
 # Every folder in ./src will need to be passed to GCC so that it can find header files
-INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+INC_DIRS = $(shell find $(SRC_DIR) -type d)
 # Add a prefix to INC_DIRS. So moduleA would become -ImoduleA. GCC understands this -I flag
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+INC_FLAGS = $(addprefix -I,$(INC_DIRS))
 
 # The -MMD and -MP flags together generate Makefiles for us!
 # These files will have .d instead of .o as the output.
-CPPFLAGS := $(INC_FLAGS) -MMD -MP
+CPPFLAGS = $(INC_FLAGS) -MMD -MP
 
-# The final build step.
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-    $(CC) $(OBJS) -o $@ $(LDFLAGS)
+# Find all the C and C++ files we want to compile
+#SRCS = $(shell find $(SRC_DIRS) -name *.c)
+
+BASE = $(wildcard $(SRC_DIR)/*.c)
+BASE_OBJS = $(BASE:%.c=$(BUILD_DIR)/%.o)
+
+TESTS = $(wildcard $(TEST_DIR)/*.c)
+TEST_OBJS = $(TESTS:%.c=$(BUILD_DIR)/%.o) #$(TSTS:%.c=$(BUILD_DIR)/%.o)
+#TSTS_EXE = $(patsubst $(TEST_DIR)/%.c,$(BUILD_DIR),$(TSTS))
 
 # Build step for C source
-$(BUILD_DIR)/%.c.o: %.c
-    mkdir -p $(dir $@)
-    $(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-# Build step for C++ source
-$(BUILD_DIR)/%.cpp.o: %.cpp
-    mkdir -p $(dir $@)
-    $(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+#$(BUILD_DIR)/$(TEST_DIR)/%.o: $(TEST_DIR)/%.c
+#	mkdir -p $(dir $@)
+#	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/sph_linked_list_test: $(BASE_OBJS) #$(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o
+	echo $(TESTS)
+	#echo $(TSTS)
+	#$(CC) $(BASE_OBJS) $(BUILD_DIR)/$(TEST_DIR)/sph_linked_list.o -o $@ $(LDFLAGS)
 
 .PHONY: clean
 clean:
-    rm -r $(BUILD_DIR)
-
-# Include the .d makefiles. The - at the front suppresses the errors of missing
-# Makefiles. Initially, all the .d files will be missing, and we don't want those
-# errors to show up.
--include $(DEPS)
+	rm -r $(BUILD_DIR)

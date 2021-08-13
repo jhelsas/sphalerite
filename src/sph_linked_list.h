@@ -1,3 +1,5 @@
+#ifndef SPH_LINKED_LIST_H
+#define SPH_LINKED_LIST_H
 
 int safe_free_box(linkedListBox *box);
 int compare_SPHparticle(const void *p,const void *q);
@@ -20,3 +22,5 @@ int print_neighbour_list_MC2D(int64_t Nmax,unsigned int width,unsigned int strid
 int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
 int print_neighbour_list_MC2D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
 int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedListBox *box);
+
+#endif

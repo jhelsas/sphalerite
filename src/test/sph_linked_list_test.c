@@ -11,8 +11,8 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_heapsort.h>
 
-#include "../sph_data_types.h"
-#include "../sph_linked_list.h"
+#include "sph_data_types.h"
+#include "sph_linked_list.h"
 
 /* 
 typedef struct SPHparticle{
@@ -24,71 +24,62 @@ typedef struct SPHparticle{
 }
 */
 
+#define safe_check_alloc(ptr,N,dtype) {                                          \
+                                       (ptr) = (dtype*)malloc((N)*sizeof(dtype));\
+                                       if((ptr)==NULL){                          \
+                                         success=0;                              \
+                                         goto finishlabel;                       \
+                                       }                                         \
+                                      }
+
+#define safe_free(ptr) {               \
+                        if(ptr != NULL)\
+                          free(ptr);   \
+                       }
+ 
 int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
-  bool success=true;
+  int success=1;
   (*lsph) = (SPHparticle*)malloc(1*sizeof(SPHparticle));
+  if(lsph==NULL){
+    success = 0;
+    goto finishlabel;
+  }
+  (*lsph)->x  = NULL; (*lsph)->y  = NULL; (*lsph)->z  = NULL;
+  (*lsph)->ux = NULL; (*lsph)->uy = NULL; (*lsph)->uz = NULL;
+  (*lsph)->Fx = NULL; (*lsph)->Fy = NULL; (*lsph)->Fz = NULL;
+  (*lsph)->nu = NULL; (*lsph)->rho= NULL; 
+  (*lsph)->id = NULL; (*lsph)->hash= NULL; 
 
-  (*lsph).x    = (double*)malloc(N*sizeof(double));
-  (*lsph).y    = (double*)malloc(N*sizeof(double));
-  (*lsph).z    = (double*)malloc(N*sizeof(double));
 
-  (*lsph).ux   = (double*)malloc(N*sizeof(double));
-  (*lsph).uy   = (double*)malloc(N*sizeof(double));
-  (*lsph).uz   = (double*)malloc(N*sizeof(double));
+  safe_check_alloc((*lsph)->x   ,N,double);
+  safe_check_alloc((*lsph)->y   ,N,double);
+  safe_check_alloc((*lsph)->z   ,N,double);
+  safe_check_alloc((*lsph)->ux  ,N,double);
+  safe_check_alloc((*lsph)->uy  ,N,double);
+  safe_check_alloc((*lsph)->uz  ,N,double);
+  safe_check_alloc((*lsph)->Fx  ,N,double);
+  safe_check_alloc((*lsph)->Fy  ,N,double);
+  safe_check_alloc((*lsph)->Fz  ,N,double);
+  safe_check_alloc((*lsph)->nu  ,N,double);
+  safe_check_alloc((*lsph)->rho ,N,double);
+  safe_check_alloc((*lsph)->id  ,N,int64_t);
+  safe_check_alloc((*lsph)->hash,N,int64_t);
 
-  (*lsph).Fx   = (double*)malloc(N*sizeof(double));
-  (*lsph).Fy   = (double*)malloc(N*sizeof(double));
-  (*lsph).Fz   = (double*)malloc(N*sizeof(double));
-
-  (*lsph).nu   = (double*)malloc(N*sizeof(double));
-  (*lsph).rho  = (double*)malloc(N*sizeof(double));
-  
-  (*lsph).id   = (int64_t*)malloc(N*sizeof(int64_t));
-  (*lsph).hash = (int64_t*)malloc(N*sizeof(int64_t));
+finishlabel:
 
   if(success)
-    return false;
+    return 0;
   else{
-    if((*lsph).x != NULL)
-      free((*lsph).x);
+    if(*lsph==NULL)
+      return 1;
 
-    if((*lsph).y != NULL)
-      free((*lsph).y);
+    safe_free((*lsph)->x);  safe_free((*lsph)->y);  safe_free((*lsph)->z);
+    safe_free((*lsph)->ux); safe_free((*lsph)->uy); safe_free((*lsph)->uz);
+    safe_free((*lsph)->Fx); safe_free((*lsph)->Fy); safe_free((*lsph)->Fz);
+    safe_free((*lsph)->nu); safe_free((*lsph)->rho); 
+    safe_free((*lsph)->id); safe_free((*lsph)->hash); 
 
-    if((*lsph).z != NULL)
-      free((*lsph).z);
-
-    if((*lsph).ux != NULL)
-      free((*lsph).ux);
-
-    if((*lsph).uy != NULL)
-      free((*lsph).uy);
-
-    if((*lsph).uz != NULL)
-      free((*lsph).uz);
-
-    if((*lsph).Fx != NULL)
-      free((*lsph).Fx);
-
-    if((*lsph).Fy != NULL)
-      free((*lsph).Fz);
-
-    if((*lsph).Fz != NULL)
-      free((*lsph).Fz);
-
-    if((*lsph).nu != NULL)
-      free((*lsph).nu);
-
-    if((*lsph).rho != NULL)
-      free((*lsph).rho);
-
-    if((*lsph).id != NULL)
-      free((*lsph).id);
-
-    if((*lsph).hash != NULL)
-      free((*lsph).hash);
-
-    return true;
+    return 1;
   }
 }
 
@@ -101,7 +92,7 @@ int main(){
   SPHparticle *lsph;
 
   //lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
-  err = SPHparticle_SoA_malloc(&lsph);
+  err = SPHparticle_SoA_malloc(N,&lsph);
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
