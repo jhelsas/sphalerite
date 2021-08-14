@@ -1,4 +1,9 @@
+# Makefile based on the link below:
 # https://stackoverflow.com/questions/23854810/makefile-for-multiple-executables-with-folders
+#
+# It is not obvious at all how to create a makefile for this kind of project, which should be 
+# quite common, or at least simple, but it wasn't. Finding the right source took me several days.
+#
 CC = gcc
 CFLAGS = -Wall
 LDFLAGS = -lm -lgsl 
