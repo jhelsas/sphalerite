@@ -91,17 +91,21 @@ int main(){
   linkedListBox *box;
   SPHparticle *lsph;
 
+  printf("Hello - 0\n");
   //lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
   err = SPHparticle_SoA_malloc(N,&lsph);
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
+  printf("Hello - 1\n");
   err = gen_unif_rdn_pos( N,123123123,lsph);
   if(err)
     printf("error in gen_unif_rdn_pos\n");
 
+  printf("Hello - 2\n");
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
+  printf("Hello - 3\n");
   box->Xmin.x = -1.0; box->Xmin.y = -1.0; box->Xmin.z = -1.0;
   box->Xmax.x =  2.0; box->Xmax.y =  2.0; box->Xmax.z =  2.0;
   box->Nx = (int)( (box->Xmax.x-box->Xmin.x)/(2*h) );
@@ -111,15 +115,19 @@ int main(){
   box->width = 1;
   box->hbegin = kh_init(0);
   box->hend = kh_init(1);
+  printf("Hello - 4\n");
 
   printf("box: %d %d %d\n",box->Nx,box->Ny,box->Nz);
 
   err = compute_hash_MC3D(N,lsph,box);
+  printf("Hello - 5\n");
 
   qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
 
+  printf("Hello - 6\n");
   err = setup_interval_hashtables(N,lsph,box);
   
+  printf("Hello - 7\n");
   print_neighbour_list_MC3D_lsph_ids_file(N,lsph,box);
 
   /*
@@ -147,6 +155,8 @@ int main(){
   }
   fprintf(fp,"}\n");
   fclose(fp);*/
+
+  printf("Hello - 8\n");
 
   free(lsph);
   safe_free_box(box);
