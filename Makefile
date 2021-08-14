@@ -87,5 +87,6 @@ show:
 	@echo "\nEXEC_FILES=$(EXEC_FILES)"
 	@echo "TEST_FILES=$(TEST_FILES)"
 
+.PHONY: clean
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
