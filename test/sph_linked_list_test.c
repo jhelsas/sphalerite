@@ -63,6 +63,7 @@ int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   safe_check_alloc((*lsph)->nu  ,N,double);
   safe_check_alloc((*lsph)->rho ,N,double);
   safe_check_alloc((*lsph)->id  ,N,int64_t);
+  safe_check_alloc((*lsph)->idx ,N,int64_t);
   safe_check_alloc((*lsph)->hash,N,int64_t);
 
 finishlabel:
@@ -77,7 +78,7 @@ finishlabel:
     safe_free((*lsph)->ux); safe_free((*lsph)->uy); safe_free((*lsph)->uz);
     safe_free((*lsph)->Fx); safe_free((*lsph)->Fy); safe_free((*lsph)->Fz);
     safe_free((*lsph)->nu); safe_free((*lsph)->rho); 
-    safe_free((*lsph)->id); safe_free((*lsph)->hash); 
+    safe_free((*lsph)->id); safe_free((*lsph)->idx); safe_free((*lsph)->hash); 
 
     return 1;
   }
@@ -86,7 +87,7 @@ finishlabel:
 int main(){
 
   int err;
-  int64_t N = 100000;
+  int64_t N = 1000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -122,13 +123,20 @@ int main(){
   err = compute_hash_MC3D(N,lsph,box);
   printf("Hello - 5\n");
 
-  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
+  qsort(lsph->hash,N,sizeof(int64_t),compare_int64_t);
 
   printf("Hello - 6\n");
+  
   err = setup_interval_hashtables(N,lsph,box);
+
+  for(int64_t i=0;i<N;i+=1)
+    printf("idx[%ld] = %ld %d\n",i,lsph->idx[i],lsph->hash[i]);
   
   printf("Hello - 7\n");
+  
+  /*
   print_neighbour_list_MC3D_lsph_ids_file(N,lsph,box);
+  */
 
   /*
   FILE *fp = fopen("data/nblist_ref.json","w");

@@ -12,7 +12,7 @@ typedef struct double4{
 } double4;
 
 typedef struct SPHparticle{
-  int64_t *id,*hash;
+  int64_t *id,*idx,*hash;
   double *nu,*rho;
   double *x,*y,*z;
   double *ux,*uy,*uz;

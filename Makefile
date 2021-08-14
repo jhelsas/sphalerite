@@ -61,6 +61,8 @@ $(BIN_DIR_TST)/%: $(OBJ_DIR_TST)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -s $(subst $(BIN_DIR_TST)/,$(OBJ_DIR_TST)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
+tests: $(TEST_FILES) 
+
 all: $(TEST_FILES) $(EXEC_FILES)
 
 show: 

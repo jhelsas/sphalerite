@@ -2,7 +2,7 @@
 #define SPH_LINKED_LIST_H
 
 int safe_free_box(linkedListBox *box);
-int compare_SPHparticle(const void *p,const void *q);
+int compare_int64_t(const void *p,const void *q);
 
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph);
 

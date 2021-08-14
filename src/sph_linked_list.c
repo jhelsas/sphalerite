@@ -24,13 +24,14 @@ int safe_free_box(linkedListBox *box){
 	return 0;
 }
 
-int compare_SPHparticle(const void *p,const void *q){
-	SPHparticle *data1,*data2;
-	data1 = (SPHparticle*)p;
-	data2 = (SPHparticle*)q;
-	if(data1->hash < data2->hash)
+int compare_int64_t(const void *p,const void *q){
+	int64_t *data1,*data2;
+	data1 = (int64_t*)p;
+	data2 = (int64_t*)q;
+
+	if(*data1 < *data2)
 		return -1;
-	else if(data1->hash == data2->hash)
+	else if(*data1 == *data2)
 		return 0;
 	else
 		return 1;
@@ -57,10 +58,13 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 
 		lsph->ux[i] = 0.0; lsph->Fx[i] = 0.0;
 		lsph->uy[i] = 0.0; lsph->Fy[i] = 0.0;
-		lsph->uz[i] = 0.0; lsph->Fz[i] = 0.0;
+    lsph->uz[i] = 0.0; lsph->Fz[i] = 0.0;
 
-		lsph->nu[i] = 1.0/N      ; lsph->rho[i]  = 0.0;
-		lsph->id[i] = (int64_t) 0; lsph->hash[i] = (int64_t) 0;
+		lsph->nu[i]   = 1.0/N;
+		lsph->rho[i]  = 0.0;
+		lsph->id[i]   = (int64_t) 0;
+		lsph->idx[i]  = (int64_t) i;
+		lsph->hash[i] = (int64_t) 0;
 	}
 
 	gsl_rng_free(r);
@@ -91,7 +95,7 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx))
 			return 1;
 		else
-			lsph->hash[i] = ullMC3Dencode(kx,ky,kz);
+			lsph->idx[i] = lsph->hash[i] = ullMC3Dencode(kx,ky,kz);
 	}
 
 	return 0;
@@ -118,7 +122,7 @@ int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		else if((kx>=box->Nx)||(ky>=box->Nx))
 			return 1;
 		else
-			lsph->hash[i] = ullMC2Dencode(kx,ky);
+			lsph->idx[i] = lsph->hash[i] = ullMC2Dencode(kx,ky);
 	}
 
 	return 0;
@@ -137,7 +141,7 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 		return 1;
 
 	kbegin = kh_put(0, box->hbegin, lsph->hash[0], &ret); kh_value(box->hbegin, kbegin) = (int64_t)0;
-	for(int i=0;i<N;i+=1){
+	for(int64_t i=0;i<N;i+=1){
 		if(lsph->hash[i] == hash0)
 			continue;
 		hash0 = lsph->hash[i];
