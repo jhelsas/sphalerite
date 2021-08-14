@@ -85,7 +85,7 @@ finishlabel:
 
 int main(){
 
-  int j=0,numThreads=6,err;
+  int err;
   int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;

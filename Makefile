@@ -5,12 +5,14 @@ LDFLAGS = -lm -lgsl
 
 SRC_DIR_LIB = src
 SRC_DIR_EXE = mains
-SRC_DIR_TST = tests
-OBJ_DIR_LIB = obj/lib
-OBJ_DIR_EXE = obj/exe
-OBJ_DIR_TST = obj/tests
-BIN_DIR_EXE = bin
-BIN_DIR_TST = bin
+SRC_DIR_TST = test
+OBJ_DIR = obj
+OBJ_DIR_LIB = $(OBJ_DIR)/lib
+OBJ_DIR_EXE = $(OBJ_DIR)/exe
+OBJ_DIR_TST = $(OBJ_DIR)/test
+BIN_DIR = bin
+BIN_DIR_EXE = $(BIN_DIR)
+BIN_DIR_TST = $(BIN_DIR)
 HEAD_DIR = include
 
 SRC_FILES_LIB = $(wildcard $(SRC_DIR_LIB)/*.c)
@@ -46,32 +48,44 @@ $(OBJ_DIR_TST)/%.o: $(SRC_DIR_TST)/%.c $(HEAD_FILES)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -c $<  $(CFLAGS) $(CPPFLAGS)
 
-$(BIN_DIR_EXE)/%: $(OBJ_DIR_EXE)/%.o
+$(BIN_DIR_EXE)/%: $(OBJ_DIR_EXE)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -s $(subst $(BIN_DIR_EXE)/,$(OBJ_DIR_EXE)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
-$(BIN_DIR_EXE)/%: $(OBJ_DIR_EXE)/%.o
+$(BIN_DIR_TST)/%: $(OBJ_DIR_TST)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
-	$(CC) -o $@ -s $(subst $(BIN_DIR_EXE)/,$(OBJ_DIR_EXE)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
+	$(CC) -o $@ -s $(subst $(BIN_DIR_TST)/,$(OBJ_DIR_TST)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
-all: $(EXEC_FILES) $(TEST_FILES)
+all: $(TEST_FILES) $(EXEC_FILES)
 
 show: 
 	@echo "SRC_DIR_LIB=$(SRC_DIR_LIB)"
 	@echo "SRC_DIR_EXE=$(SRC_DIR_EXE)"
 	@echo "SRC_DIR_TST=$(SRC_DIR_TST)"
+
+	@echo "\nOBJ_DIR=$(OBJ_DIR)"
 	@echo "OBJ_DIR_LIB=$(OBJ_DIR_LIB)"
 	@echo "OBJ_DIR_EXE=$(OBJ_DIR_EXE)"
 	@echo "OBJ_DIR_TST=$(OBJ_DIR_TST)"
+	
+	@echo "\nBIN_DIR=$(BIN_DIR)"
 	@echo "BIN_DIR_EXE=$(BIN_DIR_EXE)"
 	@echo "BIN_DIR_TST=$(BIN_DIR_TST)"
-	@echo "HEAD_DIR=$(HEAD_DIR)"
-	@echo "SRC_FILES_LIB=$(SRC_FILES_LIB)"
+
+	@echo "\nHEAD_DIR=$(HEAD_DIR)"
+
+	@echo "\nSRC_FILES_LIB=$(SRC_FILES_LIB)"
 	@echo "SRC_FILES_EXE=$(SRC_FILES_EXE)"
 	@echo "SRC_FILES_TST=$(SRC_FILES_TST)"
-	@echo "HEAD_FILES=$(HEAD_FILES)"
-	@echo "OBJ_FILES_LIB=$(OBJ_FILES_LIB)"
+
+	@echo "\nHEAD_FILES=$(HEAD_FILES)"
+
+	@echo "\nOBJ_FILES_LIB=$(OBJ_FILES_LIB)"
 	@echo "OBJ_FILES_EXE=$(OBJ_FILES_EXE)"
 	@echo "OBJ_FILES_TST=$(OBJ_FILES_TST)"
-	@echo "EXEC_FILES=$(EXEC_FILES)"
+
+	@echo "\nEXEC_FILES=$(EXEC_FILES)"
 	@echo "TEST_FILES=$(TEST_FILES)"
+
+clean:
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
