@@ -37,6 +37,81 @@ int compare_int64_t(const void *p,const void *q){
 		return 1;
 }
 
+#define safe_check_alloc(ptr,N,dtype) {                                          \
+                                       (ptr) = (dtype*)malloc((N)*sizeof(dtype));\
+                                       if((ptr)==NULL){                          \
+                                         success=0;                              \
+                                         goto finishlabel;                       \
+                                       }                                         \
+                                      }
+
+#define safe_free(ptr) {               \
+                        if(ptr != NULL)\
+                          free(ptr);   \
+                       }
+ 
+int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
+  int success=1;
+  (*lsph) = (SPHparticle*)malloc(1*sizeof(SPHparticle));
+  if(lsph==NULL){
+    success = 0;
+    goto finishlabel;
+  }
+  (*lsph)->x  = NULL; (*lsph)->y  = NULL; (*lsph)->z  = NULL;
+  (*lsph)->ux = NULL; (*lsph)->uy = NULL; (*lsph)->uz = NULL;
+  (*lsph)->Fx = NULL; (*lsph)->Fy = NULL; (*lsph)->Fz = NULL;
+  (*lsph)->nu = NULL; (*lsph)->rho= NULL; 
+  (*lsph)->id = NULL; (*lsph)->hash= NULL; 
+
+
+  safe_check_alloc((*lsph)->x   , N ,double);
+  safe_check_alloc((*lsph)->y   , N ,double);
+  safe_check_alloc((*lsph)->z   , N ,double);
+  safe_check_alloc((*lsph)->ux  , N ,double);
+  safe_check_alloc((*lsph)->uy  , N ,double);
+  safe_check_alloc((*lsph)->uz  , N ,double);
+  safe_check_alloc((*lsph)->Fx  , N ,double);
+  safe_check_alloc((*lsph)->Fy  , N ,double);
+  safe_check_alloc((*lsph)->Fz  , N ,double);
+  safe_check_alloc((*lsph)->nu  , N ,double);
+  safe_check_alloc((*lsph)->rho , N ,double);
+  safe_check_alloc((*lsph)->id  , N ,int64_t);
+  safe_check_alloc((*lsph)->hash,2*N,int64_t);
+
+finishlabel:
+
+  if(success)
+    return 0;
+  else{
+    if(*lsph==NULL)
+      return 1;
+
+    safe_free((*lsph)->x);  safe_free((*lsph)->y);  safe_free((*lsph)->z);
+    safe_free((*lsph)->ux); safe_free((*lsph)->uy); safe_free((*lsph)->uz);
+    safe_free((*lsph)->Fx); safe_free((*lsph)->Fy); safe_free((*lsph)->Fz);
+    safe_free((*lsph)->nu); safe_free((*lsph)->rho); 
+    safe_free((*lsph)->id); safe_free((*lsph)->hash); 
+
+    return 1;
+  }
+}
+
+int SPHparticleSOA_safe_free(int N,SPHparticle **lsph){
+	
+  if(*lsph==NULL)
+    return 1;
+
+  safe_free((*lsph)->x);  safe_free((*lsph)->y);  safe_free((*lsph)->z);
+  safe_free((*lsph)->ux); safe_free((*lsph)->uy); safe_free((*lsph)->uz);
+  safe_free((*lsph)->Fx); safe_free((*lsph)->Fy); safe_free((*lsph)->Fz);
+  safe_free((*lsph)->nu); safe_free((*lsph)->rho); 
+  safe_free((*lsph)->id); safe_free((*lsph)->hash); 
+
+  free((*lsph));
+
+  return 0;
+}
+
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 
 	const gsl_rng_type *T=NULL;

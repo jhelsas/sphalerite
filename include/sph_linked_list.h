@@ -4,6 +4,9 @@
 int safe_free_box(linkedListBox *box);
 int compare_int64_t(const void *p,const void *q);
 
+int SPHparticle_SoA_malloc(int N,SPHparticle **lsph);
+int SPHparticleSOA_safe_free(int N,SPHparticle **lsph);
+
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph);
 
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box);
