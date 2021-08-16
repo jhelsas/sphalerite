@@ -6,7 +6,7 @@
 #
 CC = gcc
 CFLAGS = -Wall
-LDFLAGS = -lm -lgsl
+LDFLAGS = -lm -lgsl -fopenmp
 
 SRC_DIR_LIB = src
 SRC_DIR_EXE = mains
