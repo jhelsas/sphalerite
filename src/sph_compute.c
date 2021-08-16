@@ -14,6 +14,7 @@
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 
+#pragma omp declare simd
 double w_bspline_3d(double r,double h){
   const double A_d = 3./(2.*M_PI*h*h*h);
   double q=0.;
@@ -95,7 +96,11 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
+          #pragma omp parallel for
           for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
+            
+            //#pragma omp ivdep
+            #pragma omp simd 
             for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
               dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
                                  lsph->x[jj],lsph->y[jj],lsph->z[jj]);

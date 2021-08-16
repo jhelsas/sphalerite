@@ -4,8 +4,9 @@
 # It is not obvious at all how to create a makefile for this kind of project, which should be 
 # quite common, or at least simple, but it wasn't. Finding the right source took me several days.
 #
-CC = gcc
-CFLAGS = -Wall -O2
+CC = clang # gcc 
+CFLAGS = -Wall -O3 -fopenmp -v # -Wall -O2
+CFLAGS += -I/usr/lib/gcc/x86_64-linux-gnu/10/include/
 LDFLAGS = -lm -lgsl -fopenmp
 
 SRC_DIR_LIB = src

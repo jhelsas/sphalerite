@@ -88,8 +88,10 @@ int main(){
   t0 = omp_get_wtime();
   if(dbg)
     printf("hello - 8\n");
+  #pragma omp parallel for
   for(int64_t ii=0;ii<N;ii+=1){
     lsph->Fx[ii] = 0;
+    #pragma omp simd 
     for(int64_t jj=0;jj<N;jj+=1){
       double dist = 0.;
 
