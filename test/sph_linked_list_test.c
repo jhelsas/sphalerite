@@ -102,7 +102,7 @@ int SPHparticleSOA_safe_free(int N,SPHparticle **lsph){
 int main(){
 
   int err;
-  int64_t N = 10000;
+  int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
