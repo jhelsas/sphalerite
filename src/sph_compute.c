@@ -57,6 +57,7 @@ double distance_2d(double xi,double yi,
   return sqrt(dist);
 }
 
+#pragma omp declare simd
 double distance_3d(double xi,double yi,double zi,
                    double xj,double yj,double zj){
   double dist = 0.0;
@@ -66,6 +67,34 @@ double distance_3d(double xi,double yi,double zi,
   dist += (zi-zj)*(zi-zj);
 
   return sqrt(dist);
+}
+
+
+int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,
+                             double h,
+                                   double* restrict x, 
+                                   double* restrict y,
+                                   double* restrict z,
+                                   double* restrict nu,
+                                   double* restrict rho){
+  #pragma omp parallel for
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    #pragma omp simd 
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double dist = 0.;
+
+      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
+      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
+      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
+
+      dist = sqrt(dist);
+
+      rho[ii] += nu[jj]*w_bspline_3d(dist,h); // box->w(sqrt(dist),h);
+    }
+  }
+
+  return 0;
 }
 
 int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
@@ -96,7 +125,8 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          #pragma omp parallel for
+          /*
+          //#pragma omp parallel for
           for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
             
             //#pragma omp ivdep
@@ -104,9 +134,12 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
             for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
               dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
                                  lsph->x[jj],lsph->y[jj],lsph->z[jj]);
-              lsph->rho[ii] += (lsph->nu[jj])*(box->w(dist,h));
+              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);//*(box->w(dist,h));
             }
-          }
+          }*/
+          
+          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
+                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
         }
       }
     }

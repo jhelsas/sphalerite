@@ -15,6 +15,32 @@
 #include "sph_linked_list.h"
 #include "sph_compute.h"
 
+int compute_density_3d_ref(int N,double h,
+                                 double* restrict x, 
+                                 double* restrict y,
+                                 double* restrict z,
+                                 double* restrict nu,
+                                 double* restrict Fx){
+  #pragma omp parallel for
+  for(int64_t ii=0;ii<N;ii+=1){
+    Fx[ii] = 0;
+    #pragma omp simd 
+    for(int64_t jj=0;jj<N;jj+=1){
+      double dist = 0.;
+
+      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
+      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
+      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
+
+      dist = sqrt(dist);
+
+      Fx[ii] += nu[jj]*w_bspline_3d(dist,h); // box->w(sqrt(dist),h);
+    }
+  }
+
+  return 0;
+}
+
 int main(){
 
   int err,dbg=0;
@@ -88,10 +114,10 @@ int main(){
   t0 = omp_get_wtime();
   if(dbg)
     printf("hello - 8\n");
-  #pragma omp parallel for
+
+  /*
   for(int64_t ii=0;ii<N;ii+=1){
     lsph->Fx[ii] = 0;
-    #pragma omp simd 
     for(int64_t jj=0;jj<N;jj+=1){
       double dist = 0.;
 
@@ -101,7 +127,11 @@ int main(){
 
       lsph->Fx[ii] += (lsph->nu[jj])*box->w(sqrt(dist),h);
     }
-  }
+  }*/
+  
+  err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  if(err)
+    printf("error in compute_density_3d_ref\n");
 
   t1 = omp_get_wtime();
   printf("Reference compute_density_3d calculation time : %lf\n",t1-t0);
