@@ -5,7 +5,7 @@
 # quite common, or at least simple, but it wasn't. Finding the right source took me several days.
 #
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -O2
 LDFLAGS = -lm -lgsl -fopenmp
 
 SRC_DIR_LIB = src
