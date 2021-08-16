@@ -10,6 +10,7 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box);
 int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box);
 
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box);
+int reorder_lsph_SoA(int N, SPHparticle *lsph, void *swap_arr);
 
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);

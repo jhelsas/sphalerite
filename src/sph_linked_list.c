@@ -29,9 +29,9 @@ int compare_int64_t(const void *p,const void *q){
 	data1 = (int64_t*)p;
 	data2 = (int64_t*)q;
 
-	if(*data1 < *data2)
+	if(data1[0] < data2[0])
 		return -1;
-	else if(*data1 == *data2)
+	else if(data1[0] == data2[0])
 		return 0;
 	else
 		return 1;
@@ -62,9 +62,9 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 
 		lsph->nu[i]   = 1.0/N;
 		lsph->rho[i]  = 0.0;
-		lsph->id[i]   = (int64_t) 0;
-		lsph->idx[i]  = (int64_t) i;
-		lsph->hash[i] = (int64_t) 0;
+		lsph->id[i]   = (int64_t) i;
+		lsph->hash[2*i+0] = (int64_t) 0;
+		lsph->hash[2*i+1] = (int64_t) i;
 	}
 
 	gsl_rng_free(r);
@@ -94,8 +94,9 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 			return 1;
 		else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx))
 			return 1;
-		else
-			lsph->idx[i] = lsph->hash[i] = ullMC3Dencode(kx,ky,kz);
+		else{
+			lsph->hash[2*i] = ullMC3Dencode(kx,ky,kz);
+		}
 	}
 
 	return 0;
@@ -122,8 +123,32 @@ int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		else if((kx>=box->Nx)||(ky>=box->Nx))
 			return 1;
 		else
-			lsph->idx[i] = lsph->hash[i] = ullMC2Dencode(kx,ky);
+			lsph->hash[2*i] = ullMC2Dencode(kx,ky);
 	}
+
+	return 0;
+}
+
+#define swap_loop(N,lsph,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
+																	 	              (temp_swap)[i] = (lsph)->member[(lsph)->hash[2*i+1]];\
+																		            memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
+
+int reorder_lsph_SoA(int N, SPHparticle *lsph, void *swap_arr){
+
+	int64_t *int64_temp_swap = (int64_t *)swap_arr;
+	swap_loop(N,lsph,int64_temp_swap,id ,int64_t);
+	double *double_temp_swap = (double *)swap_arr;
+	swap_loop(N,lsph,double_temp_swap,nu ,double);
+	swap_loop(N,lsph,double_temp_swap,rho,double);
+	swap_loop(N,lsph,double_temp_swap,x  ,double);
+	swap_loop(N,lsph,double_temp_swap,y  ,double);
+	swap_loop(N,lsph,double_temp_swap,z  ,double);
+	swap_loop(N,lsph,double_temp_swap,ux ,double);
+	swap_loop(N,lsph,double_temp_swap,uy ,double);
+	swap_loop(N,lsph,double_temp_swap,uz ,double);
+	swap_loop(N,lsph,double_temp_swap,Fx ,double);
+	swap_loop(N,lsph,double_temp_swap,Fy ,double);
+	swap_loop(N,lsph,double_temp_swap,Fz ,double);
 
 	return 0;
 }
@@ -131,7 +156,7 @@ int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 
 	int ret;
-	int64_t hash0 = lsph->hash[0];
+	int64_t hash0 = lsph->hash[2*0];
 	khiter_t kbegin,kend;
 
 	if(lsph==NULL)
@@ -140,15 +165,16 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 	if(box==NULL)
 		return 1;
 
-	kbegin = kh_put(0, box->hbegin, lsph->hash[0], &ret); kh_value(box->hbegin, kbegin) = (int64_t)0;
+	kbegin = kh_put(0, box->hbegin, lsph->hash[2*0], &ret); kh_value(box->hbegin, kbegin) = (int64_t)0;
 	for(int64_t i=0;i<N;i+=1){
+		lsph->hash[i] = lsph->hash[2*i];
 		if(lsph->hash[i] == hash0)
 			continue;
 		hash0 = lsph->hash[i];
 		kend   = kh_put(1, box->hend  , lsph->hash[i-1], &ret); kh_value(box->hend  , kend)   = i;
 		kbegin = kh_put(0, box->hbegin, lsph->hash[i  ], &ret); kh_value(box->hbegin, kbegin) = i;
 	}
-	kend   = kh_put(1, box->hend  , lsph->hash[N-1], &ret); kh_value(box->hend  , kend)   = N;
+	kend   = kh_put(1, box->hend  , lsph->hash[2*(N-1)], &ret); kh_value(box->hend  , kend)   = N;
 
 	return 0;
 }
@@ -204,11 +230,11 @@ int print_boxes_populations(linkedListBox *box){
 	for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
 		if (kh_exist(box->hbegin, kbegin)){
 			kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-			printf("hash - (begin,end) = %lu - (%lu,%lu): %lld\n",
+			printf("hash - (begin,end) = %lu - (%lu,%lu): %ld\n",
 				kh_key(box->hbegin, kbegin),
 				kh_value(box->hbegin, kbegin),
 				kh_value(box->hend, kend),
-				((long long int)kh_value(box->hend, kend))-((long long int)kh_value(box->hbegin, kbegin)));
+				((int64_t)kh_value(box->hend, kend))-((int64_t)kh_value(box->hbegin, kbegin)));
 		}
 	}
 
