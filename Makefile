@@ -5,9 +5,9 @@
 # quite common, or at least simple, but it wasn't. Finding the right source took me several days.
 #
 CC = gcc #clang # gcc 
-CFLAGS = -Wall -O3 -fopenmp -std=c11 -v # -Wall -O2
+CFLAGS = -Wall -O3 -fopenmp -std=c11 -fopt-info-vec-missed -ffast-math #-fopt-info # -Wall -O2 # -fsave-optimization-record # -ftree-vectorize
 CFLAGS += -I/usr/lib/gcc/x86_64-linux-gnu/10/include/
-LDFLAGS = -lm -lgsl -fopenmp -v
+LDFLAGS = -lm -lgsl -fopenmp 
 
 SRC_DIR_LIB = src
 SRC_DIR_EXE = mains

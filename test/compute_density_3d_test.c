@@ -21,21 +21,35 @@ int compute_density_3d_ref(int N,double h,
                                  double* restrict z,
                                  double* restrict nu,
                                  double* restrict Fx){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
   #pragma omp parallel for
   for(int64_t ii=0;ii<N;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double rhoii = 0.0;
     Fx[ii] = 0;
-    #pragma omp simd 
+    #pragma omp simd reduction(+:rhoii)
     for(int64_t jj=0;jj<N;jj+=1){
-      double dist = 0.;
+      double q = 0.;
 
-      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
-      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
-      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
 
-      dist = sqrt(dist);
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
 
-      Fx[ii] += nu[jj]*w_bspline_3d(dist,h); // box->w(sqrt(dist),h);
+      //q = sqrt(q);//*inv_h;
+      q = sqrt(q)*inv_h;
+
+      //rhoii += nu[jj]*w_bspline_3d(q,h);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
     }
+    //Fx[ii] = kernel_constant*rhoii;
+    Fx[ii] = kernel_constant*rhoii;
   }
 
   return 0;
@@ -104,6 +118,7 @@ int main(){
   if(dbg)
     printf("hello - 7\n");
   err = compute_density_3d(N,h,lsph,box);  
+  //err = compute_density_3d_fused(N,h,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 

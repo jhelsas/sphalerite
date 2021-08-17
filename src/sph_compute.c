@@ -31,6 +31,25 @@ double w_bspline_3d(double r,double h){
     return 0.;
 }
 
+#pragma omp declare simd
+double w_bspline_3d_simd(double q){
+  double wq = 0.0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  
+  if(q<2.)
+    wq = wq2;
+
+  if(q<1.)
+    wq = wq1;
+  
+  return wq;
+}
+
+double w_bspline_3d_constant(double h){
+  return 3./(2.*M_PI*h*h*h);
+}
+
 double dwdq_bspline_3d(double r,double h){
   const double A_d = 3./(2.*M_PI*h*h*h*h);
   double q=0.;
@@ -78,10 +97,19 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                                    double* restrict z,
                                    double* restrict nu,
                                    double* restrict rho){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+
   #pragma omp parallel for
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    #pragma omp simd 
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double rhoii = 0.0;
+   
+    #pragma omp simd reduction(+:rhoii)
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      /*
       double dist = 0.;
 
       dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
@@ -91,7 +119,25 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
       dist = sqrt(dist);
 
       rho[ii] += nu[jj]*w_bspline_3d(dist,h); // box->w(sqrt(dist),h);
+      */
+
+      double q = 0.;
+
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      //q = sqrt(q);//*inv_h;
+      q = sqrt(q)*inv_h;
+
+      //rhoii += nu[jj]*w_bspline_3d(q,h);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
     }
+    rho[ii] += rhoii*kernel_constant;
   }
 
   return 0;
@@ -117,8 +163,6 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
         lsph->rho[ii] = 0.0; 
 
       res = neighbour_hash_3d(node_hash,nblist,box->width,box);
-      if(res!=0)
-        return 1;
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
           //nb_hash  = nblist[j];
@@ -134,12 +178,84 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
             for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
               dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
                                  lsph->x[jj],lsph->y[jj],lsph->z[jj]);
-              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);//*(box->w(dist,h));
+              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
             }
           }*/
           
           compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
                                    lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int res;
+  double dist = 0.0;
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0, node_end=0;
+  int64_t nb_begin= 0, nb_end = 0;
+  
+  /*
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    
+    if (kh_exist(box->hbegin, kbegin)){
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+        lsph->rho[ii] = 0.0; 
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      if(res!=0)
+        return 1;
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          //nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
+            
+            #pragma omp simd 
+            for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+              dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
+                                 lsph->x[jj],lsph->y[jj],lsph->z[jj]);
+              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
+            }
+          }
+        }
+      }
+    }
+  }*/
+
+  #pragma omp parallel for 
+  #pragma 
+  for(int64_t ii=0;ii<N;ii+=1){
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    kbegin = kh_get(0,box->hbegin,lsph->hash[ii]);
+    kend   = kh_get(1,box->hend  ,lsph->hash[ii]);
+    node_begin = kh_value(box->hbegin, kbegin);
+    node_end   = kh_value(box->hend,   kend);
+
+    lsph->rho[ii] = 0.;
+    res = neighbour_hash_3d(lsph->hash[ii],nblist,box->width,box);
+    
+    for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+      if(nblist[j]>=0){
+        nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+        nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+        for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+          dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
+                             lsph->x[jj],lsph->y[jj],lsph->z[jj]);
+          lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
         }
       }
     }
