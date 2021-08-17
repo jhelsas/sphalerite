@@ -9,7 +9,6 @@ double w_bspline_3d_simd(double q);
 
 double w_bspline_3d_constant(double h);
 
-#pragma omp declare simd
 int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
 int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *box);
