@@ -15,12 +15,33 @@
 #include "sph_linked_list.h"
 #include "sph_compute.h"
 
+int compute_density_3d_naive(int N,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z,double* restrict nu,
+                             double* restrict Fx){
+  #pragma omp parallel for
+  for(int64_t ii=0;ii<N;ii+=1){
+    Fx[ii] = 0;
+    for(int64_t jj=0;jj<N;jj+=1){
+      double dist = 0.;
+
+      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
+      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
+      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
+
+      dist = sqrt(dist);
+
+      Fx[ii] += nu[jj]*w_bspline_3d(dist,h);
+    }
+  }
+
+  return 0;
+}
+
 int compute_density_3d_ref(int N,double h,
-                                 double* restrict x, 
-                                 double* restrict y,
-                                 double* restrict z,
-                                 double* restrict nu,
-                                 double* restrict Fx){
+                           double* restrict x, double* restrict y,
+                           double* restrict z, double* restrict nu,
+                           double* restrict Fx){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
   #pragma omp parallel for
@@ -45,7 +66,7 @@ int compute_density_3d_ref(int N,double h,
       //q = sqrt(q);//*inv_h;
       q = sqrt(q)*inv_h;
 
-      //rhoii += nu[jj]*w_bspline_3d(q,h);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
       rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
     }
     //Fx[ii] = kernel_constant*rhoii;
@@ -129,22 +150,9 @@ int main(){
   t0 = omp_get_wtime();
   if(dbg)
     printf("hello - 8\n");
-
-  /*
-  for(int64_t ii=0;ii<N;ii+=1){
-    lsph->Fx[ii] = 0;
-    for(int64_t jj=0;jj<N;jj+=1){
-      double dist = 0.;
-
-      dist += (lsph->x[ii]-lsph->x[jj])*(lsph->x[ii]-lsph->x[jj]);
-      dist += (lsph->y[ii]-lsph->y[jj])*(lsph->y[ii]-lsph->y[jj]);
-      dist += (lsph->z[ii]-lsph->z[jj])*(lsph->z[ii]-lsph->z[jj]);
-
-      lsph->Fx[ii] += (lsph->nu[jj])*box->w(sqrt(dist),h);
-    }
-  }*/
   
   err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)
     printf("error in compute_density_3d_ref\n");
 

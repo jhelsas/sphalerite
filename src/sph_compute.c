@@ -31,6 +31,10 @@ double w_bspline_3d(double r,double h){
     return 0.;
 }
 
+double w_bspline_3d_constant(double h){
+  return 3./(2.*M_PI*h*h*h);
+}
+
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){
   double wq = 0.0;
@@ -46,8 +50,19 @@ double w_bspline_3d_simd(double q){
   return wq;
 }
 
-double w_bspline_3d_constant(double h){
-  return 3./(2.*M_PI*h*h*h);
+#pragma omp declare simd
+double dwdq_bspline_3d_simd(double q){
+  double wq = 0.0;
+  double wq1 = (1.5*q*q - 2.*q);
+  double wq2 = -0.5*(2.-q)*(2.-q); 
+  
+  if(q<2.)
+    wq = wq2;
+
+  if(q<1.)
+    wq = wq1;
+  
+  return wq;
 }
 
 double dwdq_bspline_3d(double r,double h){
@@ -97,7 +112,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
     double xii = x[ii];
     double yii = y[ii];
