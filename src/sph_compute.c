@@ -90,13 +90,10 @@ double distance_3d(double xi,double yi,double zi,
 
 
 int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
-                             int64_t nb_begin, int64_t nb_end,
-                             double h,
-                                   double* restrict x, 
-                                   double* restrict y,
-                                   double* restrict z,
-                                   double* restrict nu,
-                                   double* restrict rho){
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z, double* restrict nu,
+                             double* restrict rho){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
@@ -109,18 +106,6 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
    
     #pragma omp simd reduction(+:rhoii)
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      /*
-      double dist = 0.;
-
-      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
-      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
-      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
-
-      dist = sqrt(dist);
-
-      rho[ii] += nu[jj]*w_bspline_3d(dist,h); // box->w(sqrt(dist),h);
-      */
-
       double q = 0.;
 
       double xij = xii-x[jj];
@@ -131,14 +116,100 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
       q += yij*yij;
       q += zij*zij;
 
-      //q = sqrt(q);//*inv_h;
       q = sqrt(q)*inv_h;
 
-      //rhoii += nu[jj]*w_bspline_3d(q,h);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
       rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
     }
     rho[ii] += rhoii*kernel_constant;
   }
+
+  return 0;
+}
+
+int compute_density_3d_strip(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z, double* restrict nu,
+                             double* restrict rho){
+  const int64_t STRIP = 8;
+  const int64_t node_prime = ((node_end-node_begin) - (node_end-node_begin)%STRIP)+node_begin;
+  const int64_t nb_prime = ((nb_end-nb_begin) - (nb_end-nb_begin)%STRIP)+nb_begin;
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+
+  #pragma omp parallel for
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double rhoii = 0.0;
+
+    for(int64_t jj=nb_begin;jj<nb_prime;jj+=STRIP){
+      #pragma omp simd reduction(+:rhoii)
+      for(int64_t j=jj; j<jj+STRIP; j+=1){
+        double q = 0.;
+
+        double xij = xii-x[j];
+        double yij = yii-y[j];
+        double zij = zii-z[j];
+
+        q += xij*xij;
+        q += yij*yij;
+        q += zij*zij;
+
+        q = sqrt(q)*inv_h;
+
+        rhoii += nu[j]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      }
+    }
+
+    #pragma omp simd reduction(+:rhoii)
+    for(int64_t j=nb_prime;j<nb_end;j+=1){
+      double q = 0.;
+
+      double xij = xii-x[j];
+      double yij = yii-y[j];
+      double zij = zii-z[j];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q)*inv_h;
+
+      rhoii += nu[j]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+    }
+
+    rho[ii] += rhoii*kernel_constant;
+  }
+
+  /*
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double rhoii = 0.0;
+   
+    #pragma omp simd reduction(+:rhoii)
+
+
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q)*inv_h;
+
+      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+    }
+    rho[ii] += rhoii*kernel_constant;
+  }*/
 
   return 0;
 }
@@ -169,21 +240,10 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          /*
-          //#pragma omp parallel for
-          for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
-            
-            //#pragma omp ivdep
-            #pragma omp simd 
-            for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-              dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
-                                 lsph->x[jj],lsph->y[jj],lsph->z[jj]);
-              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
-            }
-          }*/
-          
           compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
                                    lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          //compute_density_3d_strip(node_begin,node_end,nb_begin,nb_end,h,
+          //                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
         }
       }
     }
@@ -212,30 +272,22 @@ int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *
         lsph->rho[ii] = 0.0; 
 
       res = neighbour_hash_3d(node_hash,nblist,box->width,box);
-      if(res!=0)
-        return 1;
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
           //nb_hash  = nblist[j];
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          for(int64_t ii=node_begin;ii<node_end;ii+=1){ // this loop inside was the problem
-            
-            #pragma omp simd 
-            for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-              dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
-                                 lsph->x[jj],lsph->y[jj],lsph->z[jj]);
-              lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
-            }
-          }
+          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
+                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          //compute_density_3d_strip(node_begin,node_end,nb_begin,nb_end,h,
+          //                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
         }
       }
     }
   }*/
 
   #pragma omp parallel for 
-  #pragma 
   for(int64_t ii=0;ii<N;ii+=1){
     int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
 
