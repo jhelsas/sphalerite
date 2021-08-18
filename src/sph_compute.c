@@ -304,28 +304,47 @@ int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *
   return 0;
 }
 
+#pragma omp declare simd
+double pressure_from_density(double rho){
+  const double 0.5;
+  double p = cbrt(rho);
+  p = 0.5*p*rho;
+  return p;
+}
+
+#pragma omp declare simd
+double gamma_from_u(double ux,double uy,double uz){
+  double gamma = 1.0;
+  gamma += ux*ux;
+  gamma += uy*uy;
+  gamma += uz*uz;
+
+  gamma = sqrt(gamma);
+
+  return gamma;
+}
 
 int compute_force_3d_chunk(int64_t node_begin, int64_t node_end,
                            int64_t nb_begin, int64_t nb_end,double h,
-                           double* restrict x, double* restrict y,
-                           double* restrict z, double* restrict nu,
-                           double* restrict rho){
+                           double* restrict  x, double* restrict  y, double* restrict  z, 
+                           double* restrict ux, double* restrict uy, double* restrict uz, 
+                           double* restrict nu, double* restrict rho){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
-    double Fx = 0.0;
-    double Fy = 0.0;
-    double Fz = 0.0;
-    double rhoii;
+    double xii =  x[ii]; double yii =  y[ii]; double zii =  z[ii];
+    double uxi = ux[ii]; double uyi = uy[ii]; double uzi = uz[ii];
+    double Fx  = 0.0;   double Fy  = 0.0;   double Fz  = 0.0;
+    double gamma_i = gamma_from_u(uxi,uyi,uzi);
+    double p_i = pressure_from_density(rho[ii]/gamma_i);
    
-    #pragma omp simd reduction(+:rhoii)
+    #pragma omp simd 
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
       double q = 0.;
+      double gamma_j = gamma_from_u(ux[jj],uy[jj],uz[jj]);
+      double p_j = pressure_from_density(rho[jj]/gamma_j);
 
       double xij = xii-x[jj];
       double yij = yii-y[jj];
