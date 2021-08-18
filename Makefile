@@ -5,7 +5,17 @@
 # quite common, or at least simple, but it wasn't. Finding the right source took me several days.
 #
 CC = gcc #clang # gcc 
-CFLAGS = -Wall -O3 -fopenmp -std=c11 -fopt-info-vec-missed -ffast-math #-fopt-info # -Wall -O2 # -fsave-optimization-record # -ftree-vectorize
+CFLAGS = -Wall 
+#CFLAGS += -O0
+#CFLAGS += -O2 
+CFLAGS += -O3 
+CFLAGS += -fopenmp 
+CFLAGS += -std=c11 
+CFLAGS += -fopt-info-vec-missed 
+#CFLAGS += -ffast-math 
+#CFLAGS += -fopt-info
+#CFLAGS += -fsave-optimization-record 
+#CFLAGS += -ftree-vectorize
 CFLAGS += -I/usr/lib/gcc/x86_64-linux-gnu/10/include/
 LDFLAGS = -lm -lgsl -fopenmp 
 

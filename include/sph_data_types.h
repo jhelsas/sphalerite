@@ -1,5 +1,8 @@
+#ifndef SPH_DATA_TYPES_H
+#define SPH_DATA_TYPES_H
+
 #include <stdint.h>
-#include "khash.h"
+#include "klib/khash.h"
 
 typedef struct size_t2{
     int64_t begin;
@@ -33,3 +36,4 @@ typedef struct linkedListBox{
     khash_t(1) *hend ;
 } linkedListBox;
 
+#endif

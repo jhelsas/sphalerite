@@ -69,6 +69,39 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 	return 0;
 }
 
+int gen_gaussian_pos(int64_t N, int seed, double sigma, SPHparticle *lsph){
+
+  const gsl_rng_type *T=NULL;
+  gsl_rng *r=NULL;
+
+  if(lsph==NULL)
+    return 1;
+
+  gsl_rng_env_setup();
+
+  T = gsl_rng_default;
+  r = gsl_rng_alloc(T);
+  gsl_rng_set(r,seed);
+
+  for(int64_t i=0;i<N;i+=1){
+    lsph[i].r.x = gsl_ran_gaussian(r,sigma); lsph[i].r.y = gsl_ran_gaussian(r,sigma);
+    lsph[i].r.z = gsl_ran_gaussian(r,sigma); lsph[i].r.t = 0.0;
+
+    lsph[i].u.x = 0.0;  lsph[i].u.y = 0.0;
+    lsph[i].u.z = 0.0;  lsph[i].u.t = 0.0;
+
+    lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;
+    lsph[i].F.z = 0.0;  lsph[i].F.t = 0.0;
+
+    lsph[i].nu = 1.0; lsph[i].rho  = 0.0;
+    lsph[i].id = i;   lsph[i].hash = 0;
+  }
+
+  gsl_rng_free(r);
+
+  return 0;
+}
+
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 
 	if(lsph==NULL)
