@@ -331,6 +331,84 @@ int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *
   return 0;
 }
 
+
+int compute_force_3d_chunk(int64_t node_begin, int64_t node_end,
+                           int64_t nb_begin, int64_t nb_end,double h,
+                           double* restrict x, double* restrict y,
+                           double* restrict z, double* restrict nu,
+                           double* restrict rho){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+
+  //#pragma omp parallel for
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double Fx = 0.0;
+    double Fy = 0.0;
+    double Fz = 0.0;
+   
+    #pragma omp simd reduction(+:rhoii)
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q)*inv_h;
+
+      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+    }
+    rho[ii] += rhoii*kernel_constant;
+  }
+
+  return 0;
+}
+
+int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int res;
+  double dist = 0.0;
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0, node_end=0;
+  int64_t nb_begin= 0, nb_end = 0;
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    
+    if (kh_exist(box->hbegin, kbegin)){
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+        lsph->rho[ii] = 0.0; 
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          //nb_hash  = nblist[j];
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
+                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          //compute_density_3d_strip(node_begin,node_end,nb_begin,nb_end,h,
+          //                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
 /*
 int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int err, res;
