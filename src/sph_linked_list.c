@@ -11,8 +11,8 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_heapsort.h>
 
-#include "../mzc/MZC3D64.h"
-#include "../mzc/MZC2D64.h"
+#include "MZC3D64.h"
+#include "MZC2D64.h"
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 

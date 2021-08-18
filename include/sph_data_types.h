@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "../klib/khash.h"
+#include "khash.h"
 
 typedef struct size_t2{
     int64_t begin;
