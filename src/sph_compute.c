@@ -112,14 +112,21 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  #pragma omp parallel for
+  /*
+  x   = (double*)__builtin_assume_aligned(x,32);
+  y   = (double*)__builtin_assume_aligned(y,32);
+  z   = (double*)__builtin_assume_aligned(z,32);
+  nu  = (double*)__builtin_assume_aligned(nu,32);
+  rho = (double*)__builtin_assume_aligned(rho,32);*/
+
+  #pragma omp parallel for 
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
     double xii = x[ii];
     double yii = y[ii];
     double zii = z[ii];
     double rhoii = 0.0;
    
-    #pragma omp simd reduction(+:rhoii)
+    #pragma omp simd reduction(+:rhoii) nontemporal(rhoii)
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
       double q = 0.;
 
@@ -130,6 +137,11 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
       q += xij*xij;
       q += yij*yij;
       q += zij*zij;
+
+      /*
+      q += (xii-x[jj])*(xii-x[jj]);
+      q += (yii-y[jj])*(yii-y[jj]);
+      q += (zii-x[jj])*(zii-z[jj]);*/
 
       q = sqrt(q)*inv_h;
 
@@ -240,23 +252,70 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
   return 0;
 }
 
-int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int res;
-  double dist = 0.0;
-  khiter_t kbegin,kend;
-  int64_t node_hash=-1,node_begin=0, node_end=0;
-  int64_t nb_begin= 0, nb_end = 0;
+int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
+                                   int64_t nb_begin, int64_t nb_end,double h,
+                                   double* restrict x, double* restrict y,
+                                   double* restrict z, double* restrict nu,
+                                   double* restrict rho){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+
   
-  /*
-  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    
-    if (kh_exist(box->hbegin, kbegin)){
-      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+  //#pragma omp parallel for num_threads(12)
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+    double rhoii = 0.0;
+   
+    #pragma omp simd reduction(+:rhoii) 
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      /*
+      q += (xii-x[jj])*(xii-x[jj]);
+      q += (yii-y[jj])*(yii-y[jj]);
+      q += (zii-x[jj])*(zii-z[jj]);*/
+
+      q = sqrt(q)*inv_h;
+
+      rhoii += nu[jj]*w_bspline_3d_simd(q);// *w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+    }
+    rho[ii] += rhoii*kernel_constant;
+  }
+
+  return 0;
+}
+
+int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  const khint32_t num_boxes = kh_size(box->hbegin);
+  const khiter_t hbegin_start = kh_begin(box->hbegin), hbegin_finish = kh_end(box->hbegin);
+
+  
+  //for (khint32_t kbegin = hbegin_start; kbegin != hbegin_finish; kbegin++)
+  #pragma omp parallel for num_threads(24)
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int res;
+    int64_t node_hash=-1,node_begin=0, node_end=0;
+    int64_t nb_begin= 0, nb_end = 0;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
       node_hash = kh_key(box->hbegin, kbegin);
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)
         lsph->rho[ii] = 0.0; 
 
       res = neighbour_hash_3d(node_hash,nblist,box->width,box);
@@ -266,47 +325,25 @@ int compute_density_3d_fused(int N, double h, SPHparticle *lsph, linkedListBox *
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
-                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
-          //compute_density_3d_strip(node_begin,node_end,nb_begin,nb_end,h,
-          //                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,
+                                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
         }
       }
     }
-  }*/
 
-  #pragma omp parallel for 
-  for(int64_t ii=0;ii<N;ii+=1){
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
-
-    kbegin = kh_get(0,box->hbegin,lsph->hash[ii]);
-    kend   = kh_get(1,box->hend  ,lsph->hash[ii]);
-    node_begin = kh_value(box->hbegin, kbegin);
-    node_end   = kh_value(box->hend,   kend);
-
-    lsph->rho[ii] = 0.;
-    res = neighbour_hash_3d(lsph->hash[ii],nblist,box->width,box);
-    
-    for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-      if(nblist[j]>=0){
-        nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-        nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-        for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-          dist = distance_3d(lsph->x[ii],lsph->y[ii],lsph->z[ii],
-                             lsph->x[jj],lsph->y[jj],lsph->z[jj]);
-          lsph->rho[ii] += (lsph->nu[jj])*w_bspline_3d(dist,h);// *(box->w(dist,h));
-        }
-      }
-    }
+    //printf("thread %d - %lf %lf\n",i,lsph->rho[node_begin],lsph->rho[node_end-1]);
   }
+
+  //for(int64_t i=0;i<N;i+=1000)
+  //  printf("%ld - %lf\n",i,lsph->rho[i]);
 
   return 0;
 }
 
+
+
 #pragma omp declare simd
 double pressure_from_density(double rho){
-  const double 0.5;
   double p = cbrt(rho);
   p = 0.5*p*rho;
   return p;
@@ -356,9 +393,8 @@ int compute_force_3d_chunk(int64_t node_begin, int64_t node_end,
 
       q = sqrt(q)*inv_h;
 
-      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      //rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
     }
-    rho[ii] += rhoii*kernel_constant;
   }
 
   return 0;

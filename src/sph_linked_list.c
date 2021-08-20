@@ -45,6 +45,14 @@ int compare_int64_t(const void *p,const void *q){
                                        }                                         \
                                       }
 
+#define safe_check__aligned_alloc(ptr,alignment,N,dtype) {                                        \
+                                       (ptr) = (dtype*)aligned_alloc(alignment,(N)*sizeof(dtype));\
+                                       if((ptr)==NULL){                                           \
+                                         success=0;                                               \
+                                         goto finishlabel;                                        \
+                                       }                                                          \
+                                      }
+
 #define safe_free(ptr) {               \
                         if(ptr != NULL)\
                           free(ptr);   \
@@ -52,6 +60,7 @@ int compare_int64_t(const void *p,const void *q){
  
 int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   int success=1;
+  const int alignment = 32;
   (*lsph) = (SPHparticle*)malloc(1*sizeof(SPHparticle));
   if(lsph==NULL){
     success = 0;
@@ -63,7 +72,21 @@ int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   (*lsph)->nu = NULL; (*lsph)->rho= NULL; 
   (*lsph)->id = NULL; (*lsph)->hash= NULL; 
 
-
+  /*
+  safe_check__aligned_alloc((*lsph)->x   , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->y   , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->z   , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->ux  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->uy  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->uz  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->Fx  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->Fy  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->Fz  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->nu  , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->rho , alignment, N ,double);
+  safe_check__aligned_alloc((*lsph)->id  , alignment, N ,int64_t);
+  safe_check__aligned_alloc((*lsph)->hash, alignment,2*N,int64_t);*/
+  
   safe_check_alloc((*lsph)->x   , N ,double);
   safe_check_alloc((*lsph)->y   , N ,double);
   safe_check_alloc((*lsph)->z   , N ,double);
@@ -77,6 +100,7 @@ int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   safe_check_alloc((*lsph)->rho , N ,double);
   safe_check_alloc((*lsph)->id  , N ,int64_t);
   safe_check_alloc((*lsph)->hash,2*N,int64_t);
+  
 
 finishlabel:
 
