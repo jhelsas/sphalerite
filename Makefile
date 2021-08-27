@@ -11,7 +11,8 @@ CFLAGS = -Wall
 CFLAGS += -O3 
 CFLAGS += -fopenmp 
 CFLAGS += -std=c11 
-CFLAGS += -fopt-info-vec-missed 
+#CFLAGS += -fopt-info-vec-missed 
+CFLAGS += -march=native
 #CFLAGS += -ffast-math 
 #CFLAGS += -fopt-info
 #CFLAGS += -fsave-optimization-record 
