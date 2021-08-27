@@ -50,8 +50,9 @@ int compute_density_3d_ref(int N,double h,
     double yii = y[ii];
     double zii = z[ii];
     double rhoii = 0.0;
-    Fx[ii] = 0;
-    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu)
+    //Fx[ii] = 0;
+    //#pragma vector nontemporal(Fx)
+    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
     for(int64_t jj=0;jj<N;jj+=1){
       double q = 0.;
 
@@ -68,113 +69,11 @@ int compute_density_3d_ref(int N,double h,
 
       //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
       rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
+      //Fx[ii] += nu[jj]*w_bspline_3d_simd(q);
     }
-    //Fx[ii] = kernel_constant*rhoii;
     Fx[ii] = kernel_constant*rhoii;
-  }
-
-  return 0;
-}
-
-int compute_density_3d_ref_tiled(int N,double h,
-                                 double* restrict x, double* restrict y,
-                                 double* restrict z, double* restrict nu,
-                                 double* restrict Fx){
-  const double inv_h = 1./h;
-  const double kernel_constant = w_bspline_3d_constant(h);
-  const int64_t STRIP_i = 250, STRIP_j = 250;
-  const int64_t Ni_prime = N - N%STRIP_i;
-  const int64_t Nj_prime = N - N%STRIP_j;
-
-  #pragma omp parallel for num_threads(24)
-  for(int64_t i=0;i<Ni_prime;i+=STRIP_i){
-    for(int64_t ii=i;ii<i+STRIP_i;ii+=1){
-      double xii = x[ii];
-      double yii = y[ii];
-      double zii = z[ii];
-      double rhoii = 0.0;
-
-      #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu)
-      for(int64_t jj=0;jj<N;jj+=1){
-        double q = 0.;
-
-        double xij = xii-x[jj];
-        double yij = yii-y[jj];
-        double zij = zii-z[jj];
-
-        q += xij*xij;
-        q += yij*yij;
-        q+= zij*zij;
-
-        //q = sqrt(q);//*inv_h;
-        q = sqrt(q)*inv_h;
-
-        //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-        rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-      }
-      //Fx[ii] = kernel_constant*rhoii;
-      Fx[ii] = kernel_constant*rhoii;
-    }
-  }
-
-  #pragma omp parallel for num_threads(N-Ni_prime)
-  for(int64_t ii=Ni_prime;ii<N;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
-    double rhoii = 0.0;
-
-    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu)
-    for(int64_t jj=0;jj<N;jj+=1){
-      double q = 0.;
-
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
-
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
-
-      //q = sqrt(q);//*inv_h;
-      q = sqrt(q)*inv_h;
-
-      //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-    }
     //Fx[ii] = kernel_constant*rhoii;
-    Fx[ii] = kernel_constant*rhoii;
   }
-
-  /*
-  #pragma omp parallel for num_threads(24)
-  for(int64_t ii=0;ii<N;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
-    double rhoii = 0.0;
-
-    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu)
-    for(int64_t jj=0;jj<N;jj+=1){
-      double q = 0.;
-
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
-
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
-
-      //q = sqrt(q);//*inv_h;
-      q = sqrt(q)*inv_h;
-
-      //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-    }
-    //Fx[ii] = kernel_constant*rhoii;
-    Fx[ii] = kernel_constant*rhoii;
-  }*/
 
   return 0;
 }
