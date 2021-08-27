@@ -183,9 +183,13 @@ int main(){
 
   int err,dbg=0;
   int64_t N = 100000;
-  double h=0.05,t0,t1;
+  double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
+
+  omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
+  // omp_set_num_threads(numThreads); /** Use N threads for all parallel regions **/
+
 
   if(dbg)
     printf("hello - 0\n");
@@ -215,16 +219,28 @@ int main(){
   box->hbegin = kh_init(0);
   box->hend = kh_init(1);
 
+  double t0,t1,t2,t3,t4,t5;
   t0 = omp_get_wtime();
 
   if(dbg)
     printf("hello - 3\n");
   err = compute_hash_MC3D(N,lsph,box);
+
+  t1 = omp_get_wtime();
   
   if(dbg)
     printf("hello - 4\n");
 
   qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
+  
+  /*
+  #pragma omp parallel num_threads(20)
+  {
+    #pragma omp single 
+    quicksort_omp(lsph->hash,0,N);
+  }*/
+
+  t2 = omp_get_wtime();
 
   if(dbg)
     printf("hello - 5\n");
@@ -233,23 +249,33 @@ int main(){
   if(err)
     printf("error in reorder_lsph_SoA\n");
 
+
+  t3 = omp_get_wtime();
+
   if(dbg)
     printf("hello - 6\n");
   err = setup_interval_hashtables(N,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 
+  t4 = omp_get_wtime();
+
   if(dbg)
     printf("hello - 7\n");
 
-  //err = compute_density_3d(N,h,lsph,box);  
-  err = compute_density_3d_fused(N,h,lsph,box);
+  err = compute_density_3d(N,h,lsph,box);  
+  //err = compute_density_3d_innerOmp(N,h,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 
-  t1 = omp_get_wtime();
+  t5 = omp_get_wtime();
 
-  printf("Linked-List compute_density_3d calculation time : %lf\n",t1-t0);
+  printf("compute_hash_MC3D calculation time : %lf : %lf %\n",t1-t0,100*(t1-t0)/(t5-t0));
+  printf("qsort calculation time : %lf : %lf %\n",t2-t1,100*(t2-t1)/(t5-t0));
+  printf("reorder_lsph_SoA calculation time : %lf : %lf %\n",t3-t2,100*(t3-t2)/(t5-t0));
+  printf("setup_interval_hashtables calculation time : %lf : %lf %\n",t4-t3,100*(t4-t3)/(t5-t0));
+  printf("compute_density_3d calculation time : %lf : %lf %\n",t5-t4,100*(t5-t4)/(t5-t0));
+  printf("Total Linked-List compute_density_3d calculation time : %lf : %lf %\n",t5-t0,100*(t5-t0)/(t5-t0));
 
   t0 = omp_get_wtime();
   if(dbg)

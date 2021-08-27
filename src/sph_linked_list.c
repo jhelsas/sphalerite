@@ -60,7 +60,7 @@ int compare_int64_t(const void *p,const void *q){
  
 int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   int success=1;
-  const int alignment = 32;
+  //const int alignment = 32;
   (*lsph) = (SPHparticle*)malloc(1*sizeof(SPHparticle));
   if(lsph==NULL){
     success = 0;
@@ -273,6 +273,7 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 		kend   = kh_put(1, box->hend  , lsph->hash[i-1], &ret); kh_value(box->hend  , kend)   = i;
 		kbegin = kh_put(0, box->hbegin, lsph->hash[i  ], &ret); kh_value(box->hbegin, kbegin) = i;
 	}
+	// TODO: possible bug? verify 2*(N-1) instead of N-1
 	kend   = kh_put(1, box->hend  , lsph->hash[2*(N-1)], &ret); kh_value(box->hend  , kend)   = N;
 
 	return 0;
@@ -555,3 +556,60 @@ int main(){
 
   return 0;
 }*/
+
+////////////////////////////////////////////////////////////////////
+// https://stackoverflow.com/questions/16007640/openmp-parallel-quicksort
+
+#define TASK_SIZE 24
+
+int64_t partition(int64_t * a, int64_t p, int64_t r)
+{
+  int64_t lt[2*(r-p)];
+  int64_t gt[2*(r-p)];
+  int64_t i;
+  int64_t j;
+  int64_t key0 = a[2*r+0];
+  int64_t key1 = a[2*r+1];
+  int64_t lt_n = 0;
+  int64_t gt_n = 0;
+
+  for(i = p; i < r; i++){
+    if(a[2*i] < a[2*r]){
+      lt[2*lt_n+0] = a[2*i+0];
+      lt[2*lt_n+1] = a[2*i+1];
+      lt_n++;
+    }else{
+      gt[2*gt_n+0] = a[2*i+0];
+      gt[2*gt_n+1] = a[2*i+1];
+      gt_n++;
+    }   
+  }   
+
+  for(i = 0; i < lt_n; i++){
+    a[2*(p + i)+0] = lt[2*i+0];
+    a[2*(p + i)+1] = lt[2*i+1];
+  }   
+
+  a[2*(p + lt_n)+0] = key0;
+  a[2*(p + lt_n)+1] = key1;
+
+  for(j = 0; j < gt_n; j++){
+    a[2*(p + lt_n + j + 1)+0] = gt[2*j+0];
+    a[2*(p + lt_n + j + 1)+1] = gt[2*j+1];
+  }   
+
+  return p + lt_n;
+}
+
+void quicksort_omp(int64_t * a, int64_t p, int64_t r)
+{
+	int64_t div;
+
+  if(p < r){ 
+    div = partition(a, p, r); 
+    #pragma omp task shared(a) if(r - p > TASK_SIZE) 
+    quicksort_omp(a, p, div - 1); 
+    #pragma omp task shared(a) if(r - p > TASK_SIZE)
+    quicksort_omp(a, div + 1, r); 
+  }
+}

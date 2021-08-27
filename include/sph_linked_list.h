@@ -27,4 +27,8 @@ int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned
 int print_neighbour_list_MC2D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
 int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedListBox *box);
 
+int64_t partition(int64_t * a, int64_t p, int64_t r);
+void quicksort_omp(int64_t * a, int64_t p, int64_t r);
+
+
 #endif
