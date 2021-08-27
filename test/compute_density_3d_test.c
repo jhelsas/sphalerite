@@ -78,10 +78,85 @@ int compute_density_3d_ref(int N,double h,
   return 0;
 }
 
+int compute_density_3d_tiled(int N,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z, double* restrict nu,
+                             double* restrict Fx){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+  const int64_t STRIP = 2000;
+  const int64_t N_tiles = N/STRIP;
+  const int64_t N_prime = N - N%STRIP;
+
+  #pragma omp parallel for num_threads(24)
+  for(int64_t ii=0;ii<N;ii+=1)
+    Fx[ii] = 0.;
+
+  #pragma omp parallel for num_threads(24)
+  for(int64_t i=0;i<N_prime;i+=STRIP){
+    for(int64_t j=0;j<N_prime;j+=STRIP){
+      for(int64_t ii=i;ii<i+STRIP;ii+=1){
+        double xii = x[ii];
+        double yii = y[ii];
+        double zii = z[ii];
+        double rhoii = 0.0;
+
+        #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
+        for(int64_t jj=j;jj<j+STRIP;jj+=1){
+          double q = 0.;
+
+          double xij = xii-x[jj];
+          double yij = yii-y[jj];
+          double zij = zii-z[jj];
+
+          q += xij*xij;
+          q += yij*yij;
+          q += zij*zij;
+
+          q = sqrt(q)*inv_h;
+
+          rhoii += nu[jj]*w_bspline_3d_simd(q);
+        }
+        Fx[ii] += kernel_constant*rhoii;
+      }
+    }
+  }
+
+  #pragma omp parallel for num_threads(24)
+  for(int64_t j=0;j<N_prime;j+=STRIP){
+    for(int64_t ii=N_prime;ii<N;ii+=1){
+      double xii = x[ii];
+      double yii = y[ii];
+      double zii = z[ii];
+      double rhoii = 0.0;
+
+      #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
+      for(int64_t jj=j;jj<j+STRIP;jj+=1){
+        double q = 0.;
+
+        double xij = xii-x[jj];
+        double yij = yii-y[jj];
+        double zij = zii-z[jj];
+
+        q += xij*xij;
+        q += yij*yij;
+        q += zij*zij;
+
+        q = sqrt(q)*inv_h;
+
+        rhoii += nu[jj]*w_bspline_3d_simd(q);
+      }
+      Fx[ii] += kernel_constant*rhoii;
+    }
+  }
+    
+  return 0;
+}
+
 int main(){
 
   int err,dbg=0;
-  int64_t N = 100000;
+  int64_t N = 1000000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -180,7 +255,7 @@ int main(){
     printf("hello - 8\n");
   
   //err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
-  err = compute_density_3d_ref_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)
     printf("error in compute_density_3d_ref\n");
