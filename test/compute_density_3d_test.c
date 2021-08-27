@@ -82,7 +82,7 @@ int compute_density_3d_ref_tiled(int N,double h,
                                  double* restrict Fx){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
-  const int64_t STRIP_i = 8, STRIP_j = 8;
+  const int64_t STRIP_i = 250, STRIP_j = 250;
   const int64_t Ni_prime = N - N%STRIP_i;
   const int64_t Nj_prime = N - N%STRIP_j;
 
@@ -233,8 +233,7 @@ int main(){
 
   qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
   
-  /*
-  #pragma omp parallel num_threads(20)
+ /* #pragma omp parallel num_threads(1)
   {
     #pragma omp single 
     quicksort_omp(lsph->hash,0,N);
@@ -281,8 +280,8 @@ int main(){
   if(dbg)
     printf("hello - 8\n");
   
-  err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
-  //err = compute_density_3d_ref_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  //err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  err = compute_density_3d_ref_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)
     printf("error in compute_density_3d_ref\n");

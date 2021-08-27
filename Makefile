@@ -12,15 +12,16 @@ CFLAGS += -Wall
 #CFLAGS += -O2
 CFLAGS += -O3 
 CFLAGS += -fPIE
-CFLAGS += -fopenmp#=libomp
-#CFLAGS += -fopt-info-vec-missed 
-CFLAGS += -ffast-math 
+CFLAGS += -fopenmp #=libomp
+CFLAGS += -fopt-info-vec-missed 
 CFLAGS += -march=native
+CFLAGS += -ffast-math 
+#CFLAGS += -DAVX256
 #CFLAGS += -funroll-loops
 #CFLAGS += -fprofile-generate=profile/
 #CFLAGS += -fopt-info
 #CFLAGS += -fsave-optimization-record
-CFLAGS += -ftree-vectorize
+#CFLAGS += -ftree-vectorize
 CFLAGS += -I/usr/lib/gcc/x86_64-linux-gnu/10/include/
 LDFLAGS = -lm -lgsl 
 #LDFLAGS += -openmp
