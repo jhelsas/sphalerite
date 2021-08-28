@@ -269,7 +269,7 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
 
   
   //for (khint32_t kbegin = hbegin_start; kbegin != hbegin_finish; kbegin++)
-  #pragma omp parallel for num_threads(12)
+  #pragma omp parallel for num_threads(24)
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
     int res;
     int64_t node_hash=-1,node_begin=0, node_end=0;
