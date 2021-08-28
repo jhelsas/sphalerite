@@ -313,6 +313,138 @@ int compute_density_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
   return 0;
 }
 
+/**********************************************************************/
+
+int compute_density_3d_chunk_loopswapped(int64_t node_begin, int64_t node_end,
+                                                int64_t node_hash,linkedListBox *box, double h,
+                                                double* restrict x, double* restrict y,
+                                                double* restrict z, double* restrict nu,
+                                                double* restrict rho)
+{
+  int64_t pair_count;
+  int res=0,nb_count=0,fused_count=0;
+  //int64_t nb_begin= 0, nb_end = 0;
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+  int64_t nb_begin[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+  int64_t nb_end[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+  res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+  for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+    if(nblist[j]>=0){
+      nb_begin[nb_count] = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+      nb_end[nb_count]   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+      nb_count+=1;
+    }
+    else{
+      nb_begin[nb_count] = -1;
+      nb_end[nb_count]   = -1;
+    }
+  }
+
+  qsort(nb_begin,nb_count,sizeof(int64_t),compare_int64_t);
+  qsort(nb_end  ,nb_count,sizeof(int64_t),compare_int64_t);
+
+  fused_count = nb_count;
+  {
+    int64_t tmp;
+    unsigned int j=0;
+    while(j<nb_count-1){
+      if(nb_begin[j] < 0){
+        nb_begin[j] = nb_begin[nb_count-1]+1;
+        nb_end[j]   = nb_end[nb_count-1]+1;
+      }
+      else if(nb_end[j]==nb_begin[j+1]){
+        //printf("%ld:%ld , %ld:%d",nb_begin[j],nb_begin[j+1]);
+        nb_end[j] = nb_end[j+1];
+
+        tmp = nb_begin[j];
+        nb_begin[j] = nb_begin[j+1];
+        nb_begin[j+1] = tmp;
+        
+        tmp = nb_end[j];
+        nb_end[j] = nb_end[j+1];
+        nb_end[j+1] = tmp;
+
+        nb_begin[j] = nb_begin[nb_count-1]+1;
+        nb_end[j]   = nb_end[nb_count-1]+1;
+
+        fused_count -= 1;
+      } 
+      
+      j+=1;
+    }
+  }
+
+  qsort(nb_begin,nb_count,sizeof(int64_t),compare_int64_t);
+  qsort(nb_end  ,nb_count,sizeof(int64_t),compare_int64_t);
+
+  for(unsigned int j=0;j<fused_count;j+=1){
+    pair_count += (node_end-node_begin)*(nb_end[j]-nb_begin[j]);
+    for(int64_t ii=node_begin;ii<node_end;ii+=1){
+      double xii = x[ii];
+      double yii = y[ii];
+      double zii = z[ii];
+
+      #pragma omp simd 
+      for(int64_t jj=nb_begin[j];jj<nb_end[j];jj+=1){
+        double q = 0.;
+
+        double xij = xii-x[jj];
+        double yij = yii-y[jj];
+        double zij = zii-z[jj];
+
+        q += xij*xij;
+        q += yij*yij;
+        q += zij*zij;
+
+        q = sqrt(q)*inv_h;
+
+        rho[ii] += nu[jj]*w_bspline_3d_simd(q);
+      }        
+    }      
+  }
+
+  for(int64_t ii=node_begin;ii<node_end;ii+=1)
+    rho[ii] *= kernel_constant;
+
+  return pair_count;
+}
+
+int compute_density_3d_loopswapped(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int64_t pair_count = 0, ppc;
+  const khint32_t num_boxes = kh_size(box->hbegin);
+  const khiter_t hbegin_start = kh_begin(box->hbegin), hbegin_finish = kh_end(box->hbegin);
+
+  
+  //for (khint32_t kbegin = hbegin_start; kbegin != hbegin_finish; kbegin++)
+  #pragma omp parallel for num_threads(24)
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int res;
+    int64_t node_hash=-1,node_begin=0, node_end=0;
+
+    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)
+        lsph->rho[ii] = 0.0;
+
+      ppc = compute_density_3d_chunk_loopswapped(node_begin,node_end,node_hash,box,h,
+                                                 lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+      pair_count += ppc;
+    }
+  }
+
+  printf("pair_count = %ld\n",pair_count);
+
+  return 0;
+}
+
 /*******************************************************************/
 
 

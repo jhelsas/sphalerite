@@ -8,12 +8,12 @@ CC = gcc
 #CC = clang
 MPICC = mpicc
 CFLAGS = -std=c11 
-CFLAGS += -Wall 
+#CFLAGS += -Wall 
 #CFLAGS += -O2
 CFLAGS += -O3 
 CFLAGS += -fPIE
 CFLAGS += -fopenmp #=libomp
-CFLAGS += -fopt-info-vec-missed 
+#CFLAGS += -fopt-info-vec-missed 
 CFLAGS += -march=native
 CFLAGS += -ffast-math 
 #CFLAGS += -DAVX256
