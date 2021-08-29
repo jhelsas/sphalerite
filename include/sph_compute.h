@@ -29,6 +29,8 @@ int compute_density_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBo
 
 int compute_density_3d_loopswapped(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
+int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box);
+
 int compute_density_2d(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
 #endif

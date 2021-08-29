@@ -45,16 +45,6 @@ double w_bspline_3d_simd(double q){
   double wq = 0.0;
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
-  //double wq2 = 1.333333333 - 2.*q + q*q - 0.16666666666666666*q*q*q;
-  
-  /*
-  double wq1 = q*q;
-  wq1 = wq1-wq1*0.5*q ; 
-  wq1 = 0.6666666666666666 - wq1;
-
-  double wq2 = 1. - 0.16666666666666666*q;
-  wq2 = -2 + q*wq2;
-  wq2 = 1.333333333 + q*wq2;*/
   
   if(q<2.)
     wq = wq2;
@@ -447,6 +437,116 @@ int compute_density_3d_loopswapped(int N, double h, SPHparticle *lsph, linkedLis
 
 /*******************************************************************/
 
+int count_box_pairs(linkedListBox *box){
+  int64_t pair_count = 0, particle_pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int res;
+    int64_t node_hash=-1,node_begin=0, node_end=0;
+    int64_t nb_begin= 0, nb_end = 0;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
+      node_hash = kh_key(box->hbegin, kbegin);
+      node_begin = kh_value(box->hbegin, kbegin);
+      node_end   = kh_value(box->hend, kend);
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          //nb_hash  = nblist[j];
+
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          pair_count += 1;
+          particle_pair_count += (node_end-node_begin)*(nb_end-nb_begin);
+        }
+      }
+    }
+  }
+
+  printf("particle_pair_count = %ld\n",particle_pair_count);
+
+  return pair_count;
+}
+
+int setup_box_pairs(linkedListBox *box,
+                    int64_t *node_begin,int64_t *node_end,
+                    int64_t *nb_begin,int64_t *nb_end)
+{
+  int64_t pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int res;
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
+      node_hash = kh_key(box->hbegin, kbegin);
+
+      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          //nb_hash  = nblist[j];
+
+          node_begin[pair_count] = kh_value(box->hbegin, kbegin);
+          node_end[pair_count]   = kh_value(box->hend, kend);
+          nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          pair_count += 1;//(node_end-node_begin)*(nb_end-nb_begin);
+        }
+      }
+    }
+    //printf("thread %d - %lf %lf\n",i,lsph->rho[node_begin],lsph->rho[node_end-1]);
+  }
+
+  return pair_count;
+}
+
+int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end;
+  int64_t max_box_pair_count = 0;
+
+  max_box_pair_count = count_box_pairs(box);
+  
+  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
+
+  //for(size_t i=0;i<pair_count;i+=1)
+  //  printf("%ld: %ld %ld %ld %ld\n",i,node_begin[i],node_end[i],
+  //                                   nb_begin[i],nb_end[i]);
+
+  for(int64_t ii=0;ii<N;ii+=1)
+    lsph->rho[ii] = 0.0; 
+
+  #pragma omp parallel for num_threads(24) 
+  for(size_t i=0;i<max_box_pair_count;i+=1){
+    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],nb_begin[i],nb_end[i],
+                                   h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+  }
+  
+  free(node_begin); 
+  free(node_end);
+  free(nb_begin);
+  free(nb_end);
+
+  //for(int64_t i=0;i<N;i+=1000)
+  //  printf("%ld - %lf\n",i,lsph->rho[i]);
+
+  return 0;
+}
+
+/*******************************************************************/
 
 #pragma omp declare simd
 double pressure_from_density(double rho){

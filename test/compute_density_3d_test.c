@@ -236,9 +236,8 @@ int main(){
   if(dbg)
     printf("hello - 7\n");
 
-  err = compute_density_3d(N,h,lsph,box);  
-  //err = compute_density_3d_innerOmp(N,h,lsph,box);
-  //err = compute_density_3d_loopswapped(N,h,lsph,box);  
+  //err = compute_density_3d(N,h,lsph,box);  
+  err = compute_density_3d_load_ballanced(N,h,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 
@@ -250,6 +249,7 @@ int main(){
   //err = compute_density_3d(N,h,lsph,box);  
   //err = compute_density_3d_innerOmp(N,h,lsph,box);
   //err = compute_density_3d_loopswapped(N,h,lsph,box);  
+  //
   if(err)
     printf("error in setup_interval_hashtables\n");
 
@@ -258,7 +258,7 @@ int main(){
   if(dbg)
     printf("hello - 8\n");
   
-  err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  //err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)
@@ -271,14 +271,14 @@ int main(){
   printf("reorder_lsph_SoA calculation time : %lf : %lf\n",t3-t2,100*(t3-t2)/(t5-t0));
   printf("setup_interval_hashtables calculation time : %lf : %lf\n",t4-t3,100*(t4-t3)/(t5-t0));
   printf("compute_density_3d base calculation time : %lf : %lf\n",t5-t4,100*(t5-t4)/(t5-t0));
-  //printf("compute_density_3d loop swapped calculation time : %lf : %lf\n",t6-t5,100*(t5-t4)/(t5-t0));
+  printf("compute_density_3d load balanced calculation time : %lf : %lf\n",t6-t5,0.);
   printf("Total Linked-List compute_density_3d calculation time : %lf : %lf\n",t5-t0,100*(t5-t0)/(t5-t0));
   printf("Reference tiled compute_density_3d calculation time : %lf\n",t7-t6);
   
   if(dbg)
     printf("hello - 9\n");
 
-  /*
+  
   FILE *fp = fopen("data/sph_density_compute_ref.csv","w");
   for(int64_t i=0;i<N;i+=1)
     fprintf(fp,"%ld %.12lf %.12lf %.12lf\n",i,
@@ -286,7 +286,7 @@ int main(){
                                             lsph->Fx[i],
                                             fabs(lsph->rho[i]-lsph->Fx[i]));
   fclose(fp);
-  */
+  
 
   if(dbg)
     printf("hello - 10\n");
