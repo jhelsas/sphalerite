@@ -156,7 +156,7 @@ int compute_density_3d_tiled(int N,double h,
 int main(){
 
   int err,dbg=0;
-  int64_t N = 1000000;
+  int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -181,15 +181,14 @@ int main(){
     printf("hello - 2\n");
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
-  box->Xmin.x = -1.0; box->Xmin.y = -1.0; box->Xmin.z = -1.0;
-  box->Xmax.x =  2.0; box->Xmax.y =  2.0; box->Xmax.z =  2.0;
-  box->Nx = (int)( (box->Xmax.x-box->Xmin.x)/(2*h) );
-  box->Ny = (int)( (box->Xmax.y-box->Xmin.y)/(2*h) );
-  box->Nz = (int)( (box->Xmax.z-box->Xmin.z)/(2*h) );
+  box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
+  box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
+  box->Nx = (int)( (box->Xmax-box->Xmin)/(2*h) );
+  box->Ny = (int)( (box->Ymax-box->Ymin)/(2*h) );
+  box->Nz = (int)( (box->Zmax-box->Zmin)/(2*h) );
   box->N  = (box->Nx)*(box->Ny)*(box->Nz);
-  double min_val = fmin((box->Xmax.x-box->Xmin.x)/box->Nx,fmin((box->Xmax.y-box->Xmin.y)/box->Ny,(box->Xmax.z-box->Xmin.z)/box->Nz));
+  double min_val = fmin((box->Xmax-box->Xmin)/box->Nx,fmin((box->Ymax-box->Ymin)/box->Ny,(box->Zmax-box->Zmin)/box->Nz));
   box->width = (int)( 0.5 + 2*h/min_val );
-  box->w = w_bspline_3d;
   box->hbegin = kh_init(0);
   box->hend = kh_init(1);
 

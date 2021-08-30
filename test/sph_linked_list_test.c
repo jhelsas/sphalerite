@@ -33,11 +33,11 @@ int main(){
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
-  box->Xmin.x = -1.0; box->Xmin.y = -1.0; box->Xmin.z = -1.0;
-  box->Xmax.x =  2.0; box->Xmax.y =  2.0; box->Xmax.z =  2.0;
-  box->Nx = (int)( (box->Xmax.x-box->Xmin.x)/(2*h) );
-  box->Ny = (int)( (box->Xmax.y-box->Xmin.y)/(2*h) );
-  box->Nz = (int)( (box->Xmax.z-box->Xmin.z)/(2*h) );
+  box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
+  box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
+  box->Nx = (int)( (box->Xmax-box->Xmin)/(2*h) );
+  box->Ny = (int)( (box->Ymax-box->Ymin)/(2*h) );
+  box->Nz = (int)( (box->Zmax-box->Zmin)/(2*h) );
   box->N  = (box->Nx)*(box->Ny)*(box->Nz);
   box->width = 1;
   box->hbegin = kh_init(0);

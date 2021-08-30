@@ -134,7 +134,7 @@ $(BIN_DIR_TST)/%: $(OBJ_DIR_TST)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -s $(subst $(BIN_DIR_TST)/,$(OBJ_DIR_TST)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
-$(BIN_DIR_MED)/%: $(OBJ_DIR_MED)/%.o $(OBJ_FILES_LIB)
+$(BIN_DIR_MED)/medium/%: $(OBJ_DIR_MED)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -s $(subst $(BIN_DIR_MED)/,$(OBJ_DIR_MED)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
