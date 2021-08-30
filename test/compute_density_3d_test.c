@@ -258,7 +258,7 @@ int main(){
   if(dbg)
     printf("hello - 8\n");
   
-  //err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)

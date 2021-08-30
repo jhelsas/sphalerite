@@ -30,5 +30,4 @@ int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedList
 int64_t partition(int64_t * a, int64_t p, int64_t r);
 void quicksort_omp(int64_t * a, int64_t p, int64_t r);
 
-
 #endif
