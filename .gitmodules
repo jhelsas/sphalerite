@@ -1,6 +1,6 @@
 [submodule "Morton-Z-Code-C-library"]
-	path = SoA/include/mzc
+	path = include/mzc
 	url = https://github.com/inkblot-sdnbhd/Morton-Z-Code-C-library
 [submodule "klib"]
-	path = SoA/include/klib
+	path = include/klib
 	url = https://github.com/attractivechaos/klib

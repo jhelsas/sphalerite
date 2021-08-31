@@ -28,13 +28,15 @@ OBJ_DIR_EXE = $(OBJ_DIR)/exe
 BIN_DIR = bin
 BIN_DIR_EXE = $(BIN_DIR)
 HEAD_DIR = include
+SUBMODULES_DIR = ../include
 
 #############################################
 
 SRC_FILES_LIB = $(wildcard $(SRC_DIR_LIB)/*.c)
 SRC_FILES_EXE = $(wildcard $(SRC_DIR_EXE)/*.c)
 
-HEAD_FILES = $(wildcard $(HEAD_DIR)/*.h) # maybe it is not necessary because of INC_DIRS and _FLAGS
+HEAD_FILES = $(wildcard $(HEAD_DIR)/*.h) 
+SUBMODULES_FILES = $(wildcard $(SUBMODULES_DIR)/*.h) 
 
 OBJ_FILES_LIB = $(patsubst $(SRC_DIR_LIB)/%.c,$(OBJ_DIR_LIB)/%.o,$(SRC_FILES_LIB))
 OBJ_FILES_EXE = $(patsubst $(SRC_DIR_EXE)/%.c,$(OBJ_DIR_EXE)/%.o,$(SRC_FILES_EXE))
@@ -52,11 +54,11 @@ CPPFLAGS = $(INC_FLAGS)
 
 ############################################
 
-$(OBJ_DIR_LIB)/%.o: $(SRC_DIR_LIB)/%.c $(HEAD_FILES)
+$(OBJ_DIR_LIB)/%.o: $(SRC_DIR_LIB)/%.c $(HEAD_FILES) $(SUBMODULES_FILES)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -c $<  $(CFLAGS) $(CPPFLAGS)
 
-$(OBJ_DIR_EXE)/%.o: $(SRC_DIR_EXE)/%.c $(HEAD_FILES)
+$(OBJ_DIR_EXE)/%.o: $(SRC_DIR_EXE)/%.c $(HEAD_FILES) $(SUBMODULES_FILES)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -c $<  $(CFLAGS) $(CPPFLAGS)
 
@@ -88,6 +90,7 @@ show:
 	@echo "SRC_FILES_EXE=$(SRC_FILES_EXE)"
 	
 	@echo "\nHEAD_FILES=$(HEAD_FILES)"
+	@echo "\nSUMODULES_FILES=$(SUBMODULES_FILES)"
 
 	@echo "\nOBJ_FILES_LIB=$(OBJ_FILES_LIB)"
 	@echo "OBJ_FILES_EXE=$(OBJ_FILES_EXE)"
