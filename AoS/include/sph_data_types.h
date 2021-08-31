@@ -28,10 +28,8 @@ KHASH_MAP_INIT_INT64(1, int64_t)
 
 typedef struct linkedListBox{
     int Nx,Ny,Nz,N,width;
-    double h;
-    double4 Xmin,Xmax;
-    double (*w)(double,double);
-    double (*dwdq)(double,double);
+    double Xmin,Ymin,Zmin;
+    double Xmax,Ymax,Zmax;
     khash_t(0) *hbegin;
     khash_t(1) *hend ;
 } linkedListBox;

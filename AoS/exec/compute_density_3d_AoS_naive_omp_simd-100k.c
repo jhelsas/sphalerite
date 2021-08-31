@@ -32,26 +32,24 @@ double w_bspline_3d_simd(double q){
   return wq;
 }
 
-int compute_density_3d_naive_omp_simd(int N,double h,
-                                      double* restrict x, double* restrict y,
-                                      double* restrict z, double* restrict nu,
-                                      double* restrict rho){
+
+int compute_density_3d_naive_omp_simd(int N,double h,SPHparticle *lsph){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
   #pragma omp parallel for 
   for(int64_t ii=0;ii<N;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
+    double xii = lsph[ii].r.x;
+    double yii = lsph[ii].r.y;
+    double zii = lsph[ii].r.z;
     double rhoii = 0.0;
     
-    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
+    #pragma omp simd reduction(+:rhoii) 
     for(int64_t jj=0;jj<N;jj+=1){
       double q = 0.;
 
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
+      double xij = xii-lsph[jj].r.x;
+      double yij = yii-lsph[jj].r.y;
+      double zij = zii-lsph[jj].r.z;
 
       q += xij*xij;
       q += yij*yij;
@@ -59,9 +57,9 @@ int compute_density_3d_naive_omp_simd(int N,double h,
 
       q = sqrt(q)*inv_h;
 
-      rhoii += nu[jj]*w_bspline_3d_simd(q);
+      rhoii += lsph[jj].nu*w_bspline_3d_simd(q);
     }
-    rho[ii] = kernel_constant*rhoii;
+    lsph[ii].rho = kernel_constant*rhoii;
   }
 
   return 0;
@@ -69,26 +67,18 @@ int compute_density_3d_naive_omp_simd(int N,double h,
 
 int main(){
 
-  int err,dbg=0;
+  int err;
   int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
 
-  if(dbg)
-    printf("hello - 0\n");
-  err = SPHparticle_SoA_malloc(N,&lsph);
-  if(err)
-    printf("error in SPHparticle_SoA_malloc\n");
+  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
-  if(dbg)
-    printf("hello - 1\n");
   err = gen_unif_rdn_pos( N,123123123,lsph);
   if(err)
     printf("error in gen_unif_rdn_pos\n");
 
-  if(dbg)
-    printf("hello - 2\n");
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
   box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
@@ -103,18 +93,16 @@ int main(){
   box->hend = kh_init(1);
 
   double t0,t1;
-
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp_simd(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
-
+  compute_density_3d_naive_omp_simd(N,h,lsph);
+  
   t1 = omp_get_wtime();
 
-  printf("compute_density_3d SoA naive omp calc time : %lf s \n",t1-t0);
+  printf("compute_density_3d SoA naive calc time : %lf s \n",t1-t0);
   
-  SPHparticleSOA_safe_free(N,&lsph);
+  free(lsph);
   safe_free_box(box);
-  //free(swap_arr);
-
+  
   return 0;
 }
