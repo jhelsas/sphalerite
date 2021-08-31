@@ -13,6 +13,8 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+#define print_pair_count 0
+
 double w_bspline_3d_constant(double h){
   return 3./(2.*M_PI*h*h*h);
 }
@@ -61,7 +63,6 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
       q = sqrt(q)*inv_h;
 
       rhoii += nu[jj]*w_bspline_3d_simd(q);
-      //rhoii += nu[jj]*w_bspline_3d_LUT(q);
     }
     rho[ii] += rhoii*kernel_constant;
   }
@@ -70,7 +71,7 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
 }
 
 int count_box_pairs(linkedListBox *box){
-  int64_t pair_count = 0, particle_pair_count = 0;
+  int64_t box_pair_count = 0, particle_pair_count = 0;
 
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
     int64_t node_hash=-1,node_begin=0, node_end=0;
@@ -90,21 +91,24 @@ int count_box_pairs(linkedListBox *box){
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          pair_count += 1;
+          box_pair_count += 1;
           particle_pair_count += (node_end-node_begin)*(nb_end-nb_begin);
         }
       }
     }
   }
+
+  if(print_pair_count)
+    printf("number of particle pairs: %ld\n",particle_pair_count);
   
-  return pair_count;
+  return box_pair_count;
 }
 
 int setup_box_pairs(linkedListBox *box,
                     int64_t *node_begin,int64_t *node_end,
                     int64_t *nb_begin,int64_t *nb_end)
 {
-  int64_t pair_count = 0;
+  int64_t box_pair_count = 0;
 
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
     int64_t node_hash=-1;
@@ -118,18 +122,18 @@ int setup_box_pairs(linkedListBox *box,
       neighbour_hash_3d(node_hash,nblist,box->width,box);
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
-          node_begin[pair_count] = kh_value(box->hbegin, kbegin);
-          node_end[pair_count]   = kh_value(box->hend, kend);
-          nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+          node_begin[box_pair_count] = kh_value(box->hbegin, kbegin);
+          node_end[box_pair_count]   = kh_value(box->hend, kend);
+          nb_begin[box_pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end[box_pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          pair_count += 1;
+          box_pair_count += 1;
         }
       }
     }
   }
 
-  return pair_count;
+  return box_pair_count;
 }
 
 int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){

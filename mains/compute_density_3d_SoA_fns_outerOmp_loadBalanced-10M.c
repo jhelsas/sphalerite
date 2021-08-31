@@ -13,7 +13,7 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define print_pair_count 0
+#define print_pair_count 1
 
 double w_bspline_3d_constant(double h){
   return 3./(2.*M_PI*h*h*h);
@@ -63,7 +63,6 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
       q = sqrt(q)*inv_h;
 
       rhoii += nu[jj]*w_bspline_3d_simd(q);
-      //rhoii += nu[jj]*w_bspline_3d_LUT(q);
     }
     rho[ii] += rhoii*kernel_constant;
   }
@@ -100,7 +99,7 @@ int count_box_pairs(linkedListBox *box){
   }
 
   if(print_pair_count)
-    printf("number of particle pairs: ")
+    printf("number of particle pairs: %ld\n",particle_pair_count);
   
   return box_pair_count;
 }
