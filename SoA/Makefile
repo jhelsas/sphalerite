@@ -21,7 +21,7 @@ LDFLAGS += -fopenmp
 #############################################
 
 SRC_DIR_LIB = src
-SRC_DIR_EXE = mains
+SRC_DIR_EXE = exec
 OBJ_DIR = obj
 OBJ_DIR_LIB = $(OBJ_DIR)/lib
 OBJ_DIR_EXE = $(OBJ_DIR)/exe
