@@ -6,11 +6,6 @@
 #include <inttypes.h>
 
 #include <omp.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_heapsort.h>
-
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 #include "sph_compute.h"
@@ -162,8 +157,6 @@ int main(){
   SPHparticle *lsph;
 
   omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
-  // omp_set_num_threads(numThreads); /** Use N threads for all parallel regions **/
-
 
   if(dbg)
     printf("hello - 0\n");
