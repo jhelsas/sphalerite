@@ -166,6 +166,80 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
   return 0;
 }
 
+// https://www.geeksforgeeks.org/in-place-merge-sort/
+void merge(int64_t *data,int64_t start, int64_t middle, int64_t finish){
+  int64_t start2 = middle + 1;
+
+  /*for(int64_t idx=start;idx<finish;idx+=1){
+    if(data[2*idx_left] <= data[2*idx_right])
+      idx_left++;
+    else{
+      tmp0 = data[2*idx_left+0];
+      tmp1 = data[2*idx_left+1];
+    }
+  }*/
+
+  if(data[2*middle]<=data[2*start2])
+    return ;
+
+  while(start<=middle && start2<=finish){
+    if(data[2*start]<=data[2*start2])
+      start++;
+    else{
+      int64_t tmp0=data[2*start2+0],tmp1 = data[2*start2+1];
+      int64_t index = start2;
+
+      while(index != start){
+        data[2*index+0] = data[2*(index-1)+0];
+        data[2*index+1] = data[2*(index-1)+1];
+        index--;
+      }
+      data[2*start+0] = tmp0;
+      data[2*start+1] = tmp1;
+
+      start++;
+      middle++;
+      start2++;
+    }
+  }
+}
+
+// https://edisciplinas.usp.br/mod/resource/view.php?id=3263738
+void mergesort(int64_t *data,int64_t start, int64_t finish){
+  const int PARALLEL_LIMIT = 1000;
+
+  /*if(seq_size > PARALLEL_LIMIT){
+    int64_t middle = start + seq_size/2;
+
+    //#pragma omp task default(none) shared(data) firstprivate(start, middle)
+    mergesort(data,start,middle);
+    //#pragma omp task default(none) shared(data) firstprivate(middle, finish)
+    mergesort(data,middle,finish);
+    //#pragma omp taskwait
+    merge(data,start,middle,finish);
+  }
+  else if(seq_size>1){*/
+  if(start < finish){
+    int64_t middle = (finish+start)/2;
+
+    if(finish-start > PARALLEL_LIMIT){
+      #pragma omp task default(none) shared(data) firstprivate(start, middle)
+        mergesort(data,start,middle);
+      #pragma omp task default(none) shared(data) firstprivate(middle, finish)
+        mergesort(data,middle+1,finish);
+      #pragma omp taskwait
+
+        merge(data,start,middle,finish);
+    }
+    else{
+      mergesort(data,start,middle);
+      mergesort(data,middle+1,finish);
+      merge(data,start,middle,finish);
+    }
+  }
+  /*}*/
+}
+
 int main(){
 
   int err,dbg=0;
@@ -174,7 +248,7 @@ int main(){
   linkedListBox *box;
   SPHparticle *lsph;
 
-  omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
+  //omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
 
   if(dbg)
     printf("hello - 0\n");
@@ -211,6 +285,11 @@ int main(){
   t1 = omp_get_wtime();
   
   qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
+  /*#pragma omp parallel 
+  {
+    #pragma omp single
+    mergesort(lsph->hash,0,N);
+  } */
   
   t2 = omp_get_wtime();
 
@@ -254,3 +333,4 @@ int main(){
 
   return 0;
 }
+

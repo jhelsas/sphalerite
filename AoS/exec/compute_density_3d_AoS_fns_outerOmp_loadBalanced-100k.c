@@ -172,8 +172,7 @@ int main(){
   linkedListBox *box;
   SPHparticle *lsph;
 
-  omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
-
+  
   lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
 
   err = gen_unif_rdn_pos(N,123123123,lsph);
