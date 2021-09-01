@@ -161,25 +161,17 @@ int main(){
   linkedListBox *box;
   SPHparticle *lsph;
 
-  omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
-  // omp_set_num_threads(numThreads); /** Use N threads for all parallel regions **/
-
-
-  if(dbg)
-    printf("hello - 0\n");
   err = SPHparticle_SoA_malloc(N,&lsph);
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
-  if(dbg)
-    printf("hello - 1\n");
   err = gen_unif_rdn_pos( N,123123123,lsph);
   if(err)
     printf("error in gen_unif_rdn_pos\n");
 
-  if(dbg)
-    printf("hello - 2\n");
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
+  if(box==NULL)
+    printf("error alocating the linkedListBox\n");
 
   box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
   box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
@@ -206,7 +198,8 @@ int main(){
 
   qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
   
-  /*#pragma omp parallel num_threads(1)
+  /*
+  #pragma omp parallel num_threads(1)
   {
     #pragma omp single 
     quicksort_omp(lsph->hash,0,N);
@@ -279,13 +272,14 @@ int main(){
 
   
   FILE *fp = fopen("data/sph_density_compute_ref.csv","w");
-  for(int64_t i=0;i<N;i+=1)
-    fprintf(fp,"%ld %.12lf %.12lf %.12lf\n",i,
-                                            lsph->rho[i],
-                                            lsph->Fx[i],
-                                            fabs(lsph->rho[i]-lsph->Fx[i]));
-  fclose(fp);
-  
+  if(fp!=NULL){
+    for(int64_t i=0;i<N;i+=1)
+      fprintf(fp,"%ld %.12lf %.12lf %.12lf\n",i,
+                                              lsph->rho[i],
+                                              lsph->Fx[i],
+                                              fabs(lsph->rho[i]-lsph->Fx[i]));
+    fclose(fp);
+  }
 
   if(dbg)
     printf("hello - 10\n");

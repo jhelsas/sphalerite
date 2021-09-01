@@ -33,16 +33,13 @@ LDFLAGS += -fopenmp
 SRC_DIR_LIB = src
 SRC_DIR_EXE = mains
 SRC_DIR_TST = test
-SRC_DIR_MED = medium
 OBJ_DIR = obj
 OBJ_DIR_LIB = $(OBJ_DIR)/lib
 OBJ_DIR_EXE = $(OBJ_DIR)/exe
 OBJ_DIR_TST = $(OBJ_DIR)/test
-OBJ_DIR_MED = $(OBJ_DIR)/medium
 BIN_DIR = bin
 BIN_DIR_EXE = $(BIN_DIR)
 BIN_DIR_TST = $(BIN_DIR)
-BIN_DIR_MED = $(BIN_DIR)
 HEAD_DIR = include
 
 MPI_SRC_DIR_LIB = mpi/src
@@ -62,17 +59,14 @@ MPI_HEAD_DIR = mpi/include
 SRC_FILES_LIB = $(wildcard $(SRC_DIR_LIB)/*.c)
 SRC_FILES_EXE = $(wildcard $(SRC_DIR_EXE)/*.c)
 SRC_FILES_TST = $(wildcard $(SRC_DIR_TST)/*.c)
-SRC_FILES_MED = $(wildcard $(SRC_DIR_MED)/*.c)
 HEAD_FILES = $(wildcard $(HEAD_DIR)/*.h) # maybe it is not necessary because of INC_DIRS and _FLAGS
 
 OBJ_FILES_LIB = $(patsubst $(SRC_DIR_LIB)/%.c,$(OBJ_DIR_LIB)/%.o,$(SRC_FILES_LIB))
 OBJ_FILES_EXE = $(patsubst $(SRC_DIR_EXE)/%.c,$(OBJ_DIR_EXE)/%.o,$(SRC_FILES_EXE))
 OBJ_FILES_TST = $(patsubst $(SRC_DIR_TST)/%.c,$(OBJ_DIR_TST)/%.o,$(SRC_FILES_TST))
-OBJ_FILES_MED = $(patsubst $(SRC_DIR_MED)/%.c,$(OBJ_DIR_MED)/%.o,$(SRC_FILES_MED))
 
 EXEC_FILES = $(patsubst $(SRC_DIR_EXE)/%.c,$(BIN_DIR_EXE)/%,$(SRC_FILES_EXE))
 TEST_FILES = $(patsubst $(SRC_DIR_TST)/%.c,$(BIN_DIR_TST)/%,$(SRC_FILES_TST))
-MED_FILES = $(patsubst $(SRC_DIR_MED)/%.c,$(BIN_DIR_MED)/%,$(SRC_FILES_MED))
 
 # Every folder in ./src will need to be passed to GCC so that it can find header files
 INC_DIRS = $(shell find $(HEAD_DIR) -type d)
@@ -120,10 +114,6 @@ $(OBJ_DIR_TST)/%.o: $(SRC_DIR_TST)/%.c $(HEAD_FILES)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -c $<  $(CFLAGS) $(CPPFLAGS)
 
-$(OBJ_DIR_MED)/%.o: $(SRC_DIR_MED)/%.c $(HEAD_FILES)
-	mkdir -p $(dir $@)
-	$(CC) -o $@ -c $<  $(CFLAGS) $(CPPFLAGS)
-
 ###########
 
 $(BIN_DIR_EXE)/%: $(OBJ_DIR_EXE)/%.o $(OBJ_FILES_LIB)
@@ -133,10 +123,6 @@ $(BIN_DIR_EXE)/%: $(OBJ_DIR_EXE)/%.o $(OBJ_FILES_LIB)
 $(BIN_DIR_TST)/%: $(OBJ_DIR_TST)/%.o $(OBJ_FILES_LIB)
 	mkdir -p $(dir $@)
 	$(CC) -o $@ -s $(subst $(BIN_DIR_TST)/,$(OBJ_DIR_TST)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
-
-$(BIN_DIR_MED)/medium/%: $(OBJ_DIR_MED)/%.o $(OBJ_FILES_LIB)
-	mkdir -p $(dir $@)
-	$(CC) -o $@ -s $(subst $(BIN_DIR_MED)/,$(OBJ_DIR_MED)/,$@).o $(OBJ_FILES_LIB) $(LDFLAGS)
 
 ###########################################
 
@@ -172,43 +158,35 @@ mpi_tests: $(MPI_TEST_FILES)
 
 mpi_all: $(MPI_TEST_FILES) $(MPI_TEST_FILES)
 
-medium: $(MEDIUM)
-
 show: 
 	@echo "Non MPI files:"
 	@echo "SRC_DIR_LIB=$(SRC_DIR_LIB)"
 	@echo "SRC_DIR_EXE=$(SRC_DIR_EXE)"
 	@echo "SRC_DIR_TST=$(SRC_DIR_TST)"
-	@echo "SRC_DIR_MED=$(SRC_DIR_MED)"
 
 	@echo "\nOBJ_DIR=$(OBJ_DIR)"
 	@echo "OBJ_DIR_LIB=$(OBJ_DIR_LIB)"
 	@echo "OBJ_DIR_EXE=$(OBJ_DIR_EXE)"
 	@echo "OBJ_DIR_TST=$(OBJ_DIR_TST)"
-	@echo "OBJ_DIR_MED=$(OBJ_DIR_MED)"
 	
 	@echo "\nBIN_DIR=$(BIN_DIR)"
 	@echo "BIN_DIR_EXE=$(BIN_DIR_EXE)"
 	@echo "BIN_DIR_TST=$(BIN_DIR_TST)"
-	@echo "BIN_DIR_MED=$(BIN_DIR_MED)"
 
 	@echo "\nHEAD_DIR=$(HEAD_DIR)"
 
 	@echo "\nSRC_FILES_LIB=$(SRC_FILES_LIB)"
 	@echo "SRC_FILES_EXE=$(SRC_FILES_EXE)"
 	@echo "SRC_FILES_TST=$(SRC_FILES_TST)"
-	@echo "SRC_FILES_MED=$(SRC_FILES_MED)"
 
 	@echo "\nHEAD_FILES=$(HEAD_FILES)"
 
 	@echo "\nOBJ_FILES_LIB=$(OBJ_FILES_LIB)"
 	@echo "OBJ_FILES_EXE=$(OBJ_FILES_EXE)"
 	@echo "OBJ_FILES_TST=$(OBJ_FILES_TST)"
-	@echo "OBJ_FILES_MED=$(OBJ_FILES_MED)"
 
 	@echo "\nEXEC_FILES=$(EXEC_FILES)"
 	@echo "TEST_FILES=$(TEST_FILES)"
-	@echo "MED_FILES=$(MED_FILES)"
 
 	@echo "\n-----------------\n"
 
