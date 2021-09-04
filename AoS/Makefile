@@ -13,7 +13,7 @@ CFLAGS3 = -std=c11 -Wall -O3 -fopenmp
 CFLAGS4 = -std=c11 -Wall -O3 -fopenmp -ffast-math
 CFLAGS5 = -std=c11 -Wall -O3 -fopenmp -ffast-math -march=native
 CFLAGS6 = -std=c11 -Wall -O3 -march=native
-CFLAGS = $(CFLAGS0)
+CFLAGS = $(CFLAGS1)
 
 LDFLAGS = -lm -lgsl 
 LDFLAGS += -fopenmp

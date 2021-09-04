@@ -240,6 +240,56 @@ void mergesort(int64_t *data,int64_t start, int64_t finish){
   /*}*/
 }
 
+// https://alienryderflex.com/quicksort/
+void quickSort(int64_t *arr, int64_t elements) {
+
+  #define  MAX_LEVELS  300
+
+  int64_t  piv0, piv1, beg[MAX_LEVELS], end[MAX_LEVELS], i=0;
+  int64_t L, R, swap;
+
+  beg[0]=0; end[0]=elements;
+  while (i>=0) {
+    L=beg[i]; R=end[i]-1;
+    if (L<R) {
+      piv0 = arr[2*L+0];
+      piv1 = arr[2*L+1];
+      while (L<R) {
+        while(arr[2*R]>=piv0 && L<R)
+          R--; 
+
+        if(L<R){ 
+          arr[2*L+0]=arr[2*R+0];
+          arr[2*L+1]=arr[2*R+1];
+          L++;
+        }
+
+        while(arr[L]<=piv0 && L<R) 
+          L++; 
+
+        if(L<R){ 
+          arr[2*R+0]=arr[2*L+0];
+          arr[2*R+1]=arr[2*L+1];
+          R--;
+        }
+      }
+      arr[2*L+0]=piv0; 
+      arr[2*L+1]=piv1; 
+
+      beg[i+1]=L+1; 
+      end[i+1]=end[i]; 
+      end[i++]=L;
+      if (end[i]-beg[i]>end[i-1]-beg[i-1]) {
+        swap=beg[i]; beg[i]=beg[i-1]; beg[i-1]=swap;
+        swap=end[i]; end[i]=end[i-1]; end[i-1]=swap; 
+      }
+    }
+    else {
+      i--; 
+    }
+  }
+}
+
 int main(){
 
   int err,dbg=0;
@@ -290,6 +340,10 @@ int main(){
     #pragma omp single
     mergesort(lsph->hash,0,N);
   } */
+  //quickSort(lsph->hash,N);
+
+  //for(int64_t i=0;i<N;i+=1)
+  //  printf("%ld : %ld\n",lsph->hash[2*i+0],lsph->hash[2*i+1]);
   
   t2 = omp_get_wtime();
 

@@ -80,13 +80,13 @@ int compute_density_3d_fns(int N, double h, SPHparticle *lsph, linkedListBox *bo
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)
         lsph[ii].rho = 0.0; 
 
       neighbour_hash_3d(node_hash,nblist,box->width,box);
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
-          //nb_hash  = nblist[j];
+          
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 

@@ -4,11 +4,6 @@
 #include <stdint.h>
 #include "klib/khash.h"
 
-typedef struct size_t2{
-    int64_t begin;
-    int64_t end;
-} size_t2;
-
 typedef struct double4 {
     double x;
     double y;
