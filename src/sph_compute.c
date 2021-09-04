@@ -548,6 +548,143 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 
 /*******************************************************************/
 
+int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
+                                         int64_t nb_begin, int64_t nb_end,double h,
+                                         double* restrict x, double* restrict y,
+                                         double* restrict z, double* restrict nu,
+                                         double* restrict rho)
+{
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+  double rhoi[node_end-node_begin];
+  double rhoj[nb_end-nb_begin];
+
+  memset(rhoi,0,node_end-node_begin);
+  memset(rhoj,0,nb_end-nb_begin);
+
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = x[ii];
+    double yii = y[ii];
+    double zii = z[ii];
+   
+    #pragma omp simd 
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = xii-x[jj];
+      double yij = yii-y[jj];
+      double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q)*inv_h;
+
+      double wij = w_bspline_3d_simd(q);
+
+      rhoi[ii-node_begin] += nu[jj]*wij;
+      rhoj[jj-nb_begin]   += nu[ii]*wij;
+    }
+  }
+
+  #pragma omp critical
+  {
+    for(int64_t ii=node_begin;ii<node_end;ii+=1)
+      rho[ii] += rhoi[ii-node_begin]*kernel_constant;
+  }
+
+  if(nb_begin == node_begin)
+    return 0;
+
+  #pragma omp critical
+  {
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
+      rho[jj] += rhoj[jj-nb_begin]*kernel_constant;
+  }
+
+  return 0;
+}
+
+int compare_double(const void *a, const void *b){
+  return (int)( *(double*)a - *(double*)b );
+}
+
+int unique_box_bounds(int64_t max_box_pair_count,
+                      int64_t *node_begin, int64_t *node_end,
+                      int64_t *nb_begin, int64_t *nb_end)
+{
+  int64_t box_subtract=0;
+
+  if(node_begin==NULL || node_end==NULL || nb_begin==NULL || nb_end==NULL)
+    return -1;
+
+  for(unsigned int i=0;i<max_box_pair_count;i+=1)
+    if(node_begin[i]<nb_begin[i]){
+      node_begin[i] *= -1; node_end[i] *= -1;
+      nb_begin[i]   *= -1; nb_end[i]   *= -1;
+      box_subtract +=1;
+    }
+
+  qsort(node_begin,max_box_pair_count, sizeof(double),compare_double);
+  qsort(node_end  ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(nb_begin  ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(nb_end    ,max_box_pair_count, sizeof(double),compare_double);
+
+  max_box_pair_count = max_box_pair_count - box_subtract;
+
+  for(unsigned int i=0;i<max_box_pair_count;i+=1){
+    node_begin[i] *= -1; node_end[i] *= -1;
+    nb_begin[i]   *= -1; nb_end[i]   *= -1;
+    box_subtract +=1;
+  }
+
+  qsort(node_begin,max_box_pair_count, sizeof(double),compare_double);
+  qsort(node_end  ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(nb_begin  ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(nb_end    ,max_box_pair_count, sizeof(double),compare_double);
+
+  return max_box_pair_count;
+}
+
+int compute_density_3d_symmetrical_lb(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end;
+  int64_t max_box_pair_count = 0;
+
+  max_box_pair_count = count_box_pairs(box);
+  
+  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
+
+  max_box_pair_count = unique_box_bounds(max_box_pair_count,node_begin,node_end,nb_begin,nb_end);
+
+  for(int64_t ii=0;ii<N;ii+=1)
+    lsph->rho[ii] = 0.0;
+
+  #pragma omp parallel for num_threads(24) 
+  for(size_t i=0;i<max_box_pair_count;i+=1)
+    compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],nb_begin[i],nb_end[i],
+                                         h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+  
+  free(node_begin); 
+  free(node_end);
+  free(nb_begin);
+  free(nb_end);
+
+  //for(int64_t i=0;i<N;i+=1000)
+  //  printf("%ld - %lf\n",i,lsph->rho[i]);
+
+  return 0;
+}
+
+/*******************************************************************/
+/*******************************************************************/
+/*******************************************************************/
+
 #pragma omp declare simd
 double pressure_from_density(double rho){
   double p = cbrt(rho);

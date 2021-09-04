@@ -229,7 +229,8 @@ int main(){
     printf("hello - 7\n");
 
   //err = compute_density_3d(N,h,lsph,box);  
-  err = compute_density_3d_load_ballanced(N,h,lsph,box);
+  //err = compute_density_3d_load_ballanced(N,h,lsph,box);
+  err = compute_density_3d_symmetrical_lb(N,h,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 
