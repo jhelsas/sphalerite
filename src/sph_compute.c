@@ -547,6 +547,7 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 }
 
 /*******************************************************************/
+/*******************************************************************/
 
 int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          int64_t nb_begin, int64_t nb_end,double h,
@@ -556,11 +557,18 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
 {
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
+
   double rhoi[node_end-node_begin];
   double rhoj[nb_end-nb_begin];
 
-  memset(rhoi,0,node_end-node_begin);
-  memset(rhoj,0,nb_end-nb_begin);
+  //memset(rhoi,0,node_end-node_begin);
+  //memset(rhoj,0,nb_end-nb_begin);
+
+  for(int64_t ii=0;ii<node_end-node_begin;ii+=1)
+    rhoi[ii] = 0.;
+
+  for(int64_t jj=0;jj<nb_end-nb_begin;jj+=1)
+    rhoj[jj] = 0.;
 
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
     double xii = x[ii];
@@ -588,61 +596,60 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
     }
   }
 
-  #pragma omp critical
-  {
+  //#pragma omp critical
+  //{
     for(int64_t ii=node_begin;ii<node_end;ii+=1)
       rho[ii] += rhoi[ii-node_begin]*kernel_constant;
-  }
+  //}
 
   if(nb_begin == node_begin)
     return 0;
 
-  #pragma omp critical
-  {
+  //#pragma omp critical
+  //{
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1)
       rho[jj] += rhoj[jj-nb_begin]*kernel_constant;
-  }
+  //}
 
   return 0;
 }
 
-int compare_double(const void *a, const void *b){
-  return (int)( *(double*)a - *(double*)b );
+int cpr_int64_t(const void *a, const void *b){
+  return ( *(int64_t*)a - *(int64_t*)b );
 }
 
 int unique_box_bounds(int64_t max_box_pair_count,
                       int64_t *node_begin, int64_t *node_end,
                       int64_t *nb_begin, int64_t *nb_end)
 {
-  int64_t box_subtract=0;
+  int64_t box_keep=0;
 
   if(node_begin==NULL || node_end==NULL || nb_begin==NULL || nb_end==NULL)
     return -1;
 
-  for(unsigned int i=0;i<max_box_pair_count;i+=1)
-    if(node_begin[i]<nb_begin[i]){
+  for(int64_t i=0;i<max_box_pair_count;i+=1)
+    if(node_begin[i]<=nb_begin[i]){
       node_begin[i] *= -1; node_end[i] *= -1;
       nb_begin[i]   *= -1; nb_end[i]   *= -1;
-      box_subtract +=1;
+      box_keep +=1;
     }
 
-  qsort(node_begin,max_box_pair_count, sizeof(double),compare_double);
-  qsort(node_end  ,max_box_pair_count, sizeof(double),compare_double);
-  qsort(nb_begin  ,max_box_pair_count, sizeof(double),compare_double);
-  qsort(nb_end    ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(node_begin,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(node_end  ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(nb_begin  ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(nb_end    ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
 
-  max_box_pair_count = max_box_pair_count - box_subtract;
+  max_box_pair_count = box_keep; //max_box_pair_count - box_subtract;
 
-  for(unsigned int i=0;i<max_box_pair_count;i+=1){
+  for(int64_t i=0;i<max_box_pair_count;i+=1){
     node_begin[i] *= -1; node_end[i] *= -1;
     nb_begin[i]   *= -1; nb_end[i]   *= -1;
-    box_subtract +=1;
   }
 
-  qsort(node_begin,max_box_pair_count, sizeof(double),compare_double);
-  qsort(node_end  ,max_box_pair_count, sizeof(double),compare_double);
-  qsort(nb_begin  ,max_box_pair_count, sizeof(double),compare_double);
-  qsort(nb_end    ,max_box_pair_count, sizeof(double),compare_double);
+  qsort(node_begin,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(node_end  ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(nb_begin  ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
+  qsort(nb_end    ,max_box_pair_count, sizeof(int64_t),cpr_int64_t);
 
   return max_box_pair_count;
 }
@@ -666,10 +673,14 @@ int compute_density_3d_symmetrical_lb(int N, double h, SPHparticle *lsph, linked
     lsph->rho[ii] = 0.0;
 
   #pragma omp parallel for num_threads(24) 
-  for(size_t i=0;i<max_box_pair_count;i+=1)
+  for(size_t i=0;i<max_box_pair_count;i+=1){
+    if(node_begin[i] > nb_begin[i])
+      continue; 
+
     compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],nb_begin[i],nb_end[i],
                                          h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
-  
+    }
+
   free(node_begin); 
   free(node_end);
   free(nb_begin);
@@ -704,82 +715,6 @@ double gamma_from_u(double ux,double uy,double uz){
   return gamma;
 }
 
-int compute_force_3d_chunk(int64_t node_begin, int64_t node_end,
-                           int64_t nb_begin, int64_t nb_end,double h,
-                           double* restrict  x, double* restrict  y, double* restrict  z, 
-                           double* restrict ux, double* restrict uy, double* restrict uz, 
-                           double* restrict nu, double* restrict rho){
-  const double inv_h = 1./h;
-  const double kernel_constant = w_bspline_3d_constant(h);
-
-  #pragma omp parallel for
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii =  x[ii]; double yii =  y[ii]; double zii =  z[ii];
-    double uxi = ux[ii]; double uyi = uy[ii]; double uzi = uz[ii];
-    double Fx  = 0.0;   double Fy  = 0.0;   double Fz  = 0.0;
-    double gamma_i = gamma_from_u(uxi,uyi,uzi);
-    double p_i = pressure_from_density(rho[ii]/gamma_i);
-   
-    #pragma omp simd 
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
-      double gamma_j = gamma_from_u(ux[jj],uy[jj],uz[jj]);
-      double p_j = pressure_from_density(rho[jj]/gamma_j);
-
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
-
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
-
-      q = sqrt(q)*inv_h;
-
-      //rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-    }
-  }
-
-  return 0;
-}
-
-int compute_force_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int res;
-  double dist = 0.0;
-  khiter_t kbegin,kend;
-  int64_t node_hash=-1,node_begin=0, node_end=0;
-  int64_t nb_begin= 0, nb_end = 0;
-  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
-
-  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    
-    if (kh_exist(box->hbegin, kbegin)){
-      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-      node_hash = kh_key(box->hbegin, kbegin);
-      node_begin = kh_value(box->hbegin, kbegin);
-      node_end   = kh_value(box->hend, kend);
-
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
-        lsph->rho[ii] = 0.0; 
-
-      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-        if(nblist[j]>=0){
-          //nb_hash  = nblist[j];
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
-                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
-          //compute_density_3d_strip(node_begin,node_end,nb_begin,nb_end,h,
-          //                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
-        }
-      }
-    }
-  }
-
-  return 0;
-}
 
 /*
 int compute_force_3d(int N, double h, SPHparticle *lsph, linkedListBox *box){
