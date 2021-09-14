@@ -169,7 +169,7 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 int main(){
 
   int err,dbg=0;
-  int64_t N = 10000000;
+  int64_t N = 3000000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;

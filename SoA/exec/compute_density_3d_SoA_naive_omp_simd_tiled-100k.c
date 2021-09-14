@@ -38,7 +38,7 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
                              double* restrict rho){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
-  const int64_t STRIP = 10000;
+  const int64_t STRIP = 1000;
   const int64_t N_prime = N - N%STRIP;
 
   #pragma omp parallel for 
