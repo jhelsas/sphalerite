@@ -84,7 +84,7 @@ int compute_density_3d_tiled(int N,double h,
                              double* restrict Fx){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
-  const int64_t STRIP = 2000;
+  const int64_t STRIP = 1000;
   const int64_t N_tiles = N/STRIP;
   const int64_t N_prime = N - N%STRIP;
 
@@ -156,7 +156,7 @@ int compute_density_3d_tiled(int N,double h,
 int main(){
 
   int err,dbg=0;
-  int64_t N = 100000;
+  int64_t N = 1000000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -229,8 +229,10 @@ int main(){
     printf("hello - 7\n");
 
   //err = compute_density_3d(N,h,lsph,box);  
-  //err = compute_density_3d_load_ballanced(N,h,lsph,box);
-  err = compute_density_3d_symmetrical_lb(N,h,lsph,box);
+  err = compute_density_3d_load_ballanced(N,h,lsph,box);
+  //err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
+  //err = compute_density_3d_symmetrical_lb_branching(N,h,lsph,box);
+  //err = compute_density_3d_symmetrical_lb(N,h,lsph,box);
   if(err)
     printf("error in setup_interval_hashtables\n");
 
@@ -275,7 +277,7 @@ int main(){
   FILE *fp = fopen("data/sph_density_compute_ref.csv","w");
   if(fp!=NULL){
     for(int64_t i=0;i<N;i+=1)
-      fprintf(fp,"%ld %.12lf %.12lf %.12lf\n",i,
+      fprintf(fp,"%ld %.12lf %.12lf %.6lg\n",i,
                                               lsph->rho[i],
                                               lsph->Fx[i],
                                               fabs(lsph->rho[i]-lsph->Fx[i]));

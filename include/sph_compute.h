@@ -31,7 +31,9 @@ int compute_density_3d_loopswapped(int N, double h, SPHparticle *lsph, linkedLis
 
 int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
-int compute_density_3d_symmetrical_lb(int N, double h, SPHparticle *lsph, linkedListBox *box);
+int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box);
+
+int compute_density_3d_symmetrical_lb_branching(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
 int compute_density_2d(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
