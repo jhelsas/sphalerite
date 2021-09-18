@@ -152,7 +152,7 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
   for(int64_t ii=0;ii<N;ii+=1)
     lsph->rho[ii] = 0.0; 
 
-  #pragma omp parallel for num_threads(24) 
+  #pragma omp parallel for 
   for(size_t i=0;i<max_box_pair_count;i+=1){
     compute_density_3d_chunk_noomp(node_begin[i],node_end[i],nb_begin[i],nb_end[i],
                                    h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
