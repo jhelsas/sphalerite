@@ -44,14 +44,13 @@ int compute_density_3d_ref(int N,double h,
                            double* restrict Fx){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
-  #pragma omp parallel for num_threads(24)
+  #pragma omp parallel for 
   for(int64_t ii=0;ii<N;ii+=1){
     double xii = x[ii];
     double yii = y[ii];
     double zii = z[ii];
     double rhoii = 0.0;
-    //Fx[ii] = 0;
-    //#pragma vector nontemporal(Fx)
+
     #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
     for(int64_t jj=0;jj<N;jj+=1){
       double q = 0.;
@@ -67,12 +66,10 @@ int compute_density_3d_ref(int N,double h,
       //q = sqrt(q);//*inv_h;
       q = sqrt(q)*inv_h;
 
-      //rhoii += nu[jj]*w_bspline_3d(q,1.0);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-      rhoii += nu[jj]*w_bspline_3d_simd(q);//*w_bspline_3d_simd(q); // box->w(sqrt(dist),h);
-      //Fx[ii] += nu[jj]*w_bspline_3d_simd(q);
+      
+      rhoii += nu[jj]*w_bspline_3d_simd(q);
     }
     Fx[ii] = kernel_constant*rhoii;
-    //Fx[ii] = kernel_constant*rhoii;
   }
 
   return 0;
@@ -92,7 +89,7 @@ int compute_density_3d_tiled(int N,double h,
   for(int64_t ii=0;ii<N;ii+=1)
     Fx[ii] = 0.;
 
-  #pragma omp parallel for num_threads(24)
+  #pragma omp parallel for 
   for(int64_t i=0;i<N_prime;i+=STRIP){
     for(int64_t j=0;j<N_prime;j+=STRIP){
       for(int64_t ii=i;ii<i+STRIP;ii+=1){
@@ -122,7 +119,7 @@ int compute_density_3d_tiled(int N,double h,
     }
   }
 
-  #pragma omp parallel for num_threads(24)
+  #pragma omp parallel for 
   for(int64_t j=0;j<N_prime;j+=STRIP){
     for(int64_t ii=N_prime;ii<N;ii+=1){
       double xii = x[ii];
@@ -153,10 +150,122 @@ int compute_density_3d_tiled(int N,double h,
   return 0;
 }
 
+void swap_int64_t2(int64_t* a, int64_t* b) {
+  int64_t t0 = *a;
+  int64_t t1 = *(a+1);
+  
+  *a     = *b; 
+  *(a+1) = *(b+1);
+  *b     = t0;
+  *(b+1) = t1;
+}
+
+int64_t partition_int64_t2(int64_t arr[], int64_t low, int64_t high) 
+{ 
+  int64_t pivot = arr[2*high]; // pivot 
+  int64_t i     = (low - 1);   // Index of smaller element and indicates the right position of pivot found so far
+  
+  for (int64_t j = low; j <= high - 1; j++){ 
+    // If current element is smaller than the pivot 
+    if (arr[2*j] < pivot){ 
+      i++; // increment index of smaller element 
+      swap_int64_t2(&arr[2*i], &arr[2*j]); 
+    } 
+  } 
+
+  swap_int64_t2(&arr[2*(i + 1)], &arr[2*high]); 
+  return (i + 1); 
+}
+
+/*
+void insertionSort_int64_t2(int64_t *arr, int64_t n){
+    // https://www.geeksforgeeks.org/insertion-sort/
+
+    int64_t i=0, key0=0, key1=0, j=0;
+    for (i = 1; i < n; i++){
+        key0 = arr[2*i+0];
+        key1 = arr[2*i+1];
+        j = i - 1;
+ 
+        // Move elements of arr[0..i-1], that are
+        // greater than key, to one position ahead
+        // of their current position 
+        while (j >= 0 && arr[2*j] > key0){
+            arr[2*(j+1)+0] = arr[2*j+0];
+            arr[2*(j+1)+1] = arr[2*j+1];
+
+            j = j-1;
+        }
+
+        arr[2*(j+1)+0] = key0;
+        arr[2*(j+1)+1] = key1;
+    }
+}*/
+
+void insertionSort_int64_t2(int64_t *arr, int64_t low, int64_t high)
+{
+    int64_t i, key0, key1, j;
+    for (i = low+1; i < high; i++){
+        key0 = arr[2*i+0];
+        key1 = arr[2*i+1];
+
+        j = i - 1;
+ 
+        /* Move elements of arr[0..i-1], that are
+        greater than key, to one position ahead
+        of their current position */
+        while (j >= 0 && arr[2*j] > key0){
+            arr[2*(j+1)+0] = arr[2*j+0];
+            arr[2*(j+1)+1] = arr[2*j+1];
+
+            j = j-1;
+        }
+        arr[2*(j+1)+0] = key0;
+        arr[2*(j+1)+1] = key1;
+    }
+}
+
+#define MIN_DEPTH 120
+
+void quickSort_int64_t2(int64_t *arr, int64_t low, int64_t high){
+  // https://www.geeksforgeeks.org/quick-sort/
+
+  if (low < high){ 
+    // pi is partitioning index, arr[p] is now 
+    //   at right place 
+    int64_t pi = partition_int64_t2(arr, low, high); 
+  
+    // Separately sort elements before 
+    // partition and after partition
+    //quickSort_int64_t2(arr, low, pi-1);
+    //quickSort_int64_t2(arr, pi + 1, high);
+    
+    if(pi-low-1 >= MIN_DEPTH){
+      #pragma omp task shared(arr)
+      quickSort_int64_t2(arr, low, pi-1);
+    }
+    else{
+      //quickSort_int64_t2(arr, low, pi-1);
+      //#pragma omp task shared(arr)
+      insertionSort_int64_t2(arr,low,pi-1);
+    }
+
+    if(high - (pi+1) >= MIN_DEPTH){
+      #pragma omp task shared(arr)
+      quickSort_int64_t2(arr, pi+1, high);
+    }
+    else{
+      //quickSort_int64_t2(arr, low, pi-1);
+      //#pragma omp task shared(arr)
+      insertionSort_int64_t2(arr,pi+1,high);
+    }
+  }
+} 
+
 int main(){
 
   int err,dbg=0;
-  int64_t N = 1000000;
+  int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -196,7 +305,14 @@ int main(){
   if(dbg)
     printf("hello - 4\n");
 
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
+  //qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
+  //quickSort_int64_t2(lsph->hash,0,N-1);
+
+  #pragma omp parallel num_threads(4)
+  {
+    #pragma omp single
+    quickSort_int64_t2(lsph->hash,0,N-1);
+  }
   
   /*
   #pragma omp parallel num_threads(1)
@@ -229,8 +345,8 @@ int main(){
     printf("hello - 7\n");
 
   //err = compute_density_3d(N,h,lsph,box);  
-  err = compute_density_3d_load_ballanced(N,h,lsph,box);
-  //err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
+  //err = compute_density_3d_load_ballanced(N,h,lsph,box);
+  err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
   //err = compute_density_3d_symmetrical_lb_branching(N,h,lsph,box);
   //err = compute_density_3d_symmetrical_lb(N,h,lsph,box);
   if(err)
