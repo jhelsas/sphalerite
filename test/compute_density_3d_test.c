@@ -265,7 +265,7 @@ void quickSort_int64_t2(int64_t *arr, int64_t low, int64_t high){
 int main(){
 
   int err,dbg=0;
-  int64_t N = 5000000;
+  int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;

@@ -592,6 +592,9 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 /*******************************************************************/
 /*******************************************************************/
 
+/*
+ Pit from hell
+ */
 int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          int64_t nb_begin, int64_t nb_end,double h,
                                          double* restrict x, double* restrict y,
@@ -611,6 +614,38 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
       double xij = xii-x[jj];
       double yij = yii-y[jj];
       double zij = zii-z[jj];
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q)*inv_h;
+
+      double wij = w_bspline_3d_simd(q);
+
+      rhoi[ii-node_begin] += nu[jj]*wij;
+      rhoj[jj-nb_begin]   += nu[ii]*wij;
+    }
+  }
+
+  return 0;
+}
+
+int compute_density_3d_chunk_symm_colapse(int64_t node_begin, int64_t node_end,
+                                          int64_t nb_begin, int64_t nb_end,double h,
+                                          double* restrict x, double* restrict y,
+                                          double* restrict z, double* restrict nu,
+                                          double* restrict rhoi, double* restrict rhoj){
+  const double inv_h = 1./h;
+
+  #pragma omp simd 
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = x[ii]-x[jj];
+      double yij = y[ii]-y[jj];
+      double zij = z[ii]-z[jj];
 
       q += xij*xij;
       q += yij*yij;
@@ -753,7 +788,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   for(int64_t ii=0;ii<N;ii+=1)
     lsph->rho[ii] = 0.0; 
 
-  #pragma omp parallel for 
+  #pragma omp parallel for schedule(dynamic)
   for(size_t i=0;i<max_box_pair_count;i+=1){
 
     double local_rhoi[node_end[i] - node_begin[i]];
@@ -767,6 +802,9 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 
     compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
                                          lsph->x,lsph->y,lsph->z,lsph->nu,local_rhoi,local_rhoj);
+
+    //compute_density_3d_chunk_symm_colapse(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
+    //                                      lsph->x,lsph->y,lsph->z,lsph->nu,local_rhoi,local_rhoj);
 
     #pragma omp critical
     {
