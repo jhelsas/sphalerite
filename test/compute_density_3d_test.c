@@ -265,7 +265,7 @@ void quickSort_int64_t2(int64_t *arr, int64_t low, int64_t high){
 int main(){
 
   int err,dbg=0;
-  int64_t N = 100000;
+  int64_t N = 5000000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
@@ -308,7 +308,7 @@ int main(){
   //qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
   //quickSort_int64_t2(lsph->hash,0,N-1);
 
-  #pragma omp parallel num_threads(4)
+  #pragma omp parallel num_threads(8)
   {
     #pragma omp single
     quickSort_int64_t2(lsph->hash,0,N-1);
@@ -369,7 +369,7 @@ int main(){
   if(dbg)
     printf("hello - 8\n");
   
-  err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
+  //err = compute_density_3d_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_ref(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   //err = compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->Fx);
   if(err)
