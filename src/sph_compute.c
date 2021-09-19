@@ -788,7 +788,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   for(int64_t ii=0;ii<N;ii+=1)
     lsph->rho[ii] = 0.0; 
 
-  #pragma omp parallel for schedule(dynamic)
+  #pragma omp parallel for schedule(dynamic,5) proc_bind(master)
   for(size_t i=0;i<max_box_pair_count;i+=1){
 
     double local_rhoi[node_end[i] - node_begin[i]];
@@ -808,13 +808,17 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 
     #pragma omp critical
     {
-      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1)
-        lsph->rho[ii] += kernel_constant*local_rhoi[ii - node_begin[i]];
 
+      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1){
+        //#pragma omp atomic
+        lsph->rho[ii] += kernel_constant*local_rhoi[ii - node_begin[i]];
+      }
       
       if(node_begin[i] != nb_begin[i])
-        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1)
+        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1){
+          //#pragma omp atomic
           lsph->rho[ii] += kernel_constant*local_rhoj[ii - nb_begin[i]];
+        }
     }
   }
   
