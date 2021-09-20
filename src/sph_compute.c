@@ -639,14 +639,14 @@ int compute_density_3d_chunk_symm_blas(int64_t node_begin, int64_t node_end,
   const double inv_h = 1./h;
   double w[(node_end-node_begin)*(nb_end-nb_begin)];
 
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+  for(int64_t ii=0;ii<node_end-node_begin;ii+=1){
     #pragma omp simd
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+    for(int64_t jj=0;jj<nb_end-nb_begin;jj+=1){
       double q = 0.;
 
-      double xij = x[ii]-x[jj];
-      double yij = y[ii]-y[jj];
-      double zij = z[ii]-z[jj];
+      double xij = x[ii+node_begin]-x[jj+nb_begin];
+      double yij = y[ii+node_begin]-y[jj+nb_begin];
+      double zij = z[ii+node_begin]-z[jj+nb_begin];
 
       q += xij*xij;
       q += yij*yij;
@@ -654,7 +654,7 @@ int compute_density_3d_chunk_symm_blas(int64_t node_begin, int64_t node_end,
 
       q = sqrt(q)*inv_h;
 
-      w[(ii-node_begin)*(nb_end-nb_begin)+(jj-nb_begin)] = w_bspline_3d_simd(q);
+      w[ii*(nb_end-nb_begin)+jj] = w_bspline_3d_simd(q);
     }
   }
 
