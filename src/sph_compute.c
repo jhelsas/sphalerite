@@ -637,12 +637,12 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
    _a < _b ? _a : _b; })
 
 
-int compute_density_3d_chunk_symm_lno(int64_t node_begin, int64_t node_end,
+int compute_density_3d_chunk_symm_nlo(int64_t node_begin, int64_t node_end,
                                       int64_t nb_begin, int64_t nb_end,double h,
                                       double* restrict x, double* restrict y,
                                       double* restrict z, double* restrict nu,
                                       double* restrict rhoi, double* restrict rhoj){
-  const int64_t STRIP=64;
+  const int64_t STRIP=512;
   const double inv_h = 1./h;
 
   /*
@@ -833,20 +833,14 @@ int setup_unique_box_pairs(linkedListBox *box,
 }
 
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  double t0,t1,t2,t3,t4,t5;
-  double t30,t31,t32,t33,t34;
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;
   int64_t max_box_pair_count = 0, particle_pair_count = 0;
   int64_t box_skip = 0;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  t0 = omp_get_wtime();
-
   max_box_pair_count = count_box_pairs(box);
   printf("max_box_pair_count = %ld\n",max_box_pair_count);
   
-  t1 = omp_get_wtime();
-
   node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
   node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
   nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
@@ -855,7 +849,11 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   max_box_pair_count = setup_unique_box_pairs(box,node_begin,node_end,nb_begin,nb_end);//setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
   printf("unique max_box_pair_count = %ld\n",max_box_pair_count);
 
-  t2 = omp_get_wtime();
+  double avg_nb_len = 0.0;
+  for(int64_t i=0;i<max_box_pair_count;i+=1)  
+    avg_nb_len += (nb_end[i]-nb_begin[i]);
+  avg_nb_len /= max_box_pair_count;
+  printf("avg_nb_len = %lf\n",avg_nb_len);
 
   for(int64_t i=0;i<max_box_pair_count;i+=1)
     particle_pair_count += (node_end[i]-node_begin[i])*(nb_end[i]-nb_begin[i]);
@@ -866,17 +864,11 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   for(int64_t ii=0;ii<N;ii+=1)
     lsph->rho[ii] = 0.0; 
 
-  t3 = omp_get_wtime();
-
   #pragma omp parallel for schedule(dynamic,5) proc_bind(master)
   for(size_t i=0;i<max_box_pair_count;i+=1){
 
-    t30 = omp_get_wtime();
-
     double local_rhoi[node_end[i] - node_begin[i]];
     double local_rhoj[  nb_end[i] -   nb_begin[i]];
-
-    t31 = omp_get_wtime();
 
     for(size_t ii=0;ii<node_end[i]-node_begin[i];ii+=1)
       local_rhoi[ii] = 0.;
@@ -884,14 +876,10 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
     for(size_t ii=0;ii<nb_end[i]-nb_begin[i];ii+=1)
       local_rhoj[ii] = 0.;
 
-    t32 = omp_get_wtime();
-
     compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
                                          lsph->x,lsph->y,lsph->z,lsph->nu,local_rhoi,local_rhoj);
 
-    t33 = omp_get_wtime();
-
-    //compute_density_3d_chunk_symm_lno(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
+    //compute_density_3d_chunk_symm_nlo(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
     //                                   lsph->x,lsph->y,lsph->z,lsph->nu,local_rhoi,local_rhoj);
 
     //compute_density_3d_chunk_symm_colapse(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,
@@ -909,35 +897,13 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
           lsph->rho[ii] += kernel_constant*local_rhoj[ii - nb_begin[i]];
         }
     }
-
-    t34 = omp_get_wtime();
   }
 
-  t4 = omp_get_wtime();
-  
   free(node_begin); 
   free(node_end);
   free(nb_begin);
   free(nb_end);
-
-  t5 = omp_get_wtime();
-
-  /*
-  #pragma omp single
-  {
-    printf("count box pairs :    %lg : %lf%\n",t1-t0,100*(t1-t0)/(t5-t0));
-    printf("setup unique pairs : %lg : %lf%\n",t2-t1,100*(t2-t1)/(t5-t0));
-    printf("clean rho :          %lg : %lf%\n",t3-t2,100*(t3-t2)/(t5-t0));
-    printf("compute density :    %lg : %lf%\n",t4-t3,100*(t4-t3)/(t5-t0));
-    printf("  compute density 0: %lg : %lf%\n",t31-t30,100*(t31-t30)/(t34-t30));
-    printf("  compute density 1: %lg : %lf%\n",t32-t31,100*(t32-t31)/(t34-t30));
-    printf("  compute density 2: %lg : %lf%\n",t33-t32,100*(t33-t32)/(t34-t30));
-    printf("  compute density 3: %lg : %lf%\n",t34-t33,100*(t34-t33)/(t34-t30));
-    printf("free :               %lg : %lf%\n",t5-t4,100*(t5-t4)/(t5-t0));
-    printf("total compute time : %lg : %lf%\n",t5-t0,100*(t5-t0)/(t5-t0));
-    printf("\n");
-  }*/
-
+  
   return 0;
 }
 
