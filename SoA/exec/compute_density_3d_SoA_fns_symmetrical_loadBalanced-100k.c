@@ -22,6 +22,21 @@
 
 #define dbg false
 
+#pragma omp declare simd
+double w_bspline_3d_simd_local(double q){
+  double wq = 0.0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  
+  if(q<2.)
+    wq = wq2;
+
+  if(q<1.)
+    wq = wq1;
+  
+  return wq;
+}
+
 int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          int64_t nb_begin, int64_t nb_end,double h,
                                          double* restrict x, double* restrict y,
@@ -49,6 +64,7 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
       q = sqrt(q)*inv_h;
 
       double wij = w_bspline_3d_simd(q);
+      //double wij = w_bspline_3d_simd_local(q);
 
       rhoi[ii-node_begin] += nu[jj]*wij;
       rhoj[jj-nb_begin]   += nu[ii]*wij;

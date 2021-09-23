@@ -9,6 +9,8 @@
 #include <sys/time.h>
 #include <inttypes.h>
 
+#include <omp.h>
+
 #include "sph_data_types.h"
 
 #ifndef M_PI
