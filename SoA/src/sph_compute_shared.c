@@ -30,3 +30,22 @@ double w_bspline_3d(double r,double h){
   else 
     return 0.;
 }
+
+double w_bspline_3d_constant(double h){
+  return 3./(2.*M_PI*h*h*h);
+}
+
+#pragma omp declare simd
+double w_bspline_3d_simd(double q){
+  double wq = 0.0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  
+  if(q<2.)
+    wq = wq2;
+
+  if(q<1.)
+    wq = wq1;
+  
+  return wq;
+}
