@@ -1,7 +1,11 @@
 #include <math.h>
+#include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include <sys/time.h>
 #include <inttypes.h>
 #include <omp.h>
@@ -74,7 +78,6 @@ int count_box_pairs(linkedListBox *box){
   int64_t pair_count = 0, particle_pair_count = 0;
 
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    int res;
     int64_t node_hash=-1,node_begin=0, node_end=0;
     int64_t nb_begin= 0, nb_end = 0;
     int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
@@ -86,11 +89,9 @@ int count_box_pairs(linkedListBox *box){
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      res = neighbour_hash_3d(node_hash,nblist,box->width,box);
+      int res = neighbour_hash_3d(node_hash,nblist,box->width,box);
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
-          //nb_hash  = nblist[j];
-
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
@@ -134,12 +135,11 @@ int setup_unique_box_pairs(linkedListBox *box,
             nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
             nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-            pair_count += 1;//(node_end-node_begin)*(nb_end-nb_begin);
+            pair_count += 1;
           }
         }
       }
     }
-    //printf("thread %d - %lf %lf\n",i,lsph->rho[node_begin],lsph->rho[node_end-1]);
   }
 
   return pair_count;
@@ -147,8 +147,7 @@ int setup_unique_box_pairs(linkedListBox *box,
 
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;
-  int64_t max_box_pair_count = 0, particle_pair_count = 0;
-  int64_t box_skip = 0;
+  int64_t max_box_pair_count = 0;
   const double kernel_constant = w_bspline_3d_constant(h);
 
   max_box_pair_count = count_box_pairs(box);
@@ -159,7 +158,6 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
 
   max_box_pair_count = setup_unique_box_pairs(box,node_begin,node_end,nb_begin,nb_end);//setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
-  
   
   for(int64_t ii=0;ii<N;ii+=1)
     lsph->rho[ii] = 0.0; 
@@ -201,15 +199,95 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   return 0;
 }
 
+int arg_parse(int argc, char **argv, int64_t *N, double *h,
+              linkedListBox *box){
+  bool intern_h = true;
 
+  box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
+  box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
+  
+  if(argc%2==0){
+    printf("wrong number of arguments!\n");
+    printf("Maybe an option is missing a value?\n");
+  }
 
-int main(){
+  for(int i=1;i<argc;i+=2){
+    if( strcmp(argv[i],"-N") == 0 ){
+      *N = (int64_t) atol(argv[i+1]);
+      printf("N particles = %ld\n",*N);
+    }
+    else if( strcmp(argv[i],"-h") == 0 ){
+      *h = atof(argv[i+1]);
+      printf("h = %lf\n",*h);
+      intern_h = false;
+    }
+    else if( strcmp(argv[i],"-Xmin") == 0 ){
+      box->Xmin = atof(argv[i+1]);
+      printf("Xmin = %lf\n",box->Xmin);
+    }
+    else if( strcmp(argv[i],"-Ymin") == 0 ){
+      box->Ymin = atof(argv[i+1]);
+      printf("Ymin = %lf\n",box->Ymin);
+    }
+    else if( strcmp(argv[i],"-Zmin") == 0 ){
+      box->Zmin = atof(argv[i+1]);
+      printf("Zmin = %lf\n",box->Zmin);
+    }
+    else if( strcmp(argv[i],"-Xmax") == 0 ){
+      box->Xmax = atof(argv[i+1]);
+      printf("Xmax = %lf\n",box->Xmax);
+    }
+    else if( strcmp(argv[i],"-Ymax") == 0 ){
+      box->Ymax = atof(argv[i+1]);
+      printf("Ymax = %lf\n",box->Ymax);
+    }
+    else if( strcmp(argv[i],"-Zmax") == 0 ){
+      box->Zmax = atof(argv[i+1]);
+      printf("Zmax = %lf\n",box->Zmax);
+    }
+    else if( strcmp(argv[i],"-Nx") == 0 ){
+      box->Nx   = atol(argv[i+1]);
+      printf("Nx = %ld\n",box->Nx);
+    }
+    else if( strcmp(argv[i],"-Ny") == 0 ){
+      box->Ny   = atol(argv[i+1]);
+      printf("Ny = %ld\n",box->Ny);
+    }
+    else if( strcmp(argv[i],"-Nz") == 0 ){
+      box->Nz   = atol(argv[i+1]);
+      printf("Nz = %ld\n",box->Nz);
+    }
+    else{
+      printf("unknown option: %s %s\n",argv[i],argv[i+1]);
+    }
+  }
+
+  if(intern_h){
+    box->Nx = (int)( (box->Xmax-box->Xmin)/(2*(*h)) );
+    box->Ny = (int)( (box->Ymax-box->Ymin)/(2*(*h)) );
+    box->Nz = (int)( (box->Zmax-box->Zmin)/(2*(*h)) );
+  }
+
+  box->N  = (box->Nx)*(box->Ny)*(box->Nz);
+  
+  double min_val = fmin((box->Xmax-box->Xmin)/box->Nx,fmin((box->Ymax-box->Ymin)/box->Ny,(box->Zmax-box->Zmin)/box->Nz));
+  box->width  = (int)( 0.5 + 2*(*h)/min_val );
+  box->hbegin = kh_init(0);
+  box->hend   = kh_init(1);
+
+  return 0;
+}
+
+int main(int argc, char **argv){
 
   int err,dbg=0;
   int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
+
+  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
+  arg_parse(argc,argv,&N,&h,box);
 
   //omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
 
@@ -227,8 +305,8 @@ int main(){
 
   if(dbg)
     printf("hello - 2\n");
-  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
 
+  /*
   box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
   box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
   box->Nx = (int)( (box->Xmax-box->Xmin)/(2*h) );
@@ -238,7 +316,7 @@ int main(){
   double min_val = fmin((box->Xmax-box->Xmin)/box->Nx,fmin((box->Ymax-box->Ymin)/box->Ny,(box->Zmax-box->Zmin)/box->Nz));
   box->width  = (int)( 0.5 + 2*h/min_val );
   box->hbegin = kh_init(0);
-  box->hend   = kh_init(1);
+  box->hend   = kh_init(1);*/
 
   double t0,t1,t2,t3,t4,t5;
   t0 = omp_get_wtime();
@@ -269,7 +347,7 @@ int main(){
   if(dbg)
     printf("hello - 7\n");
 
-  err = compute_density_3d_load_ballanced(N,h,lsph,box);
+  err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
   if(err)
     printf("error in compute_density_3d_load_ballanced\n");
 
