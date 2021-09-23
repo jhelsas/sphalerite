@@ -22,6 +22,8 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+#define dbg false
+
 #define print_pair_count 0
 
 double w_bspline_3d_constant(double h){
@@ -107,7 +109,8 @@ int count_box_pairs(linkedListBox *box){
     }
   }
 
-  printf("unique ordered particle_pair_count = %ld\n",particle_pair_count);
+  if(dbg)
+    printf("unique ordered particle_pair_count = %ld\n",particle_pair_count);
 
   return pair_count;
 }
@@ -208,8 +211,8 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
               long int *seed, int *runs, linkedListBox *box){
   bool intern_h = true;
 
-  box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
-  box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
+  box->Xmin = 0.0; box->Ymin = 0.0; box->Zmin = 0.0;
+  box->Xmax = 1.0; box->Ymax = 1.0; box->Zmax = 1.0;
   
   if(argc%2==0){
     printf("wrong number of arguments!\n");
@@ -326,9 +329,51 @@ int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *ls
   return 0;
 }
 
+
+
+int print_time_stats(int runs, double times[]){
+  double t[5], dt[5], total_time, dtotal_time;
+
+  printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+
+  total_time = 0.;
+  for(int k=0;k<5;k+=1){
+    t[k]=0.; dt[k]=0.;
+    for(int run=0;run<runs;run+=1)
+      t[k] += times[5*run+k];
+    t[k] /= runs;
+    for(int run=0;run<runs;run+=1)
+      dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+    dt[k] /= runs;
+    dt[k] = sqrt(dt[k]);
+
+    total_time += t[k];
+  }
+
+  dtotal_time = 0.;
+  for(int run=0;run<runs;run+=1){
+    double rgm = 0.;
+    for(int k=0;k<5;k+=1)
+      rgm += times[5*run+k];
+
+    dtotal_time += (rgm-total_time)*(rgm-total_time);
+  }
+  dtotal_time /= runs;
+  dtotal_time = sqrt(dtotal_time);
+
+  printf("compute_hash_MC3D calc time                 : %.3lg +- %lg s : %.2lf%%\n",t[0],dt[0],100*t[0]/total_time);
+  printf("qsort calc time                             : %.3lg +- %lg s : %.2lf%%\n",t[1],dt[1],100*t[1]/total_time);
+  printf("reorder_lsph_SoA calc time                  : %.3lg +- %lg s : %.2lf%%\n",t[2],dt[2],100*t[2]/total_time);
+  printf("setup_interval_hashtables calc time         : %.3lg +- %lg s : %.2lf%%\n",t[3],dt[3],100*t[3]/total_time);
+  printf("compute_density_3d load balanced calc time  : %.3lg +- %lg s : %.2lf%%\n",t[4],dt[4],100*t[4]/total_time);
+  printf("compute_density_3d load balanced total time : %.3lg +- %lg s : %.2lf%%\n",total_time,dtotal_time,100.);
+
+  return 0;
+}
+
 int main(int argc, char **argv){
 
-  int err,dbg=0, runs = 1;
+  int err,runs = 1;
   long int seed = 123123123;
   int64_t N = 100000;
   double h=0.05;
@@ -360,6 +405,7 @@ int main(int argc, char **argv){
     // ------------------------------------------------------ //
 
     double t0,t1,t2,t3,t4,t5;
+
     t0 = omp_get_wtime();
 
     err = compute_hash_MC3D(N,lsph,box);
@@ -409,15 +455,18 @@ int main(int argc, char **argv){
     times[run][3] = t4-t3;
     times[run][4] = t5-t4;
 
-    printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
-    printf("compute_hash_MC3D calc time                 : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t5-t0));
-    printf("qsort calc time                             : %.5lf s : %.2lf%%\n",t2-t1,100*(t2-t1)/(t5-t0));
-    printf("reorder_lsph_SoA calc time                  : %.5lf s : %.2lf%%\n",t3-t2,100*(t3-t2)/(t5-t0));
-    printf("setup_interval_hashtables calc time         : %.5lf s : %.2lf%%\n",t4-t3,100*(t4-t3)/(t5-t0));
-    printf("compute_density_3d load balanced calc time  : %.5lf s : %.2lf%%\n",t5-t4,100*(t5-t4)/(t5-t0));
-    printf("compute_density_3d load balanced total time : %.5lf s : %.2lf%%\n",t5-t0,100*(t5-t0)/(t5-t0));
-
+    if(dbg){
+      printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+      printf("compute_hash_MC3D calc time                 : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t5-t0));
+      printf("qsort calc time                             : %.5lf s : %.2lf%%\n",t2-t1,100*(t2-t1)/(t5-t0));
+      printf("reorder_lsph_SoA calc time                  : %.5lf s : %.2lf%%\n",t3-t2,100*(t3-t2)/(t5-t0));
+      printf("setup_interval_hashtables calc time         : %.5lf s : %.2lf%%\n",t4-t3,100*(t4-t3)/(t5-t0));
+      printf("compute_density_3d load balanced calc time  : %.5lf s : %.2lf%%\n",t5-t4,100*(t5-t4)/(t5-t0));
+      printf("compute_density_3d load balanced total time : %.5lf s : %.2lf%%\n",t5-t0,100*(t5-t0)/(t5-t0));
+    }
   }
+
+  print_time_stats(runs,times);
 
   if(dbg)
     printf("hello - 10\n");
