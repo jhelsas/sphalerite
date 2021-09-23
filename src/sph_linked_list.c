@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <sys/time.h>
 #include <inttypes.h>
@@ -186,15 +187,15 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
     }
     else if( strcmp(argv[i],"-Nx") == 0 ){
       box->Nx   = atol(argv[i+1]);
-      printf("Nx = %ld\n",box->Nx);
+      printf("Nx = %d\n",box->Nx);
     }
     else if( strcmp(argv[i],"-Ny") == 0 ){
       box->Ny   = atol(argv[i+1]);
-      printf("Ny = %ld\n",box->Ny);
+      printf("Ny = %d\n",box->Ny);
     }
     else if( strcmp(argv[i],"-Nz") == 0 ){
       box->Nz   = atol(argv[i+1]);
-      printf("Nz = %ld\n",box->Nz);
+      printf("Nz = %d\n",box->Nz);
     }
     else{
       printf("unknown option: %s %s\n",argv[i],argv[i+1]);
