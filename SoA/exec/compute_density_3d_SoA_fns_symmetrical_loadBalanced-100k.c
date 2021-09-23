@@ -17,6 +17,7 @@
 
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
+#include "sph_utils.h"
 
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
@@ -207,178 +208,6 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
   return 0;
 }
 
-int arg_parse(int argc, char **argv, int64_t *N, double *h,
-              long int *seed, int *runs, bool *run_seed, linkedListBox *box){
-  bool intern_h = true;
-
-  box->Xmin = 0.0; box->Ymin = 0.0; box->Zmin = 0.0;
-  box->Xmax = 1.0; box->Ymax = 1.0; box->Zmax = 1.0;
-  
-  if(argc%2==0){
-    printf("wrong number of arguments!\n");
-    printf("Maybe an option is missing a value?\n");
-  }
-
-  for(int i=1;i<argc;i+=2){
-    if( strcmp(argv[i],"-N") == 0 ){
-      *N = (int64_t) atol(argv[i+1]);
-      printf("N particles = %ld\n",*N);
-    }
-    if( strcmp(argv[i],"-seed") == 0 ){
-      *seed = (long int) atol(argv[i+1]);
-      printf("seed = %ld\n",*seed);
-    }
-    if( strcmp(argv[i],"-runs") == 0 ){
-      *runs = (int) atoi(argv[i+1]);
-      printf("runs = %d\n",*runs);
-    }
-    if( strcmp(argv[i],"-run_seed") == 0 ){
-      int ran_seed = (int) atoi(argv[i+1]);
-      if(ran_seed)
-        *run_seed = true;
-      else
-        *run_seed = false;
-      printf("run_seed = %d\n",ran_seed);
-    }
-    else if( strcmp(argv[i],"-h") == 0 ){
-      *h = atof(argv[i+1]);
-      printf("h = %lf\n",*h);
-      intern_h = false;
-    }
-    else if( strcmp(argv[i],"-Xmin") == 0 ){
-      box->Xmin = atof(argv[i+1]);
-      printf("Xmin = %lf\n",box->Xmin);
-    }
-    else if( strcmp(argv[i],"-Ymin") == 0 ){
-      box->Ymin = atof(argv[i+1]);
-      printf("Ymin = %lf\n",box->Ymin);
-    }
-    else if( strcmp(argv[i],"-Zmin") == 0 ){
-      box->Zmin = atof(argv[i+1]);
-      printf("Zmin = %lf\n",box->Zmin);
-    }
-    else if( strcmp(argv[i],"-Xmax") == 0 ){
-      box->Xmax = atof(argv[i+1]);
-      printf("Xmax = %lf\n",box->Xmax);
-    }
-    else if( strcmp(argv[i],"-Ymax") == 0 ){
-      box->Ymax = atof(argv[i+1]);
-      printf("Ymax = %lf\n",box->Ymax);
-    }
-    else if( strcmp(argv[i],"-Zmax") == 0 ){
-      box->Zmax = atof(argv[i+1]);
-      printf("Zmax = %lf\n",box->Zmax);
-    }
-    else if( strcmp(argv[i],"-Nx") == 0 ){
-      box->Nx   = atol(argv[i+1]);
-      printf("Nx = %d\n",box->Nx);
-    }
-    else if( strcmp(argv[i],"-Ny") == 0 ){
-      box->Ny   = atol(argv[i+1]);
-      printf("Ny = %d\n",box->Ny);
-    }
-    else if( strcmp(argv[i],"-Nz") == 0 ){
-      box->Nz   = atol(argv[i+1]);
-      printf("Nz = %d\n",box->Nz);
-    }
-    else{
-      printf("unknown option: %s %s\n",argv[i],argv[i+1]);
-    }
-  }
-
-  if(intern_h){
-    box->Nx = (int)( (box->Xmax-box->Xmin)/(2*(*h)) );
-    box->Ny = (int)( (box->Ymax-box->Ymin)/(2*(*h)) );
-    box->Nz = (int)( (box->Zmax-box->Zmin)/(2*(*h)) );
-  }
-
-  box->N  = (box->Nx)*(box->Ny)*(box->Nz);
-  
-  double min_val = fmin((box->Xmax-box->Xmin)/box->Nx,fmin((box->Ymax-box->Ymin)/box->Ny,(box->Zmax-box->Zmin)/box->Nz));
-  box->width  = (int)( 0.5 + 2*(*h)/min_val );
-  box->hbegin = kh_init(0);
-  box->hend   = kh_init(1);
-
-  return 0;
-}
-
-int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph){
-
-  const gsl_rng_type *T=NULL;
-  gsl_rng *r=NULL;
-
-  if(lsph==NULL)
-    return 1;
-
-  gsl_rng_env_setup();
-
-  T = gsl_rng_default;
-  r = gsl_rng_alloc(T);
-  gsl_rng_set(r,seed);
-
-  for(int64_t i=0;i<N;i+=1){
-    lsph->x[i] = gsl_rng_uniform(r)*(box->Xmax-box->Xmin) + box->Xmin;
-    lsph->y[i] = gsl_rng_uniform(r)*(box->Ymax-box->Ymin) + box->Ymin;
-    lsph->z[i] = gsl_rng_uniform(r)*(box->Zmax-box->Zmin) + box->Zmin;
-
-    lsph->ux[i] = 0.0; lsph->Fx[i] = 0.0;
-    lsph->uy[i] = 0.0; lsph->Fy[i] = 0.0;
-    lsph->uz[i] = 0.0; lsph->Fz[i] = 0.0;
-
-    lsph->nu[i]   = 1.0/N;
-    lsph->rho[i]  = 0.0;
-    lsph->id[i]   = (int64_t) i;
-    lsph->hash[2*i+0] = (int64_t) 0;
-    lsph->hash[2*i+1] = (int64_t) i;
-  }
-
-  gsl_rng_free(r);
-
-  return 0;
-}
-
-
-
-int print_time_stats(int runs, double *times){
-  double t[5], dt[5], total_time, dtotal_time;
-
-  printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
-
-  total_time = 0.;
-  for(int k=0;k<5;k+=1){
-    t[k]=0.; dt[k]=0.;
-    for(int run=0;run<runs;run+=1)
-      t[k] += times[5*run+k];
-    t[k] /= runs;
-    for(int run=0;run<runs;run+=1)
-      dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
-    dt[k] /= runs;
-    dt[k] = sqrt(dt[k]);
-
-    total_time += t[k];
-  }
-
-  dtotal_time = 0.;
-  for(int run=0;run<runs;run+=1){
-    double rgm = 0.;
-    for(int k=0;k<5;k+=1)
-      rgm += times[5*run+k];
-
-    dtotal_time += (rgm-total_time)*(rgm-total_time);
-  }
-  dtotal_time /= runs;
-  dtotal_time = sqrt(dtotal_time);
-
-  printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
-  printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
-  printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
-  printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
-  printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
-  printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
-
-  return 0;
-}
-
 int main(int argc, char **argv){
 
   bool run_seed = false;
@@ -481,6 +310,7 @@ int main(int argc, char **argv){
   }
 
   print_time_stats(runs,times);
+  print_sph_particles_density(N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");
