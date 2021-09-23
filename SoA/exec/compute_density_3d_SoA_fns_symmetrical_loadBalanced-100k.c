@@ -8,7 +8,12 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <inttypes.h>
+
 #include <omp.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_heapsort.h>
 
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
@@ -200,7 +205,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 }
 
 int arg_parse(int argc, char **argv, int64_t *N, double *h,
-              linkedListBox *box){
+              long int *seed, linkedListBox *box){
   bool intern_h = true;
 
   box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
@@ -215,6 +220,10 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
     if( strcmp(argv[i],"-N") == 0 ){
       *N = (int64_t) atol(argv[i+1]);
       printf("N particles = %ld\n",*N);
+    }
+    if( strcmp(argv[i],"-seed") == 0 ){
+      *seed = (int64_t) atol(argv[i+1]);
+      printf("seed = %ld\n",*seed);
     }
     else if( strcmp(argv[i],"-h") == 0 ){
       *h = atof(argv[i+1]);
@@ -278,18 +287,52 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
   return 0;
 }
 
+int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph){
+
+  const gsl_rng_type *T=NULL;
+  gsl_rng *r=NULL;
+
+  if(lsph==NULL)
+    return 1;
+
+  gsl_rng_env_setup();
+
+  T = gsl_rng_default;
+  r = gsl_rng_alloc(T);
+  gsl_rng_set(r,seed);
+
+  for(int64_t i=0;i<N;i+=1){
+    lsph->x[i] = gsl_rng_uniform(r)*(box->Xmax-box->Xmin) + box->Xmin;
+    lsph->y[i] = gsl_rng_uniform(r)*(box->Ymax-box->Ymin) + box->Ymin;
+    lsph->z[i] = gsl_rng_uniform(r)*(box->Zmax-box->Zmin) + box->Zmin;
+
+    lsph->ux[i] = 0.0; lsph->Fx[i] = 0.0;
+    lsph->uy[i] = 0.0; lsph->Fy[i] = 0.0;
+    lsph->uz[i] = 0.0; lsph->Fz[i] = 0.0;
+
+    lsph->nu[i]   = 1.0/N;
+    lsph->rho[i]  = 0.0;
+    lsph->id[i]   = (int64_t) i;
+    lsph->hash[2*i+0] = (int64_t) 0;
+    lsph->hash[2*i+1] = (int64_t) i;
+  }
+
+  gsl_rng_free(r);
+
+  return 0;
+}
+
 int main(int argc, char **argv){
 
-  int err,dbg=0;
+  int err,dbg=0, run = 1;
+  long int seed = 123123123;
   int64_t N = 100000;
   double h=0.05;
   linkedListBox *box;
   SPHparticle *lsph;
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,box);
-
-  //omp_set_dynamic(0);              /** Explicitly disable dynamic teams **/
+  arg_parse(argc,argv,&N,&h,&seed,box);
 
   if(dbg)
     printf("hello - 0\n");
@@ -297,26 +340,21 @@ int main(int argc, char **argv){
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
+  double times[run][6];
+
+  //for(int it=0;it<run;it+=1){
+
+  //}
+
   if(dbg)
     printf("hello - 1\n");
-  err = gen_unif_rdn_pos(N,123123123,lsph);
+  //err = gen_unif_rdn_pos(N,seed,lsph);
+  err = gen_unif_rdn_pos_box(N,seed,box,lsph);
   if(err)
     printf("error in gen_unif_rdn_pos\n");
 
   if(dbg)
     printf("hello - 2\n");
-
-  /*
-  box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
-  box->Xmax =  2.0; box->Ymax =  2.0; box->Zmax =  2.0;
-  box->Nx = (int)( (box->Xmax-box->Xmin)/(2*h) );
-  box->Ny = (int)( (box->Ymax-box->Ymin)/(2*h) );
-  box->Nz = (int)( (box->Zmax-box->Zmin)/(2*h) );
-  box->N  = (box->Nx)*(box->Ny)*(box->Nz);
-  double min_val = fmin((box->Xmax-box->Xmin)/box->Nx,fmin((box->Ymax-box->Ymin)/box->Ny,(box->Zmax-box->Zmin)/box->Nz));
-  box->width  = (int)( 0.5 + 2*h/min_val );
-  box->hbegin = kh_init(0);
-  box->hend   = kh_init(1);*/
 
   double t0,t1,t2,t3,t4,t5;
   t0 = omp_get_wtime();
