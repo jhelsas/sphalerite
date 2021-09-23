@@ -208,7 +208,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 }
 
 int arg_parse(int argc, char **argv, int64_t *N, double *h,
-              long int *seed, int *runs, linkedListBox *box){
+              long int *seed, int *runs, bool *run_seed, linkedListBox *box){
   bool intern_h = true;
 
   box->Xmin = 0.0; box->Ymin = 0.0; box->Zmin = 0.0;
@@ -231,6 +231,14 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
     if( strcmp(argv[i],"-runs") == 0 ){
       *runs = (int) atoi(argv[i+1]);
       printf("runs = %d\n",*runs);
+    }
+    if( strcmp(argv[i],"-run_seed") == 0 ){
+      int ran_seed = (int) atoi(argv[i+1]);
+      if(ran_seed)
+        *run_seed = true;
+      else
+        *run_seed = false;
+      printf("run_seed = %d\n",ran_seed);
     }
     else if( strcmp(argv[i],"-h") == 0 ){
       *h = atof(argv[i+1]);
@@ -331,7 +339,7 @@ int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *ls
 
 
 
-int print_time_stats(int runs, double times[]){
+int print_time_stats(int runs, double *times){
   double t[5], dt[5], total_time, dtotal_time;
 
   printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
@@ -361,18 +369,19 @@ int print_time_stats(int runs, double times[]){
   dtotal_time /= runs;
   dtotal_time = sqrt(dtotal_time);
 
-  printf("compute_hash_MC3D calc time                 : %.3lg +- %lg s : %.2lf%%\n",t[0],dt[0],100*t[0]/total_time);
-  printf("qsort calc time                             : %.3lg +- %lg s : %.2lf%%\n",t[1],dt[1],100*t[1]/total_time);
-  printf("reorder_lsph_SoA calc time                  : %.3lg +- %lg s : %.2lf%%\n",t[2],dt[2],100*t[2]/total_time);
-  printf("setup_interval_hashtables calc time         : %.3lg +- %lg s : %.2lf%%\n",t[3],dt[3],100*t[3]/total_time);
-  printf("compute_density_3d load balanced calc time  : %.3lg +- %lg s : %.2lf%%\n",t[4],dt[4],100*t[4]/total_time);
-  printf("compute_density_3d load balanced total time : %.3lg +- %lg s : %.2lf%%\n",total_time,dtotal_time,100.);
+  printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
+  printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
+  printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
+  printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
+  printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
+  printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
 
   return 0;
 }
 
 int main(int argc, char **argv){
 
+  bool run_seed = false;
   int err,runs = 1;
   long int seed = 123123123;
   int64_t N = 100000;
@@ -381,7 +390,7 @@ int main(int argc, char **argv){
   SPHparticle *lsph;
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,&runs,box);
+  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);
 
   if(dbg)
     printf("hello - 0\n");
@@ -395,7 +404,12 @@ int main(int argc, char **argv){
   for(int run=0;run<runs;run+=1){
     if(dbg)
       printf("hello - 1\n");
-    err = gen_unif_rdn_pos_box(N,seed,box,lsph);
+    
+    if(run_seed)
+      err = gen_unif_rdn_pos_box(N,seed+run,box,lsph);
+    else
+      err = gen_unif_rdn_pos_box(N,seed,box,lsph);
+
     if(err)
       printf("error in gen_unif_rdn_pos\n");
 
