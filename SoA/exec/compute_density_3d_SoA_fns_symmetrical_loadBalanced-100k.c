@@ -18,14 +18,9 @@
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 #include "sph_utils.h"
-
-#ifndef M_PI
-#define M_PI (3.14159265358979323846)
-#endif
+#include "sph_compute_shared.h"
 
 #define dbg false
-
-#define print_pair_count 0
 
 double w_bspline_3d_constant(double h){
   return 3./(2.*M_PI*h*h*h);
@@ -83,7 +78,7 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
 }
 
 int count_box_pairs(linkedListBox *box){
-  int64_t pair_count = 0, particle_pair_count = 0;
+  int64_t pair_count = 0;
 
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
     int64_t node_hash=-1,node_begin=0, node_end=0;
@@ -104,14 +99,10 @@ int count_box_pairs(linkedListBox *box){
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
           pair_count += 1;
-          particle_pair_count += (node_end-node_begin)*(nb_end-nb_begin);
         }
       }
     }
   }
-
-  if(dbg)
-    printf("unique ordered particle_pair_count = %ld\n",particle_pair_count);
 
   return pair_count;
 }
