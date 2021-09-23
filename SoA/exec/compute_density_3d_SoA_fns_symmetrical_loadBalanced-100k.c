@@ -205,7 +205,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 }
 
 int arg_parse(int argc, char **argv, int64_t *N, double *h,
-              long int *seed, linkedListBox *box){
+              long int *seed, int *runs, linkedListBox *box){
   bool intern_h = true;
 
   box->Xmin = -1.0; box->Ymin = -1.0; box->Zmin = -1.0;
@@ -222,8 +222,12 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
       printf("N particles = %ld\n",*N);
     }
     if( strcmp(argv[i],"-seed") == 0 ){
-      *seed = (int64_t) atol(argv[i+1]);
+      *seed = (long int) atol(argv[i+1]);
       printf("seed = %ld\n",*seed);
+    }
+    if( strcmp(argv[i],"-runs") == 0 ){
+      *runs = (int) atoi(argv[i+1]);
+      printf("runs = %d\n",*runs);
     }
     else if( strcmp(argv[i],"-h") == 0 ){
       *h = atof(argv[i+1]);
@@ -256,15 +260,15 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
     }
     else if( strcmp(argv[i],"-Nx") == 0 ){
       box->Nx   = atol(argv[i+1]);
-      printf("Nx = %ld\n",box->Nx);
+      printf("Nx = %d\n",box->Nx);
     }
     else if( strcmp(argv[i],"-Ny") == 0 ){
       box->Ny   = atol(argv[i+1]);
-      printf("Ny = %ld\n",box->Ny);
+      printf("Ny = %d\n",box->Ny);
     }
     else if( strcmp(argv[i],"-Nz") == 0 ){
       box->Nz   = atol(argv[i+1]);
-      printf("Nz = %ld\n",box->Nz);
+      printf("Nz = %d\n",box->Nz);
     }
     else{
       printf("unknown option: %s %s\n",argv[i],argv[i+1]);
@@ -324,7 +328,7 @@ int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *ls
 
 int main(int argc, char **argv){
 
-  int err,dbg=0, run = 1;
+  int err,dbg=0, runs = 1;
   long int seed = 123123123;
   int64_t N = 100000;
   double h=0.05;
@@ -332,7 +336,7 @@ int main(int argc, char **argv){
   SPHparticle *lsph;
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,box);
+  arg_parse(argc,argv,&N,&h,&seed,&runs,box);
 
   if(dbg)
     printf("hello - 0\n");
@@ -340,64 +344,80 @@ int main(int argc, char **argv){
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
-  double times[run][6];
-
-  //for(int it=0;it<run;it+=1){
-
-  //}
-
-  if(dbg)
-    printf("hello - 1\n");
-  //err = gen_unif_rdn_pos(N,seed,lsph);
-  err = gen_unif_rdn_pos_box(N,seed,box,lsph);
-  if(err)
-    printf("error in gen_unif_rdn_pos\n");
-
-  if(dbg)
-    printf("hello - 2\n");
-
-  double t0,t1,t2,t3,t4,t5;
-  t0 = omp_get_wtime();
-
-  err = compute_hash_MC3D(N,lsph,box);
-
-  t1 = omp_get_wtime();
-  
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
-  
-  t2 = omp_get_wtime();
-
   void *swap_arr = malloc(N*sizeof(double));
-  err = reorder_lsph_SoA(N,lsph,swap_arr);
-  if(err)
-    printf("error in reorder_lsph_SoA\n");
+  double times[runs][5];
 
-  t3 = omp_get_wtime();
+  for(int run=0;run<runs;run+=1){
+    if(dbg)
+      printf("hello - 1\n");
+    err = gen_unif_rdn_pos_box(N,seed,box,lsph);
+    if(err)
+      printf("error in gen_unif_rdn_pos\n");
 
-  if(dbg)
-    printf("hello - 6\n");
-  err = setup_interval_hashtables(N,lsph,box);
-  if(err)
-    printf("error in setup_interval_hashtables\n");
+    if(dbg)
+      printf("hello - 2\n");
 
-  t4 = omp_get_wtime();
+    // ------------------------------------------------------ //
 
-  if(dbg)
-    printf("hello - 7\n");
+    double t0,t1,t2,t3,t4,t5;
+    t0 = omp_get_wtime();
 
-  err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
-  if(err)
-    printf("error in compute_density_3d_load_ballanced\n");
+    err = compute_hash_MC3D(N,lsph,box);
 
-  t5 = omp_get_wtime();
+    // ------------------------------------------------------ //
 
-  printf("fast neighbour search / SoA / outer-openMP / load balanced\n");
-  printf("compute_hash_MC3D calc time                 : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t5-t0));
-  printf("qsort calc time                             : %.5lf s : %.2lf%%\n",t2-t1,100*(t2-t1)/(t5-t0));
-  printf("reorder_lsph_SoA calc time                  : %.5lf s : %.2lf%%\n",t3-t2,100*(t3-t2)/(t5-t0));
-  printf("setup_interval_hashtables calc time         : %.5lf s : %.2lf%%\n",t4-t3,100*(t4-t3)/(t5-t0));
-  printf("compute_density_3d load balanced calc time  : %.5lf s : %.2lf%%\n",t5-t4,100*(t5-t4)/(t5-t0));
-  printf("compute_density_3d load balanced total time : %.5lf s : %.2lf%%\n",t5-t0,100*(t5-t0)/(t5-t0));
+    t1 = omp_get_wtime();
+  
+    qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
+
+    // ------------------------------------------------------ //
+  
+    t2 = omp_get_wtime();
+
+    err = reorder_lsph_SoA(N,lsph,swap_arr);
+    if(err)
+      printf("error in reorder_lsph_SoA\n");
+
+    // ------------------------------------------------------ //
+
+    t3 = omp_get_wtime();
+
+    if(dbg)
+      printf("hello - 6\n");
+    err = setup_interval_hashtables(N,lsph,box);
+    if(err)
+      printf("error in setup_interval_hashtables\n");
+
+    // ------------------------------------------------------ //
+
+    t4 = omp_get_wtime();
+
+    if(dbg)
+      printf("hello - 7\n");
+
+    err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);
+    if(err)
+      printf("error in compute_density_3d_load_ballanced\n");
+
+    // ------------------------------------------------------ //
+
+    t5 = omp_get_wtime();
+
+    times[run][0] = t1-t0;
+    times[run][1] = t2-t1;
+    times[run][2] = t3-t2;
+    times[run][3] = t4-t3;
+    times[run][4] = t5-t4;
+
+    printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+    printf("compute_hash_MC3D calc time                 : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t5-t0));
+    printf("qsort calc time                             : %.5lf s : %.2lf%%\n",t2-t1,100*(t2-t1)/(t5-t0));
+    printf("reorder_lsph_SoA calc time                  : %.5lf s : %.2lf%%\n",t3-t2,100*(t3-t2)/(t5-t0));
+    printf("setup_interval_hashtables calc time         : %.5lf s : %.2lf%%\n",t4-t3,100*(t4-t3)/(t5-t0));
+    printf("compute_density_3d load balanced calc time  : %.5lf s : %.2lf%%\n",t5-t4,100*(t5-t4)/(t5-t0));
+    printf("compute_density_3d load balanced total time : %.5lf s : %.2lf%%\n",t5-t0,100*(t5-t0)/(t5-t0));
+
+  }
 
   if(dbg)
     printf("hello - 10\n");
