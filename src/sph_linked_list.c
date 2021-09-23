@@ -252,6 +252,81 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 	return 0;
 }
 
+int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph){
+
+  const gsl_rng_type *T=NULL;
+  gsl_rng *r=NULL;
+
+  if(lsph==NULL)
+    return 1;
+
+  gsl_rng_env_setup();
+
+  T = gsl_rng_default;
+  r = gsl_rng_alloc(T);
+  gsl_rng_set(r,seed);
+
+  for(int64_t i=0;i<N;i+=1){
+    lsph->x[i] = gsl_rng_uniform(r)*(box->Xmax-box->Xmin) + box->Xmin;
+    lsph->y[i] = gsl_rng_uniform(r)*(box->Ymax-box->Ymin) + box->Ymin;
+    lsph->z[i] = gsl_rng_uniform(r)*(box->Zmax-box->Zmin) + box->Zmin;
+
+    lsph->ux[i] = 0.0; lsph->Fx[i] = 0.0;
+    lsph->uy[i] = 0.0; lsph->Fy[i] = 0.0;
+    lsph->uz[i] = 0.0; lsph->Fz[i] = 0.0;
+
+    lsph->nu[i]   = 1.0/N;
+    lsph->rho[i]  = 0.0;
+    lsph->id[i]   = (int64_t) i;
+    lsph->hash[2*i+0] = (int64_t) 0;
+    lsph->hash[2*i+1] = (int64_t) i;
+  }
+
+  gsl_rng_free(r);
+
+  return 0;
+}
+
+int print_time_stats(int runs, double *times){
+  double t[5], dt[5], total_time, dtotal_time;
+
+  printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+
+  total_time = 0.;
+  for(int k=0;k<5;k+=1){
+    t[k]=0.; dt[k]=0.;
+    for(int run=0;run<runs;run+=1)
+      t[k] += times[5*run+k];
+    t[k] /= runs;
+    for(int run=0;run<runs;run+=1)
+      dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+    dt[k] /= runs;
+    dt[k] = sqrt(dt[k]);
+
+    total_time += t[k];
+  }
+
+  dtotal_time = 0.;
+  for(int run=0;run<runs;run+=1){
+    double rgm = 0.;
+    for(int k=0;k<5;k+=1)
+      rgm += times[5*run+k];
+
+    dtotal_time += (rgm-total_time)*(rgm-total_time);
+  }
+  dtotal_time /= runs;
+  dtotal_time = sqrt(dtotal_time);
+
+  printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
+  printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
+  printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
+  printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
+  printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
+  printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
+
+  return 0;
+}
+
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 
 	if(lsph==NULL)
