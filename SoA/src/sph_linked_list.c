@@ -300,26 +300,39 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 	return 0;
 }
 
-int print_sph_particles_density(int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
+int print_sph_particles_density(const char *prefix,int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
 	FILE *fp;
 	char filename[1024+1];
 
 	sprintf(filename,
-					"cd3d(SoA,cll,symmLB,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
-					runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
+					"cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
 	fp = fopen(filename,"w");
+	fprintf(fp,"id,x,y,z,rho\n");
 	for(int64_t i=0;i<N;i+=1)
-		fprintf(fp,"%ld %lf %lf %lf %lf\n",lsph->id[i],lsph->x[i],lsph->y[i],lsph->z[i],lsph->rho[i]);
+		fprintf(fp,"%ld,%lf,%lf,%lf,%lf\n",lsph->id[i],lsph->x[i],lsph->y[i],lsph->z[i],lsph->rho[i]);
 	fclose(fp);
 
 	return 0;
 }
 
-int print_time_stats(int runs, double *times){
+int print_time_stats(const char *prefix, int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times){
+  FILE *fp;
   double t[5], dt[5], total_time, dtotal_time;
+	char filename[1024+1];
 
   printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+
+  sprintf(filename,
+					"times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
+
+  fp = fopen(filename,"w");
+	fprintf(fp,"compute_hash_MC3D, sorting, reorder_lsph_SoA, setup_interval_hashtables, compute_density\n");
+	for(int run=0;run<runs;run+=1)
+		fprintf(fp,"%d %lf %lf %lf %lf %lf\n",run,times[5*run+0],times[5*run+1],times[5*run+2],times[5*run+3],times[5*run+4]);
+	fclose(fp);
 
   total_time = 0.;
   for(int k=0;k<5;k+=1){
