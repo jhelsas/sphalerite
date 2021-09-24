@@ -103,8 +103,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t1 = omp_get_wtime();
 
-  printf("compute_density_3d SoA naive omp simd tiled calc time : %lf s \n",t1-t0);
-
   // ------------------------------------------------------ //
 
   times[5*run+0] = t1-t0;
