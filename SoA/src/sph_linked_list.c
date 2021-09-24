@@ -305,7 +305,7 @@ int print_sph_particles_density(const char *prefix,int64_t N, double h, long int
 	char filename[1024+1];
 
 	sprintf(filename,
-					"cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+					"data/cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
 	fp = fopen(filename,"w");
@@ -325,7 +325,7 @@ int print_time_stats(const char *prefix, int64_t N, double h, long int seed, int
   printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
 
   sprintf(filename,
-					"times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+					"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
   fp = fopen(filename,"w");

@@ -19,18 +19,22 @@
 #include "sph_linked_list.h"
 #include "sph_utils.h"
 
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif
+
 #define dbg false
 
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 
-int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box);
+int compute_density_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
-int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
-                                   int64_t nb_begin, int64_t nb_end,double h,
-                                   double* restrict x, double* restrict y,
-                                   double* restrict z, double* restrict nu,
-                                   double* restrict rho);
+int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z, double* restrict nu,
+                             double* restrict rho);
 
 int count_box_pairs(linkedListBox *box);
 
@@ -67,8 +71,8 @@ int main(int argc, char **argv){
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
-  print_time_stats("SoA,cll,symmLB",N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("SoA,cll,outer",N,h,seed,runs,lsph,box);
+  print_time_stats("SoA,cll,inner,simd",N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density("SoA,cll,inner,simd",N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");
@@ -136,7 +140,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   if(dbg)
     printf("hello - 7\n");
 
-  err = compute_density_3d_outerOmp(N,h,lsph,box);
+  err = compute_density_3d_innerOmp(N,h,lsph,box);
   if(err)
     printf("error in compute_density\n");
 
@@ -163,33 +167,32 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
-int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  #pragma omp parallel for 
-  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    int64_t node_hash=-1,node_begin=0, node_end=0;
-    int64_t nb_begin= 0, nb_end = 0;
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+int compute_density_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  khiter_t kbegin,kend;
+  int64_t node_hash=-1,node_begin=0, node_end=0;
+  int64_t nb_begin= 0, nb_end = 0;
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
 
-    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
-      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-
+  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    
+    if (kh_exist(box->hbegin, kbegin)){
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
       node_hash = kh_key(box->hbegin, kbegin);
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
         lsph->rho[ii] = 0.0; 
 
       neighbour_hash_3d(node_hash,nblist,box->width,box);
       for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
           //nb_hash  = nblist[j];
-
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,
-                                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,
+                                   lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
         }
       }
     }
@@ -198,21 +201,22 @@ int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBo
   return 0;
 }
 
-int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
-                                   int64_t nb_begin, int64_t nb_end,double h,
-                                   double* restrict x, double* restrict y,
-                                   double* restrict z, double* restrict nu,
-                                   double* restrict rho){
+int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             double* restrict x, double* restrict y,
+                             double* restrict z, double* restrict nu,
+                             double* restrict rho){
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
+  #pragma omp parallel for
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
     double xii = x[ii];
     double yii = y[ii];
     double zii = z[ii];
     double rhoii = 0.0;
    
-    #pragma omp simd reduction(+:rhoii) 
+    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu) 
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
       double q = 0.;
 
