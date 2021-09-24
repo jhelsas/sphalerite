@@ -21,7 +21,10 @@ int reorder_lsph_SoA(int N, SPHparticle *lsph, void *swap_arr);
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 
-int print_time_stats(const char *prefix, int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times);
-int print_sph_particles_density(const char *prefix, int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box);
+int print_time_stats(const char *prefix,  bool is_cll,int64_t N, double h, 
+										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times);
+
+int print_sph_particles_density(const char *prefix,  bool is_cll,int64_t N, double h, 
+																long int seed, int runs, SPHparticle *lsph, linkedListBox *box);
 
 #endif

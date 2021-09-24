@@ -68,8 +68,9 @@ int main(int argc, char **argv){
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
-  print_time_stats("SoA,cll,inner",N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("SoA,cll,inner",N,h,seed,runs,lsph,box);
+  bool is_cll = true;
+  print_time_stats("SoA,inner",is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density("SoA,inner",is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");

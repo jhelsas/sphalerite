@@ -300,71 +300,126 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 	return 0;
 }
 
-int print_sph_particles_density(const char *prefix,int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
+int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, double h, 
+																long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
 	FILE *fp;
 	char filename[1024+1];
 
-	sprintf(filename,
-					"data/cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
-					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
+	if(is_cll){
+		sprintf(filename,
+						"data/cd3d(cll,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
-	fp = fopen(filename,"w");
-	fprintf(fp,"id,x,y,z,rho\n");
-	for(int64_t i=0;i<N;i+=1)
-		fprintf(fp,"%ld,%lf,%lf,%lf,%lf\n",lsph->id[i],lsph->x[i],lsph->y[i],lsph->z[i],lsph->rho[i]);
-	fclose(fp);
+		fp = fopen(filename,"w");
+		fprintf(fp,"id,x,y,z,rho\n");
+		for(int64_t i=0;i<N;i+=1)
+			fprintf(fp,"%ld,%lf,%lf,%lf,%lf\n",lsph->id[i],lsph->x[i],lsph->y[i],lsph->z[i],lsph->rho[i]);
+		fclose(fp);
+	} 
+	else{
+		sprintf(filename,
+						"data/cd3d(naive,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
+
+		fp = fopen(filename,"w");
+		fprintf(fp,"id,x,y,z,rho\n");
+		for(int64_t i=0;i<N;i+=1)
+			fprintf(fp,"%ld,%lf,%lf,%lf,%lf\n",lsph->id[i],lsph->x[i],lsph->y[i],lsph->z[i],lsph->rho[i]);
+		fclose(fp);
+	}
+	
 
 	return 0;
 }
 
-int print_time_stats(const char *prefix, int64_t N, double h, long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times){
+int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h, 
+										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times){
   FILE *fp;
   double t[5], dt[5], total_time, dtotal_time;
 	char filename[1024+1];
 
-  printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
+	if(is_cll){
+  	sprintf(filename,
+						"data/times-(cll,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
-  sprintf(filename,
-					"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
-					prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
+  	fp = fopen(filename,"w");
+		fprintf(fp,"id, compute_hash_MC3D, sorting, reorder_lsph_SoA, setup_interval_hashtables, compute_density\n");
+		for(int run=0;run<runs;run+=1)
+			fprintf(fp,"%d %lf %lf %lf %lf %lf\n",run,times[5*run+0],times[5*run+1],times[5*run+2],times[5*run+3],times[5*run+4]);
+		fclose(fp);
 
-  fp = fopen(filename,"w");
-	fprintf(fp,"compute_hash_MC3D, sorting, reorder_lsph_SoA, setup_interval_hashtables, compute_density\n");
-	for(int run=0;run<runs;run+=1)
-		fprintf(fp,"%d %lf %lf %lf %lf %lf\n",run,times[5*run+0],times[5*run+1],times[5*run+2],times[5*run+3],times[5*run+4]);
-	fclose(fp);
+  	total_time = 0.;
+  	for(int k=0;k<5;k+=1){
+    	t[k]=0.; dt[k]=0.;
+    	for(int run=0;run<runs;run+=1)
+      	t[k] += times[5*run+k];
+    	t[k] /= runs;
+    	for(int run=0;run<runs;run+=1)
+      	dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+    	dt[k] /= runs;
+    	dt[k] = sqrt(dt[k]);
 
-  total_time = 0.;
-  for(int k=0;k<5;k+=1){
-    t[k]=0.; dt[k]=0.;
-    for(int run=0;run<runs;run+=1)
-      t[k] += times[5*run+k];
-    t[k] /= runs;
-    for(int run=0;run<runs;run+=1)
-      dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
-    dt[k] /= runs;
-    dt[k] = sqrt(dt[k]);
+    	total_time += t[k];
+  	}
 
-    total_time += t[k];
-  }
+  	dtotal_time = 0.;
+  	for(int run=0;run<runs;run+=1){
+	    double rgm = 0.;
+  	  for(int k=0;k<5;k+=1)
+    	  rgm += times[5*run+k];
 
-  dtotal_time = 0.;
-  for(int run=0;run<runs;run+=1){
-    double rgm = 0.;
-    for(int k=0;k<5;k+=1)
-      rgm += times[5*run+k];
+    	dtotal_time += (rgm-total_time)*(rgm-total_time);
+  	}
+  	dtotal_time /= runs;
+  	dtotal_time = sqrt(dtotal_time);
 
-    dtotal_time += (rgm-total_time)*(rgm-total_time);
-  }
-  dtotal_time /= runs;
-  dtotal_time = sqrt(dtotal_time);
+  	printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
+  	printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
+  	printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
+  	printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
+  	printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
+  	printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
+	}
+	else{
+		sprintf(filename,
+						"data/times-(naive,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
-  printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
-  printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
-  printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
-  printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
-  printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
-  printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
+  	fp = fopen(filename,"w");
+		fprintf(fp,"id, compute_density\n");
+		for(int run=0;run<runs;run+=1)
+			fprintf(fp,"%d %lf\n",run,times[5*run+0]);
+		fclose(fp);
+
+  	total_time = 0.;
+  	for(int k=0;k<1;k+=1){
+    	t[k]=0.; dt[k]=0.;
+    	for(int run=0;run<runs;run+=1)
+      	t[k] += times[5*run+k];
+    	t[k] /= runs;
+    	for(int run=0;run<runs;run+=1)
+      	dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+    	dt[k] /= runs;
+    	dt[k] = sqrt(dt[k]);
+
+    	total_time += t[k];
+  	}
+
+  	dtotal_time = 0.;
+  	for(int run=0;run<runs;run+=1){
+	    double rgm = 0.;
+  	  for(int k=0;k<1;k+=1)
+    	  rgm += times[5*run+k];
+
+    	dtotal_time += (rgm-total_time)*(rgm-total_time);
+  	}
+  	dtotal_time /= runs;
+  	dtotal_time = sqrt(dtotal_time);
+
+  	printf("compute_density_3d naive %s : %.5lf +- %.6lf s : %.3lf%%\n",prefix,total_time,dtotal_time,100.);
+	}
+
 
   return 0;
 }
