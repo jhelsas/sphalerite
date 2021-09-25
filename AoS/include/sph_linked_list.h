@@ -5,23 +5,18 @@ int safe_free_box(linkedListBox *box);
 int compare_SPHparticle(const void *p,const void *q);
 
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph);
-int gen_gaussian_pos(int64_t N, int seed, double sigma, SPHparticle *lsph);
+int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph);
 
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box);
-int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box);
 
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box);
 
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
-int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 
-int print_boxes_populations(linkedListBox *box);
+int print_time_stats(const char *prefix,  bool is_cll,int64_t N, double h, 
+										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times);
 
-int print_neighbour_list_MC3D(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
-int print_neighbour_list_MC2D(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
-
-int print_neighbour_list_MC3D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
-int print_neighbour_list_MC2D_lsph_file(int64_t Nmax,unsigned int width,unsigned int stride,SPHparticle *lsph,linkedListBox *box);
-int print_neighbour_list_MC3D_lsph_ids_file(int N, SPHparticle *lsph, linkedListBox *box);
+int print_sph_particles_density(const char *prefix,  bool is_cll,int64_t N, double h, 
+																long int seed, int runs, SPHparticle *lsph, linkedListBox *box);
 
 #endif

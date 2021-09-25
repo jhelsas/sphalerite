@@ -13,13 +13,11 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph);
 int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph);
 
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box);
-int compute_hash_MC2D(int64_t N, SPHparticle *lsph, linkedListBox *box);
 
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box);
 int reorder_lsph_SoA(int N, SPHparticle *lsph, void *swap_arr);
 
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
-int neighbour_hash_2d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 
 int print_time_stats(const char *prefix,  bool is_cll,int64_t N, double h, 
 										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times);
