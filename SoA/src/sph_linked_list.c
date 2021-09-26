@@ -1,3 +1,16 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * sph_linked_list.c : 
+ *     Header containing the declarions for several
+ *     cell linked list operations, including hash
+ *     calculations, setup hash tables and neighbour finding.
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ */
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>

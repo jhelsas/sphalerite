@@ -1,3 +1,14 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * sph_linked_list.c : 
+ *     general utility functions
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ */
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>

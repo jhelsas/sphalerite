@@ -1,3 +1,16 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * sph_data_types.h : 
+ *     Data types for the SPH density calculation.
+ *     This includes the SPHparticle struct, 
+ *     linkedListBox and a short-hand double4 struct. 
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ */
+
 #ifndef SPH_DATA_TYPES_H
 #define SPH_DATA_TYPES_H
 
