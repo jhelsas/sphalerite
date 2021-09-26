@@ -1,3 +1,68 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * example_07-StructOfArrays-CellLinkedList-InnerOmp-SIMD.c : 
+ *      Example of SPH Density Calculation using 
+ *      fast neighbor search the main density loop via
+ *      Cell Linked List method, Struct of Arrays (SoA) 
+ *      data layout, OpenMP parallelization at the 
+ *      chunk level, SIMD directives in the kernel
+ *      and in the main loop. 
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ * Command Line Options: 
+ *   -runs  <int>   : Set the number of repetitions (runs) for
+ *                      calculating the density. The value of
+ *                      the density is based on the last 
+ *                      iteration.
+ *                    Default value: 1
+ *   -run_seed <int>: Flag to set an alternative seed use for
+ *                      for the PNRG. Instead of feeding seed
+ *                      to the PNRG directly, it feeds 
+ *                      seed + iteration, as to generate different
+ *                      configurations for each iteration. 
+ *                    Default value: 0 - (possible 0/1)
+ *   -seed     <int>: Set the seed to use for the SPH particles 
+ *                      uniform position generation in the box
+ *                    Default value: 123123123
+ *
+ *   -N        <int>: Set the number of SPH particles to be used
+ *                    Default value: 10000
+ *   -h      <float>: Set the value of the smoothing kernel 
+ *                      parameter h, which corresponds to half
+ *                      of the support of the kernel. 
+ *                    Default value: 0.05
+ *
+ *   -Nx       <int>: Set the number of Cells in the X direction
+ *                    Default value: 10
+ *   -Ny       <int>: Set the number of Cells in the Y direction
+ *                    Default value: 10
+ *   -Nz       <int>: Set the number of Cells in the Z direction
+ *                    Default value: 10
+ * 
+ *   -Xmin   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Y direction for 
+ *                    the Cell Linked List box 
+ *                      Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ * 
+ *   -Xmax   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Ymax   <float>: Set the lower bound in the Y direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Zmax   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ */
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -42,7 +107,10 @@ int setup_box_pairs(linkedListBox *box,
                     int64_t *node_begin,int64_t *node_end,
                     int64_t *nb_begin,int64_t *nb_end);
 
-double w_bspline_3d(double r,double h);
+double w_bspline_3d_constant(double h);
+
+#pragma omp declare simd
+double w_bspline_3d_simd(double q);
 
 int main(int argc, char **argv){
   bool run_seed = false;
@@ -69,8 +137,8 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = true;
-  print_time_stats("SoA,inner",is_cll,N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("SoA,inner",is_cll,N,h,seed,runs,lsph,box);
+  print_time_stats("SoA,simd,inner",is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density("SoA,simd,inner",is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");
@@ -204,6 +272,8 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              double* restrict x, double* restrict y,
                              double* restrict z, double* restrict nu,
                              double* restrict rho){
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
 
   #pragma omp parallel for
   for(int64_t ii=node_begin;ii<node_end;ii+=1){
@@ -224,30 +294,33 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
       q += yij*yij;
       q += zij*zij;
 
-      q = sqrt(q);
+      q = sqrt(q)*inv_h;
 
-      rhoii += nu[jj]*w_bspline_3d(q,h);
+      rhoii += nu[jj]*w_bspline_3d_simd(q);
     }
-    rho[ii] += rhoii;
+    rho[ii] += rhoii*kernel_constant;
   }
 
   return 0;
 }
 
-double w_bspline_3d(double r,double h){
-  const double A_d = 3./(2.*M_PI*h*h*h);
-  double q=0.;
+double w_bspline_3d_constant(double h){
+  return 3./(2.*M_PI*h*h*h);
+}
+
+#pragma omp declare simd
+double w_bspline_3d_simd(double q){
+  double wq = 0.0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
   
-  if(r<0||h<=0.)
-    exit(10);
+  if(q<2.)
+    wq = wq2;
+
+  if(q<1.)
+    wq = wq1;
   
-  q = r/h;
-  if(q<=1)
-    return A_d*(2./3.-q*q + q*q*q/2.0);
-  else if((1.<=q)&&(q<2.))
-    return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);
-  else 
-    return 0.;
+  return wq;
 }
 
 int count_box_pairs(linkedListBox *box){

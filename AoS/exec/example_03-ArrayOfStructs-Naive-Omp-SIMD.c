@@ -18,10 +18,10 @@
  *                      iteration.
  *                    Default value: 1
  *   -run_seed <int>: Flag to set an alternative seed use for
- *                    for the PNRG. Instead of feeding seed
- *                    to the PNRG directly, it feeds 
- *                    seed + iteration, as to generate different
- *                    configurations for each iteration. 
+ *                      for the PNRG. Instead of feeding seed
+ *                      to the PNRG directly, it feeds 
+ *                      seed + iteration, as to generate different
+ *                      configurations for each iteration. 
  *                    Default value: 0 - (possible 0/1)
  *   -seed     <int>: Set the seed to use for the SPH particles 
  *                      uniform position generation in the box
@@ -30,8 +30,8 @@
  *   -N        <int>: Set the number of SPH particles to be used
  *                    Default value: 10000
  *   -h      <float>: Set the value of the smoothing kernel 
- *                    parameter h, which corresponds to half
- *                    of the support of the kernel. 
+ *                      parameter h, which corresponds to half
+ *                      of the support of the kernel. 
  *                    Default value: 0.05
  *
  *   -Nx       <int>: Set the number of Cells in the X direction
