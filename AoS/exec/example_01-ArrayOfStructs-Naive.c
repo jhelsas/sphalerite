@@ -1,3 +1,66 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * example_01-ArrayOfStructs-Naive.c : 
+ *      Example of SPH Density Calculation using a 
+ *      naive implementation of the main density loop, 
+ *      no neighbours earch, and Array of Structs (AoS) 
+ *      data layout.
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ * Command Line Options: 
+ *   -runs  <int>   : Set the number of repetitions (runs) for
+ *                      calculating the density. The value of
+ *                      the density is based on the last 
+ *                      iteration.
+ *                    Default value: 1
+ *   -run_seed <int>: Flag to set an alternative seed use for
+ *                    for the PNRG. Instead of feeding seed
+ *                    to the PNRG directly, it feeds 
+ *                    seed + iteration, as to generate different
+ *                    configurations for each iteration. 
+ *                    Default value: 0 - (possible 0/1)
+ *   -seed     <int>: Set the seed to use for the SPH particles 
+ *                      uniform position generation in the box
+ *                    Default value: 123123123
+ *
+ *   -N        <int>: Set the number of SPH particles to be used
+ *                    Default value: 10000
+ *   -h      <float>: Set the value of the smoothing kernel 
+ *                    parameter h, which corresponds to half
+ *                    of the support of the kernel. 
+ *                    Default value: 0.05
+ *
+ *   -Nx       <int>: Set the number of Cells in the X direction
+ *                    Default value: 10
+ *   -Ny       <int>: Set the number of Cells in the Y direction
+ *                    Default value: 10
+ *   -Nz       <int>: Set the number of Cells in the Z direction
+ *                    Default value: 10
+ * 
+ *   -Xmin   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Y direction for 
+ *                    the Cell Linked List box 
+ *                      Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ * 
+ *   -Xmax   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Ymax   <float>: Set the lower bound in the Y direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Zmax   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ */
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -8,12 +71,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <inttypes.h>
-
 #include <omp.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_heapsort.h>
 
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
@@ -25,8 +83,9 @@
 
 #define dbg false
 
-int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
-              void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
+int main_loop(int run, bool run_seed, int64_t N, double h, 
+              long int seed, void *swap_arr, linkedListBox *box,
+              SPHparticle *lsph, double *times);
 
 int compute_density_3d_naive(int N,double h,SPHparticle *lsph);
 
@@ -42,7 +101,9 @@ int main(int argc, char **argv){
   SPHparticle *lsph;
 
   box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);
+
+  // allow for command line customization of the run
+  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box); 
 
   if(dbg)
     printf("hello - 0\n");
@@ -67,8 +128,9 @@ int main(int argc, char **argv){
   return 0;
 }
 
-int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
-              void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
+int main_loop(int run, bool run_seed, int64_t N, double h, 
+              long int seed, void *swap_arr, linkedListBox *box, 
+              SPHparticle *lsph, double *times)
 {
   int err;
   if(dbg)

@@ -1,3 +1,68 @@
+/*
+ * SPDX-License-Identifier:  BSD-3-Clause
+ * 
+ * example_08-ArrayOfStructs-CellLinkedList-outerOmp.c : 
+ *      Example of SPH Density Calculation using 
+ *      fast neighbor search the main density loop via
+ *      Cell Linked List method, Array of Structs (AoS) 
+ *      data layout, OpenMP parallelization at the 
+ *      cell level, SIMD directives in the kernel
+ *      and in the inner-most loop. 
+ *
+ * (C) Copyright 2021 José Hugo Elsas
+ * Author: José Hugo Elsas <jhelsas@gmail.com>
+ *
+ * Command Line Options: 
+ *   -runs  <int>   : Set the number of repetitions (runs) for
+ *                      calculating the density. The value of
+ *                      the density is based on the last 
+ *                      iteration.
+ *                    Default value: 1
+ *   -run_seed <int>: Flag to set an alternative seed use for
+ *                    for the PNRG. Instead of feeding seed
+ *                    to the PNRG directly, it feeds 
+ *                    seed + iteration, as to generate different
+ *                    configurations for each iteration. 
+ *                    Default value: 0 - (possible 0/1)
+ *   -seed     <int>: Set the seed to use for the SPH particles 
+ *                      uniform position generation in the box
+ *                    Default value: 123123123
+ *
+ *   -N        <int>: Set the number of SPH particles to be used
+ *                    Default value: 10000
+ *   -h      <float>: Set the value of the smoothing kernel 
+ *                    parameter h, which corresponds to half
+ *                    of the support of the kernel. 
+ *                    Default value: 0.05
+ *
+ *   -Nx       <int>: Set the number of Cells in the X direction
+ *                    Default value: 10
+ *   -Ny       <int>: Set the number of Cells in the Y direction
+ *                    Default value: 10
+ *   -Nz       <int>: Set the number of Cells in the Z direction
+ *                    Default value: 10
+ * 
+ *   -Xmin   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Y direction for 
+ *                    the Cell Linked List box 
+ *                      Default value: 0.0
+ *   -Ymin   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 0.0
+ * 
+ *   -Xmax   <float>: Set the lower bound in the X direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Ymax   <float>: Set the lower bound in the Y direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ *   -Zmax   <float>: Set the lower bound in the Z direction for 
+ *                      the Cell Linked List box 
+ *                    Default value: 1.0
+ */
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
