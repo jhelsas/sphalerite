@@ -96,7 +96,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              int64_t nb_begin, int64_t nb_end,double h,
                              SPHparticle *lsph);
 
-int compute_density_3d_fns_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box);
+int compute_density_3d_cll_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
 double w_bspline_3d(double r,double h);
 
@@ -175,7 +175,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t3 = omp_get_wtime();
 
-  err = compute_density_3d_fns_innerOmp(N,h,lsph,box);
+  err = compute_density_3d_cll_innerOmp(N,h,lsph,box);
   if(err)
     printf("error in compute_density_3d_innerOmp\n");
 
@@ -231,8 +231,19 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
   return 0;
 }
-
-int compute_density_3d_fns_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
+/*
+ *  Function compute_density_3d_cll_innerOmp:
+ *    Computes the SPH density from the particles naively
+ * 
+ *    Arguments:
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
+int compute_density_3d_cll_innerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
   khiter_t kbegin,kend;
   int64_t node_hash=-1,node_begin=0, node_end=0;
   int64_t nb_begin= 0, nb_end = 0;
@@ -250,7 +261,7 @@ int compute_density_3d_fns_innerOmp(int N, double h, SPHparticle *lsph, linkedLi
         lsph[ii].rho = 0.0; 
 
       neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
         if(nblist[j]>=0){
           nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
           nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
@@ -264,19 +275,28 @@ int compute_density_3d_fns_innerOmp(int N, double h, SPHparticle *lsph, linkedLi
   return 0;
 }
 
-
+/*
+ *  Function w_bspline_3d:
+ *    Returns the normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       wq <double>          : Normalized value of the kernel
+ */
 double w_bspline_3d(double r,double h){
-  const double A_d = 3./(2.*M_PI*h*h*h);
-  double q=0.;
+  const double A_d = 3./(2.*M_PI*h*h*h);      // The 3d normalization constant 
+  double q=0.;                                // normalized distance, initialized to zero
   
-  if(r<0||h<=0.)
-    exit(10);
+  if(r<0||h<=0.)                              // If either distance or smoothing length
+    exit(10);                                 // are negative, declare an emergency
   
-  q = r/h;
-  if(q<=1)
-    return A_d*(2./3.-q*q + q*q*q/2.0);
-  else if((1.<=q)&&(q<2.))
-    return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);
-  else 
-    return 0.;
+  q = r/h;                                    // Compute the normalized distance
+  if(q<=1)                                    // If the distance is small
+    return A_d*(2./3.-q*q + q*q*q/2.0);       // Compute this first polynomal
+  else if((1.<=q)&&(q<2.))                    // If the distance is a bit larger
+    return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);  // Compute this other polynomial 
+  else                                        // Otherwise, if the distance is large
+    return 0.;                                // The value of the kernel is 0
 }

@@ -96,20 +96,23 @@ int compute_density_3d_naive_omp(int N,double h,SPHparticle *lsph);
 double w_bspline_3d(double r,double h);
 
 int main(int argc, char **argv){
-  bool run_seed = false;
-  int runs = 1;
-  long int seed = 123123123;
-  int64_t N = 100000;
-  double h=0.05;
-  linkedListBox *box;
-  SPHparticle *lsph;
+  bool run_seed = false;       // By default the behavior is is to use the same seed
+  int runs = 1;                // it only runs once
+  long int seed = 123123123;   // The default seed is 123123123
+  int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
+  double h=0.05;               // The default kernel smoothing length is h = 0.05
+  linkedListBox *box;          // Uninitialized Box containing the cells for the cell linked list method
+  SPHparticle *lsph;           // Uninitialized array of SPH particles
 
-  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);
+  box = (linkedListBox*)malloc(1*sizeof(linkedListBox)); // Create a box
+
+  // allow for command line customization of the run
+  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command 
+                                                         // line arguments and override default values
 
   if(dbg)
     printf("hello - 0\n");
-  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
+  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));    // Create an array of N particles
   
   void *swap_arr = malloc(N*sizeof(double));
   double times[runs][5];
@@ -118,7 +121,7 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = false;
-  print_time_stats("simple",is_cll,N,h,seed,runs,lsph,box,times);
+  print_time_stats("omp",is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density("simple",is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
@@ -130,6 +133,25 @@ int main(int argc, char **argv){
   return 0;
 }
 
+/*
+ *  Function main_loop:
+ *    Runs the main loop of the program, including the particle array generation, 
+ *    density calculation and the timings annotations.
+ * 
+ *    Arguments:
+ *       run <int>            : index (or value) or the present iteration
+ *       run_seed <bool>      : boolean defining whether to use run index for seed or not
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       times <double>       : Array to store the computation timings to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       times <double>       : Times is updated by reference
+ */
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
@@ -137,6 +159,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   if(dbg)
     printf("hello - 1\n");
     
+  // Initialize the particles' positions and other values
   if(run_seed)
     err = gen_unif_rdn_pos_box(N,seed+run,box,lsph);
   else
@@ -154,13 +177,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp(N,h,lsph);
+  compute_density_3d_naive_omp(N,h,lsph);       // Compute the density for all particles
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[5*run+0] = t1-t0;
+  times[5*run+0] = t1-t0;                       // Only one component to measure time
   times[5*run+1] =    0.;
   times[5*run+2] =    0.;
   times[5*run+3] =    0.;
@@ -173,20 +196,34 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
+
+/*
+ *  Function compute_density_3d_naive_omp:
+ *    Computes the SPH density from the particles naively (i.e. direct loop).
+ *    The outer-most loop is parallelized using openMP. 
+ * 
+ *    Arguments:
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_naive_omp(int N,double h,SPHparticle *lsph){
 
   #pragma omp parallel for
-  for(int64_t ii=0;ii<N;ii+=1){
-    lsph[ii].rho = 0;
-    for(int64_t jj=0;jj<N;jj+=1){
-      double dist = 0.;
-
+  for(int64_t ii=0;ii<N;ii+=1){     // For every particle 
+    lsph[ii].rho = 0;               // initialize the density to zero
+    for(int64_t jj=0;jj<N;jj+=1){   // Run over every other particle
+      double dist = 0.;             // initialize the distance and add 
+                                    // the contributions from each direction
       dist += (lsph[ii].r.x-lsph[jj].r.x)*(lsph[ii].r.x-lsph[jj].r.x);
       dist += (lsph[ii].r.y-lsph[jj].r.y)*(lsph[ii].r.y-lsph[jj].r.y);
       dist += (lsph[ii].r.z-lsph[jj].r.z)*(lsph[ii].r.z-lsph[jj].r.z);
 
-      dist = sqrt(dist);
-
+      dist = sqrt(dist);            // take the sqrt to have the distance
+                                    // and add the contribution to density
       lsph[ii].rho += lsph[jj].nu*w_bspline_3d(dist,h);
     }
   }
@@ -194,18 +231,28 @@ int compute_density_3d_naive_omp(int N,double h,SPHparticle *lsph){
   return 0;
 }
 
+/*
+ *  Function w_bspline_3d:
+ *    Returns the normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       wq <double>          : Normalized value of the kernel
+ */
 double w_bspline_3d(double r,double h){
-  const double A_d = 3./(2.*M_PI*h*h*h);
-  double q=0.;
+  const double A_d = 3./(2.*M_PI*h*h*h);      // The 3d normalization constant 
+  double q=0.;                                // normalized distance, initialized to zero
   
-  if(r<0||h<=0.)
-    exit(10);
+  if(r<0||h<=0.)                              // If either distance or smoothing length
+    exit(10);                                 // are negative, declare an emergency
   
-  q = r/h;
-  if(q<=1)
-    return A_d*(2./3.-q*q + q*q*q/2.0);
-  else if((1.<=q)&&(q<2.))
-    return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);
-  else 
-    return 0.;
+  q = r/h;                                    // Compute the normalized distance
+  if(q<=1)                                    // If the distance is small
+    return A_d*(2./3.-q*q + q*q*q/2.0);       // Compute this first polynomal
+  else if((1.<=q)&&(q<2.))                    // If the distance is a bit larger
+    return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);  // Compute this other polynomial 
+  else                                        // Otherwise, if the distance is large
+    return 0.;                                // The value of the kernel is 0
 }
