@@ -123,7 +123,7 @@ int main(int argc, char **argv){
 
   if(dbg)
     printf("hello - 0\n");
-  err = SPHparticle_SoA_malloc(N,&lsph);                 // Create an arrays for the N particles
+  int err = SPHparticle_SoA_malloc(N,&lsph);                 // Create an arrays for the N particles
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");
 
