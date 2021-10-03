@@ -294,18 +294,23 @@ double w_bspline_3d_constant(double h){
  *       q <double>           : Distance between particles normalized by the smoothing length h
  *    Returns:
  *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
  */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){
-  double wq = 0.0;
+  double wq=0;
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
   if(q<2.)                                                         // If the distance is below 2
     wq = wq2;                                                      // Use the 2nd polynomial for the spline
-  // why not else if(q<1.)?
+  
   if(q<1.)                                                         // If the distance is below 1
     wq = wq1;                                                      // Use the 1st polynomial for the spline
-  
+
   return wq;                                                       // return which ever value corresponds to the distance
 }
