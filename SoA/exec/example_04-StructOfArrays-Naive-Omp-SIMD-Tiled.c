@@ -22,8 +22,8 @@
  *                      iteration.
  *                    Default value: 1
  *   -run_seed <int>: Flag to set an alternative seed use for
- *                      for the PNRG. Instead of feeding seed
- *                      to the PNRG directly, it feeds 
+ *                      for the PRNG. Instead of feeding seed
+ *                      to the PRNG directly, it feeds 
  *                      seed + iteration, as to generate different
  *                      configurations for each iteration. 
  *                    Default value: 0 - (possible 0/1)
@@ -32,7 +32,7 @@
  *                    Default value: 123123123
  *
  *   -N        <int>: Set the number of SPH particles to be used
- *                    Default value: 10000
+ *                    Default value: 1e4 i.e.: 10,000
  *   -h      <float>: Set the value of the smoothing kernel 
  *                      parameter h, which corresponds to half
  *                      of the support of the kernel. 
@@ -51,17 +51,17 @@
  *   -Ymin   <float>: Set the lower bound in the Y direction for 
  *                    the Cell Linked List box 
  *                      Default value: 0.0
- *   -Ymin   <float>: Set the lower bound in the Z direction for 
+ *   -Zmin   <float>: Set the lower bound in the Z direction for 
  *                      the Cell Linked List box 
  *                    Default value: 0.0
  * 
- *   -Xmax   <float>: Set the lower bound in the X direction for 
+ *   -Xmax   <float>: Set the upper bound in the X direction for 
  *                      the Cell Linked List box 
  *                    Default value: 1.0
- *   -Ymax   <float>: Set the lower bound in the Y direction for 
+ *   -Ymax   <float>: Set the upper bound in the Y direction for 
  *                      the Cell Linked List box 
  *                    Default value: 1.0
- *   -Zmax   <float>: Set the lower bound in the Z direction for 
+ *   -Zmax   <float>: Set the upper bound in the Z direction for 
  *                      the Cell Linked List box 
  *                    Default value: 1.0
  */
@@ -107,11 +107,11 @@ double w_bspline_3d_constant(double h);
 double w_bspline_3d_simd(double q);
 
 int main(int argc, char **argv){
-  bool run_seed = false;       // By default the behavior is is to use the same seed
+  bool run_seed = false;       // By default the behavior is to use the same seed
   int runs = 1;                // By default the main loop only runs once
   long int seed = 123123123;   // The default seed is 123123123
-  int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
-  double h=0.05;               // The default kernel smoothing length is h = 0.05
+  int64_t N = 100000;          // The default number of particles is N = 1e5 = 100,000
+  double h = 0.05;               // The default kernel smoothing length is h = 0.05
   linkedListBox *box;          // Uninitialized Box containing the cells for the cell linked list method
   SPHparticle *lsph;           // Uninitialized array of SPH particles
 
@@ -122,13 +122,13 @@ int main(int argc, char **argv){
                                                          // line arguments and override default values
 
   if(dbg)
-    printf("hello - 0\n");
+    printf("hello - 0\n");  // maybe verbose the values to check for arg_parse execution?
   int err = SPHparticle_SoA_malloc(N,&lsph);                 // Create an arrays for the N particles
   if(err)
-    printf("error in SPHparticle_SoA_malloc\n");
+    printf("error in SPHparticle_SoA_malloc\n");  // use fprintf to stderr?
 
   void *swap_arr = malloc(N*sizeof(double));
-  double times[runs][5];
+  double times[runs][5]; // 5 what? maybe use a #define to give it a name without compromising runtime
 
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
@@ -138,11 +138,11 @@ int main(int argc, char **argv){
   print_sph_particles_density("omp,simd,tiled",is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
-    printf("hello - 10\n");
+    printf("hello - 10\n"); // more meaninful message like "about to release runtime allocated memory"?
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);
   free(swap_arr);
-
+  // say goodbye if(dbg)?
   return 0;
 }
 
@@ -156,7 +156,7 @@ int main(int argc, char **argv){
  *       run_seed <bool>      : boolean defining whether to use run index for seed or not
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       seed <long int>      : seed for GSL PRNG to generate particle positions
  *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
  *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
  *       times <double>       : Array to store the computation timings to be updated
@@ -178,7 +178,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    printf("error in gen_unif_rdn_pos\n");
+    printf("error in gen_unif_rdn_pos\n"); // fprintf to stderr?
 
   if(dbg)
     printf("hello - 2\n");
@@ -194,7 +194,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
-
+  // remember coder why 5 or use define macro
   times[5*run+0] = t1-t0;
   times[5*run+1] =    0.;
   times[5*run+2] =    0.;
@@ -238,6 +238,7 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
   #pragma omp parallel for                                         // Run the iteration in Parallel
   for(int64_t ii=0;ii<N;ii+=1)                                     // Iterate 
     rho[ii] = 0.;                                                  // Pre-initialize the density to zero
+	// why not memset() this in serial?
 
   #pragma omp parallel for                                         // Run the iteration in i in parallel
   for(int64_t i=0;i<N;i+=STRIP){                                   // Breaking up the i and j iterations in blocks
@@ -246,7 +247,7 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
         double xii = x[ii];                                        // Load the position in X for ii
         double yii = y[ii];                                        // Load the position in Y for ii
         double zii = z[ii];                                        // Load the position in Z for ii
-        double rhoii = 0.0;                                        // Initialize partial density ii density to zero
+        double rhoii = 0.0;                                        // Initialize partial density ii to zero
 
         #pragma omp simd                                           // Hint at the compiler to vectorize this loop
         for(int64_t jj=j;jj < ((j+STRIP<N)?(j+STRIP):N); jj+=1 ){  // and iterate over the jj part of the block
@@ -295,16 +296,16 @@ double w_bspline_3d_constant(double h){
  *       wq <double>          : Unnormalized value of the kernel
  */
 #pragma omp declare simd
-double w_bspline_3d_simd(double q){                                // Use as input the normalized distance
+double w_bspline_3d_simd(double q){
   double wq = 0.0;
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
   if(q<2.)                                                         // If the distance is below 2
     wq = wq2;                                                      // Use the 2nd polynomial for the spline
-
+  // why not else if(q<1.)?
   if(q<1.)                                                         // If the distance is below 1
-    wq = wq1;                                                      // Use the 1nd polynomial for the spline
+    wq = wq1;                                                      // Use the 1st polynomial for the spline
   
   return wq;                                                       // return which ever value corresponds to the distance
 }
