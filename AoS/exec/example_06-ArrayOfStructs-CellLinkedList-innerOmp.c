@@ -123,8 +123,9 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = true;
-  print_time_stats("simple",is_cll,N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("simple",is_cll,N,h,seed,runs,lsph,box);
+  const char *prefix = "innerOmp";
+  print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");
@@ -226,7 +227,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
       rhoii += lsph[jj].nu*w_bspline_3d(q,h);
     }
-    lsph[ii].rho = rhoii;
+    lsph[ii].rho += rhoii;
   }
 
   return 0;

@@ -125,8 +125,9 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = false;
-  print_time_stats("omp,simd",is_cll,N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("simple",is_cll,N,h,seed,runs,lsph,box);
+  const char *prefix = "omp,simd";
+  print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");

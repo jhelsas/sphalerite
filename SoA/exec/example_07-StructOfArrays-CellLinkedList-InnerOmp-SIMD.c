@@ -393,12 +393,11 @@ double w_bspline_3d_simd(double q){
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
+  if(q<2.)                                                         // If the distance is below 2
+    wq = wq2;                                                      // Use the 2nd polynomial for the spline
   
   if(q<1.)                                                         // If the distance is below 1
     wq = wq1;                                                      // Use the 1st polynomial for the spline
-
-  if(q<2.)                                                         // If the distance is below 2
-    wq = wq2;                                                      // Use the 2nd polynomial for the spline
 
   return wq;                                                       // return which ever value corresponds to the distance
 }

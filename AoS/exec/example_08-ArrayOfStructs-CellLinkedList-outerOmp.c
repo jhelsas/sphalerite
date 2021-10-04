@@ -127,8 +127,9 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = true;
-  print_time_stats("simple",is_cll,N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("simple",is_cll,N,h,seed,runs,lsph,box);
+  const char *prefix = "outerOmp,SIMD";
+  print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
   if(dbg)
     printf("hello - 10\n");
@@ -233,27 +234,26 @@ int compute_density_3d_noomp(int64_t node_begin, int64_t node_end,
 
       rhoii += lsph[jj].nu*w_bspline_3d_simd(q);
     }
-    lsph[ii].rho = kernel_constant*rhoii;
+    lsph[ii].rho += kernel_constant*rhoii;
   }
 
   return 0;
 }
 
 int compute_density_3d_fns_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int64_t node_hash=-1,node_begin=0, node_end=0;
-  int64_t nb_begin= 0, nb_end = 0;
-  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
-
-  #pragma omp parallel for private(node_hash,node_begin,node_end,nb_begin,nb_end,nblist)
+  #pragma omp parallel for //private(node_hash,node_begin,node_end,nb_begin,nb_end,nblist)
   for (khiter_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    
+    int64_t node_hash=-1,node_begin=0, node_end=0;
+    int64_t nb_begin= 0, nb_end = 0;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+  
     if (kh_exist(box->hbegin, kbegin)){
       khiter_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
       node_hash = kh_key(box->hbegin, kbegin);
       node_begin = kh_value(box->hbegin, kbegin);
       node_end   = kh_value(box->hend, kend);
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)// this loop inside was the problem
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)  // this loop inside was the problem
         lsph[ii].rho = 0.0; 
 
       neighbour_hash_3d(node_hash,nblist,box->width,box);
@@ -272,21 +272,44 @@ int compute_density_3d_fns_outerOmp(int N, double h, SPHparticle *lsph, linkedLi
   return 0;
 }
 
-double w_bspline_3d_constant(double h){
-  return 3./(2.*M_PI*h*h*h);
+/*
+ *  Function w_bspline_3d_constant:
+ *    Returns the 3d normalization constant for the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       3d bspline normalization density <double>
+ */
+double w_bspline_3d_constant(double h){                            
+  return 3./(2.*M_PI*h*h*h);  // 3d normalization value for the b-spline kernel
 }
 
+/*
+ *  Function w_bspline_3d_simd:
+ *    Returns the un-normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles normalized by the smoothing length h
+ *    Returns:
+ *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
+ */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){
-  double wq = 0.0;
-  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
-  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  double wq=0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
-  if(q<2.)
-    wq = wq2;
+  if(q<2.)                                                         // If the distance is below 2
+    wq = wq2;                                                      // Use the 2nd polynomial for the spline
+  
+  if(q<1.)                                                         // If the distance is below 1
+    wq = wq1;                                                      // Use the 1st polynomial for the spline
 
-  if(q<1.)
-    wq = wq1;
-  
-  return wq;
+  return wq;                                                       // return which ever value corresponds to the distance
 }
