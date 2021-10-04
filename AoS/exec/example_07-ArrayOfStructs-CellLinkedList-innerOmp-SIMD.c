@@ -105,16 +105,19 @@ double w_bspline_3d_constant(double h);
 double w_bspline_3d_simd(double q);
 
 int main(int argc, char **argv){
-  bool run_seed = false;
-  int runs = 1;
-  long int seed = 123123123;
-  int64_t N = 100000;
-  double h=0.05;
-  linkedListBox *box;
-  SPHparticle *lsph;
+  bool run_seed = false;       // By default the behavior is is to use the same seed
+  int runs = 1,err;            // it only runs once
+  long int seed = 123123123;   // The default seed is 123123123
+  int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
+  double h=0.05;               // The default kernel smoothing length is h = 0.05
+  linkedListBox *box;          // Uninitialized Box containing the cells for the cell linked list method
+  SPHparticle *lsph;           // Uninitialized array of SPH particles
 
-  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);
+  box = (linkedListBox*)malloc(1*sizeof(linkedListBox)); // Create a box representing the entire 3d domain
+
+  // allow for command line customization of the run
+  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command line options
+                                                         // line arguments and override default values
 
   if(dbg)
     printf("hello - 0\n");
@@ -274,21 +277,44 @@ int compute_density_3d_fns_innerOmp(int N, double h, SPHparticle *lsph, linkedLi
   return 0;
 }
 
-double w_bspline_3d_constant(double h){
-  return 3./(2.*M_PI*h*h*h);
+/*
+ *  Function w_bspline_3d_constant:
+ *    Returns the 3d normalization constant for the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       3d bspline normalization density <double>
+ */
+double w_bspline_3d_constant(double h){                            
+  return 3./(2.*M_PI*h*h*h);  // 3d normalization value for the b-spline kernel
 }
 
+/*
+ *  Function w_bspline_3d_simd:
+ *    Returns the un-normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles normalized by the smoothing length h
+ *    Returns:
+ *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
+ */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){
-  double wq = 0.0;
-  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
-  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  double wq=0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
-  if(q<2.)
-    wq = wq2;
+  if(q<2.)                                                         // If the distance is below 2
+    wq = wq2;                                                      // Use the 2nd polynomial for the spline
+  
+  if(q<1.)                                                         // If the distance is below 1
+    wq = wq1;                                                      // Use the 1st polynomial for the spline
 
-  if(q<1.)
-    wq = wq1;
-  
-  return wq;
+  return wq;                                                       // return which ever value corresponds to the distance
 }

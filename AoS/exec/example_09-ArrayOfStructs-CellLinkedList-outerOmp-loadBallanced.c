@@ -113,20 +113,23 @@ int setup_box_pairs(linkedListBox *box,
                     int64_t *nb_begin,int64_t *nb_end);
 
 int main(int argc, char **argv){
-  bool run_seed = false;
-  int runs = 1;
-  long int seed = 123123123;
-  int64_t N = 100000;
-  double h=0.05;
-  linkedListBox *box;
-  SPHparticle *lsph;
+  bool run_seed = false;       // By default the behavior is is to use the same seed
+  int runs = 1,err;            // it only runs once
+  long int seed = 123123123;   // The default seed is 123123123
+  int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
+  double h=0.05;               // The default kernel smoothing length is h = 0.05
+  linkedListBox *box;          // Uninitialized Box containing the cells for the cell linked list method
+  SPHparticle *lsph;           // Uninitialized array of SPH particles
 
-  box = (linkedListBox*)malloc(1*sizeof(linkedListBox));
-  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);
+  box = (linkedListBox*)malloc(1*sizeof(linkedListBox)); // Create a box representing the entire 3d domain
+
+  // allow for command line customization of the run
+  arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command line options
+                                                         // line arguments and override default values
 
   if(dbg)
     printf("hello - 0\n");
-  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));
+  lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));    // Create an array of N particles
   
   void *swap_arr = malloc(N*sizeof(double));
   double times[runs][5];
@@ -148,6 +151,25 @@ int main(int argc, char **argv){
   return 0;
 }
 
+/*
+ *  Function main_loop:
+ *    Runs the main loop of the program, including the particle array generation, 
+ *    density calculation and the timings annotations.
+ * 
+ *    Arguments:
+ *       run <int>            : index (or value) or the present iteration
+ *       run_seed <bool>      : boolean defining whether to use run index for seed or not
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       times <double>       : Array to store the computation timings to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       times <double>       : Times is updated by reference
+ */
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
@@ -213,6 +235,34 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
+int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end;
+  int64_t max_box_pair_count = 0;
+
+  max_box_pair_count = count_box_pairs(box);
+  
+  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
+
+  for(int64_t ii=0;ii<N;ii+=1)
+    lsph[ii].rho = 0.0; 
+
+  #pragma omp parallel for 
+  for(size_t i=0;i<max_box_pair_count;i+=1)
+    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,lsph);
+  
+  free(node_begin); 
+  free(node_end);
+  free(nb_begin);
+  free(nb_end);
+
+  return 0;
+}
+
 int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
                                    int64_t nb_begin, int64_t nb_end,double h,
                                    SPHparticle *lsph)
@@ -249,51 +299,46 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
   return 0;
 }
 
-int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int64_t *node_begin,*node_end,*nb_begin,*nb_end;
-  int64_t max_box_pair_count = 0;
-
-  max_box_pair_count = count_box_pairs(box);
-  
-  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-
-  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
-
-  for(int64_t ii=0;ii<N;ii+=1)
-    lsph[ii].rho = 0.0; 
-
-  #pragma omp parallel for 
-  for(size_t i=0;i<max_box_pair_count;i+=1)
-    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,lsph);
-  
-  free(node_begin); 
-  free(node_end);
-  free(nb_begin);
-  free(nb_end);
-
-  return 0;
+/*
+ *  Function w_bspline_3d_constant:
+ *    Returns the 3d normalization constant for the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       3d bspline normalization density <double>
+ */
+double w_bspline_3d_constant(double h){                            
+  return 3./(2.*M_PI*h*h*h);  // 3d normalization value for the b-spline kernel
 }
 
-double w_bspline_3d_constant(double h){
-  return 3./(2.*M_PI*h*h*h);
-}
-
+/*
+ *  Function w_bspline_3d_simd:
+ *    Returns the un-normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles normalized by the smoothing length h
+ *    Returns:
+ *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
+ */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){
-  double wq = 0.0;
-  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);
-  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); 
+  double wq=0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
-  if(q<2.)
-    wq = wq2;
+  if(q<2.)                                                         // If the distance is below 2
+    wq = wq2;                                                      // Use the 2nd polynomial for the spline
+  
+  if(q<1.)                                                         // If the distance is below 1
+    wq = wq1;                                                      // Use the 1st polynomial for the spline
 
-  if(q<1.)
-    wq = wq1;
-  
-  return wq;
+  return wq;                                                       // return which ever value corresponds to the distance
 }
 
 int count_box_pairs(linkedListBox *box){

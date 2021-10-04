@@ -232,7 +232,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 }
 
 /*
- *  Function compute_density_3d_naive:
+ *  Function compute_density_3d_cll:
  *    Computes the SPH density from the particles using cell linked list 
  * 
  *    Arguments:
