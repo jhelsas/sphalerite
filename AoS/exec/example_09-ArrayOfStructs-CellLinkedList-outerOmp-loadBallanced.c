@@ -99,7 +99,7 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
                                    int64_t nb_begin, int64_t nb_end,double h,
                                    SPHparticle *lsph);
 
-int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box);
+int compute_density_3d_cll_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
 double w_bspline_3d_constant(double h);
 
@@ -210,7 +210,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t3 = omp_get_wtime();
 
-  err = compute_density_3d_fns_load_ballanced(N,h,lsph,box);
+  err = compute_density_3d_cll_load_ballanced(N,h,lsph,box);
   if(err)
     printf("error in compute_density_3d_innerOmp\n");
 
@@ -236,7 +236,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 }
 
 /*
- *  Function compute_density_3d_fns_load_ballanced:
+ *  Function compute_density_3d_cll_load_ballanced:
  *    Computes the SPH density from the particles using cell linked list with
  *    parallelization in the outer-most loop, iterating over the cells. It also
  *    
@@ -249,7 +249,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  *       0                    : error code returned
  *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
  */
-int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
+int compute_density_3d_cll_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;
   int64_t max_box_pair_count = 0;
 
