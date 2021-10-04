@@ -227,45 +227,11 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
-int compute_density_3d_noomp(int64_t node_begin, int64_t node_end,
-                             int64_t nb_begin, int64_t nb_end,double h,
-                             SPHparticle *lsph)
-{
-  const double inv_h = 1./h;
-  const double kernel_constant = w_bspline_3d_constant(h);
-
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){           // Iterate over the ii index of the chunk
-    double xii = lsph[ii].r.x;                            // Load the X component of the ii particle position
-    double yii = lsph[ii].r.y;                            // Load the Y component of the ii particle position
-    double zii = lsph[ii].r.z;                            // Load the Z component of the ii particle position
-    double rhoii = 0.0;                                   // Initialize the chunk contribution to density 
-   
-    #pragma omp simd reduction(+:rhoii)                   // Hint at the compiler to vectorize the inner most loop
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){             // Iterate over the each other particle in jj loop
-      double q = 0.;                                      // Initialize the distance
-
-      double xij = xii-lsph[jj].r.x;                      // Load and subtract jj particle's X position component
-      double yij = yii-lsph[jj].r.y;                      // Load and subtract jj particle's Y position component
-      double zij = zii-lsph[jj].r.z;                      // Load and subtract jj particle's Z position component
-
-      q += xij*xij;                                       // Add the jj contribution to the ii distance in X
-      q += yij*yij;                                       // Add the jj contribution to the ii distance in Y
-      q += zij*zij;                                       // Add the jj contribution to the ii distance in Z
-
-      q = sqrt(q)*inv_h;                                  // Sqrt to compute the normalized distance, measured in h
-
-      rhoii += lsph[jj].nu*w_bspline_3d_simd(q);          // Add up the contribution from the jj particle
-    }                                                     // to the intermediary density and then
-    lsph[ii].rho += kernel_constant*rhoii;                // add the intermediary density to the full density
-  }
-
-  return 0;
-}
-
 /*
  *  Function compute_density_3d_fns_outerOmp:
  *    Computes the SPH density from the particles using cell linked list with
- *    parallelization in the outer-most loop, iterating over the cells. 
+ *    parallelization in the outer-most loop, iterating over the cells. It also
+ *    
  * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
@@ -301,6 +267,57 @@ int compute_density_3d_fns_outerOmp(int N, double h, SPHparticle *lsph, linkedLi
         }
       }
     }
+  }
+
+  return 0;
+}
+
+/*
+ *  Function compute_density_3d_noomp:
+ *    Computes the SPH density contribution to the node_ cell from the nb_ cell. 
+ *    Vectorization in the inner-most loop
+ * 
+ *    Arguments:
+ *       node_begin <int64_t> : Begin index for the cell the contribution is made to
+ *       node_end   <int64_t> : End index for the cell the contribution is made to
+ *       nb_begin   <int64_t> : Begin index for the cell the contribution is made from
+ *       nb_end     <int64_t> : End index for the cell the contribution is made from
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
+int compute_density_3d_noomp(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             SPHparticle *lsph)
+{
+  const double inv_h = 1./h;
+  const double kernel_constant = w_bspline_3d_constant(h);
+
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){           // Iterate over the ii index of the chunk
+    double xii = lsph[ii].r.x;                            // Load the X component of the ii particle position
+    double yii = lsph[ii].r.y;                            // Load the Y component of the ii particle position
+    double zii = lsph[ii].r.z;                            // Load the Z component of the ii particle position
+    double rhoii = 0.0;                                   // Initialize the chunk contribution to density 
+   
+    #pragma omp simd reduction(+:rhoii)                   // Hint at the compiler to vectorize the inner most loop
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){             // Iterate over the each other particle in jj loop
+      double q = 0.;                                      // Initialize the distance
+
+      double xij = xii-lsph[jj].r.x;                      // Load and subtract jj particle's X position component
+      double yij = yii-lsph[jj].r.y;                      // Load and subtract jj particle's Y position component
+      double zij = zii-lsph[jj].r.z;                      // Load and subtract jj particle's Z position component
+
+      q += xij*xij;                                       // Add the jj contribution to the ii distance in X
+      q += yij*yij;                                       // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                                       // Add the jj contribution to the ii distance in Z
+
+      q = sqrt(q)*inv_h;                                  // Sqrt to compute the normalized distance, measured in h
+
+      rhoii += lsph[jj].nu*w_bspline_3d_simd(q);          // Add up the contribution from the jj particle
+    }                                                     // to the intermediary density and then
+    lsph[ii].rho += kernel_constant*rhoii;                // add the intermediary density to the full density
   }
 
   return 0;

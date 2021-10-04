@@ -139,6 +139,25 @@ int main(int argc, char **argv){
   return 0;
 }
 
+/*
+ *  Function main_loop:
+ *    Runs the main loop of the program, including the particle array generation, 
+ *    density calculation and the timings annotations.
+ * 
+ *    Arguments:
+ *       run <int>            : index (or value) or the present iteration
+ *       run_seed <bool>      : boolean defining whether to use run index for seed or not
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       times <double>       : Array to store the computation timings to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       times <double>       : Times is updated by reference
+ */
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
@@ -204,6 +223,23 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
+/*
+ *  Function compute_density_3d_chunk:
+ *    Computes the SPH density contribution to the node_ cell from the nb_ cell. 
+ *    Parallelization happens at the node_ iteration, this function's outer-most loop, 
+ *    and no 
+ * 
+ *    Arguments:
+ *       node_begin <int64_t> : Begin index for the cell the contribution is made to
+ *       node_end   <int64_t> : End index for the cell the contribution is made to
+ *       nb_begin   <int64_t> : Begin index for the cell the contribution is made from
+ *       nb_end     <int64_t> : End index for the cell the contribution is made from
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              int64_t nb_begin, int64_t nb_end,double h,
                              SPHparticle *lsph)
@@ -235,6 +271,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
   return 0;
 }
+
 /*
  *  Function compute_density_3d_cll_innerOmp:
  *    Computes the SPH density from the particles naively

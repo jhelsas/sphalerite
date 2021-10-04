@@ -235,6 +235,20 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
+/*
+ *  Function compute_density_3d_fns_load_ballanced:
+ *    Computes the SPH density from the particles using cell linked list with
+ *    parallelization in the outer-most loop, iterating over the cells. It also
+ *    
+ * 
+ *    Arguments:
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;
   int64_t max_box_pair_count = 0;
@@ -263,6 +277,22 @@ int compute_density_3d_fns_load_ballanced(int N, double h, SPHparticle *lsph, li
   return 0;
 }
 
+/*
+ *  Function compute_density_3d_noomp:
+ *    Computes the SPH density contribution to the node_ cell from the nb_ cell. 
+ *    Vectorization in the inner-most loop
+ * 
+ *    Arguments:
+ *       node_begin <int64_t> : Begin index for the cell the contribution is made to
+ *       node_end   <int64_t> : End index for the cell the contribution is made to
+ *       nb_begin   <int64_t> : Begin index for the cell the contribution is made from
+ *       nb_end     <int64_t> : End index for the cell the contribution is made from
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
                                    int64_t nb_begin, int64_t nb_end,double h,
                                    SPHparticle *lsph)
