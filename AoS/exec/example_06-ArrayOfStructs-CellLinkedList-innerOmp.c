@@ -224,55 +224,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 }
 
 /*
- *  Function compute_density_3d_chunk:
- *    Computes the SPH density contribution to the node_ cell from the nb_ cell. 
- *    Parallelization happens at the node_ iteration, this function's outer-most loop, 
- *    and no 
- * 
- *    Arguments:
- *       node_begin <int64_t> : Begin index for the cell the contribution is made to
- *       node_end   <int64_t> : End index for the cell the contribution is made to
- *       nb_begin   <int64_t> : Begin index for the cell the contribution is made from
- *       nb_end     <int64_t> : End index for the cell the contribution is made from
- *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
- *    Returns:
- *       0                    : error code returned
- *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
- */
-int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
-                             int64_t nb_begin, int64_t nb_end,double h,
-                             SPHparticle *lsph)
-{
-  #pragma omp parallel for
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = lsph[ii].r.x;
-    double yii = lsph[ii].r.y;
-    double zii = lsph[ii].r.z;
-    double rhoii = 0.0;
-   
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
-
-      double xij = xii-lsph[jj].r.x;
-      double yij = yii-lsph[jj].r.y;
-      double zij = zii-lsph[jj].r.z;  
-
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
-
-      q = sqrt(q);
-
-      rhoii += lsph[jj].nu*w_bspline_3d(q,h);
-    }
-    lsph[ii].rho += rhoii;
-  }
-
-  return 0;
-}
-
-/*
  *  Function compute_density_3d_cll_innerOmp:
  *    Computes the SPH density from the particles naively
  * 
@@ -311,6 +262,58 @@ int compute_density_3d_cll_innerOmp(int N, double h, SPHparticle *lsph, linkedLi
         }
       }
     }
+  }
+
+  return 0;
+}
+
+/*
+ *  Function compute_density_3d_chunk:
+ *    Computes the SPH density contribution for a pair of cells, from nb_ indexes
+ *    to the node_ indexes. The computation is performed in parallel at the 
+ *    level of the node_ index, the outer-most, but without vectorization.
+ * 
+ *    Arguments:
+ *       node_begin <int>     : Begin index of the receiver cell
+ *       node_end   <int>     : End   index of the receiver cell
+ *       nb_begin <int>       : Begin index of the sender (neighbor) cell
+ *       nb_end   <int>       : End   index of the sender (neighbor) cell
+ *       h       <double>     : Smoothing Length for the Smoothing Kernel w_bspline
+ *       x       <double*>    : Array of particle's X positions
+ *       y       <double*>    : Array of particle's Y positions
+ *       z       <double*>    : Array of particle's Z positions
+ *       nu      <double*>    : Array of particle's density weights (i.e. masses)
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle*>  : SPH particle array is updated in the rho field by reference
+ */
+int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
+                             int64_t nb_begin, int64_t nb_end,double h,
+                             SPHparticle *lsph)
+{
+  #pragma omp parallel for
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){
+    double xii = lsph[ii].r.x;
+    double yii = lsph[ii].r.y;
+    double zii = lsph[ii].r.z;
+    double rhoii = 0.0;
+   
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
+      double q = 0.;
+
+      double xij = xii-lsph[jj].r.x;
+      double yij = yii-lsph[jj].r.y;
+      double zij = zii-lsph[jj].r.z;  
+
+      q += xij*xij;
+      q += yij*yij;
+      q += zij*zij;
+
+      q = sqrt(q);
+
+      rhoii += lsph[jj].nu*w_bspline_3d(q,h);
+    }
+    lsph[ii].rho += rhoii;
   }
 
   return 0;

@@ -91,8 +91,6 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define dbg false
-
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -111,7 +109,7 @@ int main(int argc, char **argv){
   int runs = 1;                // By default the main loop only runs once
   long int seed = 123123123;   // The default seed is 123123123
   int64_t N = 100000;          // The default number of particles is N = 1e5 = 100,000
-  double h = 0.05;               // The default kernel smoothing length is h = 0.05
+  double h = 0.05;             // The default kernel smoothing length is h = 0.05
   linkedListBox *box;          // Uninitialized Box containing the cells for the cell linked list method
   SPHparticle *lsph;           // Uninitialized array of SPH particles
 
@@ -120,10 +118,7 @@ int main(int argc, char **argv){
   // allow for command line customization of the run
   arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command line options
                                                          // line arguments and override default values
-
-  if(dbg)
-    printf("hello - 0\n");  // maybe verbose the values to check for arg_parse execution?
-  int err = SPHparticle_SoA_malloc(N,&lsph);                 // Create an arrays for the N particles
+  int err = SPHparticle_SoA_malloc(N,&lsph);             // Create an arrays for the N particles
   if(err)
     printf("error in SPHparticle_SoA_malloc\n");  // use fprintf to stderr?
 
@@ -137,8 +132,6 @@ int main(int argc, char **argv){
   print_time_stats("omp,simd,tiled",is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density("omp,simd,tiled",is_cll,N,h,seed,runs,lsph,box);
 
-  if(dbg)
-    printf("hello - 10\n"); // more meaninful message like "about to release runtime allocated memory"?
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);
   free(swap_arr);
@@ -169,8 +162,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
   int err;
-  if(dbg)
-    printf("hello - 1\n");
     
   if(run_seed)
     err = gen_unif_rdn_pos_box(N,seed+run,box,lsph);
@@ -180,22 +171,21 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   if(err)
     printf("error in gen_unif_rdn_pos\n"); // fprintf to stderr?
 
-  if(dbg)
-    printf("hello - 2\n");
-
+  
   // ------------------------------------------------------ //
 
   double t0,t1;
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp_simd_tiled(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+  compute_density_3d_naive_omp_simd_tiled(N,h,lsph->x,lsph->y,      // Compute the density for all particles
+                                              lsph->z,lsph->nu,lsph->rho);
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
   // remember coder why 5 or use define macro
-  times[5*run+0] = t1-t0;
+  times[5*run+0] = t1-t0;                  // Only one component to measure time
   times[5*run+1] =    0.;
   times[5*run+2] =    0.;
   times[5*run+3] =    0.;
@@ -301,7 +291,7 @@ double w_bspline_3d_constant(double h){
  *       This results in a large slowdown, as of 2.5x slower for example_04
  */
 #pragma omp declare simd
-double w_bspline_3d_simd(double q){
+double w_bspline_3d_simd(double q){                                // Use as input the normalized distance
   double wq=0;
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline

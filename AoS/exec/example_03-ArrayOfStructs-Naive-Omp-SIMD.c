@@ -101,7 +101,7 @@ double w_bspline_3d_simd(double q);
 
 int main(int argc, char **argv){
   bool run_seed = false;       // By default the behavior is is to use the same seed
-  int runs = 1;                // it only runs once
+  int err,runs = 1;            // it only runs once
   long int seed = 123123123;   // The default seed is 123123123
   int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
   double h=0.05;               // The default kernel smoothing length is h = 0.05
@@ -223,15 +223,15 @@ int compute_density_3d_naive_omp_simd(int N,double h,SPHparticle *lsph){
     double xii = lsph[ii].r.x;                                 // Load the position in X for ii
     double yii = lsph[ii].r.y;                                 // Load the position in Y for ii
     double zii = lsph[ii].r.z;                                 // Load the position in Z for ii
-    double rhoii = 0.0;                                        // Initialize partial density ii density to zero
+    double rhoii = 0.0;                                        // Initialize partial ii density to zero
     
     #pragma omp simd                                           // Hint at the compiler to vectorize this loop
     for(int64_t jj=0;jj<N;jj+=1){                              // and iterate over the jj part of the block
       double q = 0.;                                           // initialize the distance variable
 
-      double xij = xii-lsph[jj].r.x;                           // Load the position in X for jj
-      double yij = yii-lsph[jj].r.y;                           // Load the position in Y for jj
-      double zij = zii-lsph[jj].r.z;                           // Load the position in Z for jj
+      double xij = xii-lsph[jj].r.x;                           // Load and subtract the position in X for jj
+      double yij = yii-lsph[jj].r.y;                           // Load and subtract the position in Y for jj
+      double zij = zii-lsph[jj].r.z;                           // Load and subtract the position in Z for jj
 
       q += xij*xij;                                            // Add the jj contribution to the ii distance in X
       q += yij*yij;                                            // Add the jj contribution to the ii distance in Y
@@ -241,7 +241,7 @@ int compute_density_3d_naive_omp_simd(int N,double h,SPHparticle *lsph){
 
       rhoii += lsph[jj].nu*w_bspline_3d_simd(q);               // Add up the contribution from the jj particle
     }                                                          // to the intermediary density and then
-    lsph[ii].rho += kernel_constant*rhoii;                     // add the intermediary density to the full density
+    lsph[ii].rho = kernel_constant*rhoii;                      // set the intermediary density to the full density
   }
 
   return 0;
@@ -268,6 +268,11 @@ double w_bspline_3d_constant(double h){
  *       q <double>           : Distance between particles normalized by the smoothing length h
  *    Returns:
  *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
  */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){                                // Use as input the normalized distance

@@ -97,7 +97,7 @@ double w_bspline_3d(double r,double h);
 
 int main(int argc, char **argv){
   bool run_seed = false;       // By default the behavior is is to use the same seed
-  int runs = 1;                // it only runs once
+  int runs = 1,err;            // it only runs once
   long int seed = 123123123;   // The default seed is 123123123
   int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
   double h=0.05;               // The default kernel smoothing length is h = 0.05
@@ -196,7 +196,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   return 0;
 }
-
 
 /*
  *  Function compute_density_3d_naive_omp:

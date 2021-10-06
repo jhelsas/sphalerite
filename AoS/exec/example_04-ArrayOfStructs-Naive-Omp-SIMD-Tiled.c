@@ -91,8 +91,6 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define dbg false
-
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -105,7 +103,7 @@ double w_bspline_3d_simd(double q);
 
 int main(int argc, char **argv){
   bool run_seed = false;       // By default the behavior is is to use the same seed
-  int runs = 1;                // By default the main loop only runs once
+  int err, runs = 1;           // By default the main loop only runs once
   long int seed = 123123123;   // The default seed is 123123123
   int64_t N = 100000;          // The default number of particles is N = 100000 = 10^5
   double h=0.05;               // The default kernel smoothing length is h = 0.05
@@ -117,9 +115,6 @@ int main(int argc, char **argv){
   // allow for command line customization of the run
   arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command line options
                                                          // line arguments and override default values
-
-  if(dbg)
-    printf("hello - 0\n");
   lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));    // Create an array of N particles
   
   double times[runs][5];
@@ -132,8 +127,6 @@ int main(int argc, char **argv){
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
-  if(dbg)
-    printf("hello - 10\n");
   free(lsph);
   safe_free_box(box);
 
@@ -150,7 +143,7 @@ int main(int argc, char **argv){
  *       run_seed <bool>      : boolean defining whether to use run index for seed or not
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       seed <long int>      : seed for GSL PRNG generator to generate particle positions
  *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
  *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
  *       times <double>       : Array to store the computation timings to be updated
@@ -163,8 +156,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
               linkedListBox *box, SPHparticle *lsph, double *times)
 {
   int err;
-  if(dbg)
-    printf("hello - 1\n");
     
   if(run_seed)
     err = gen_unif_rdn_pos_box(N,seed+run,box,lsph);
@@ -173,9 +164,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   if(err)
     printf("error in gen_unif_rdn_pos\n");
-
-  if(dbg)
-    printf("hello - 2\n");
 
   // ------------------------------------------------------ //
 
@@ -282,6 +270,11 @@ double w_bspline_3d_constant(double h){
  *       q <double>           : Distance between particles normalized by the smoothing length h
  *    Returns:
  *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
  */
 #pragma omp declare simd
 double w_bspline_3d_simd(double q){                                // Use as input the normalized distance
