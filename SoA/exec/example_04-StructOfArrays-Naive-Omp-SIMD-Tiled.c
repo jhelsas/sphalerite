@@ -191,10 +191,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   times[5*run+3] =    0.;
   times[5*run+4] =    0.;
 
-  if(dbg){
-    printf("compute_density_3d SoA naive omp simd tiled calc time : %lf s \n",t1-t0);
-  }
-
+  
   return 0;
 }
 /*

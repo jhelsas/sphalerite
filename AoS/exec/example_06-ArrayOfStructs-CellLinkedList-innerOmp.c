@@ -206,11 +206,11 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   // ------------------------------------------------------ //
 
-  times[5*run+0] = t1-t0;
-  times[5*run+1] = t2-t1;
-  times[5*run+2] = t3-t2;
-  times[5*run+3] = t4-t3;
-  times[5*run+4] =    0.;
+  times[5*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
+  times[5*run+1] = t2-t1;                                 // Time for sorting the particles
+  times[5*run+2] = t3-t2;                                 // Time for setting up the interval hash tables
+  times[5*run+3] = t4-t3;                                 // Time for computing the SPH particle densities
+  times[5*run+4] =    0.;                                       
 
   if(dbg){
     printf("compute_hash_MC3D          : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t4-t0));

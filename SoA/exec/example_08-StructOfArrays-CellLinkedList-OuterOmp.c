@@ -149,6 +149,25 @@ int main(int argc, char **argv){
   return 0;
 }
 
+/*
+ *  Function main_loop:
+ *    Runs the main loop of the program, including the particle array generation, 
+ *    density calculation and the timings annotations.
+ * 
+ *    Arguments:
+ *       run <int>            : index (or value) or the present iteration
+ *       run_seed <bool>      : boolean defining whether to use run index for seed or not
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       times <double>       : Array to store the computation timings to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       times <double>       : Times is updated by reference
+ */
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
@@ -173,52 +192,41 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
 
-  err = compute_hash_MC3D(N,lsph,box);
-
-  // ------------------------------------------------------ //
+  err = compute_hash_MC3D(N,lsph,box);                    // Compute Morton Z 3D hash based on the 
+  if(err)                                                 // cell index for each of the X, Y and Z 
+    printf("error in compute_hash_MC3D\n");               // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);
-
-  // ------------------------------------------------------ //
-  
+  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);  // Sort the Particle Hash Hashes, getting the shuffled
+                                                          // index necessary to re-shuffle the remaining arrays
   t2 = omp_get_wtime();
 
-  err = reorder_lsph_SoA(N,lsph,swap_arr);
-  if(err)
-    printf("error in reorder_lsph_SoA\n");
-
-  // ------------------------------------------------------ //
+  err = reorder_lsph_SoA(N,lsph,swap_arr);                // Reorder all arrays according to the sorted hash,
+  if(err)                                                 // As to have a quick way to retrieve a cell 
+    printf("error in reorder_lsph_SoA\n");                // given its hash. 
 
   t3 = omp_get_wtime();
 
-  if(dbg)
-    printf("hello - 6\n");
-  err = setup_interval_hashtables(N,lsph,box);
-  if(err)
-    printf("error in setup_interval_hashtables\n");
-
-  // ------------------------------------------------------ //
+  err = setup_interval_hashtables(N,lsph,box);            // Annotate the begining and end of each cell
+  if(err)                                                 // on the cell linked list method for fast
+    printf("error in setup_interval_hashtables\n");       // neighbor search
 
   t4 = omp_get_wtime();
 
-  if(dbg)
-    printf("hello - 7\n");
-
-  err = compute_density_3d_outerOmp(N,h,lsph,box);
-  if(err)
-    printf("error in compute_density\n");
+  err = compute_density_3d_outerOmp(N,h,lsph,box);        // Compute the density of the particles based
+  if(err)                                                 // on the cell linked list method for fast
+    printf("error in compute_density\n");                 // neighbor search
 
   // ------------------------------------------------------ //
 
   t5 = omp_get_wtime();
 
-  times[5*run+0] = t1-t0;
-  times[5*run+1] = t2-t1;
-  times[5*run+2] = t3-t2;
-  times[5*run+3] = t4-t3;
-  times[5*run+4] = t5-t4;
+  times[5*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
+  times[5*run+1] = t2-t1;                                 // Time for sorting the particles' hashes
+  times[5*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
+  times[5*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
+  times[5*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
 
   if(dbg){
     printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
@@ -233,33 +241,46 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   return 0;
 }
 
+/*
+ *  Function compute_density_3d_outerOmp:
+ *    Computes the SPH density from the particles using cell linked list, 
+ *    with parallelization at the level of the outer-most loop of this function, 
+ *    i.e. at the cell level, and vectorization in the inner-most loop of the 
+ *    chunk calculation. 
+ * 
+ *    Arguments:
+ *       N <int>              : Number of SPH particles to be used in the run
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  #pragma omp parallel for 
-  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    int64_t node_hash=-1,node_begin=0, node_end=0;
-    int64_t nb_begin= 0, nb_end = 0;
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+  #pragma omp parallel for                                                                 // Execute the iteration in parallel
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){ // Iterate over each receiver cell begin index 
+    int64_t node_hash=-1,node_begin=0, node_end=0;                                         // Start initializing the node indexes on the array 
+    int64_t nb_begin= 0, nb_end = 0;                                                       // initialize the neighbor indexes 
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];                    // prepare a list of potential neighbor hashes
 
-    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
-      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+    if (kh_exist(box->hbegin, kbegin)){                                                    // verify if that given iterator actually exists
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));                  // Then get the end of the receiver cell iterator
 
-      node_hash = kh_key(box->hbegin, kbegin);
-      node_begin = kh_value(box->hbegin, kbegin);
-      node_end   = kh_value(box->hend, kend);
+      node_hash = kh_key(box->hbegin, kbegin);                                             // Then get the hash corresponding to it
+      node_begin = kh_value(box->hbegin, kbegin);                                          // Get the receiver cell begin index in the array
+      node_end   = kh_value(box->hend, kend);                                              // Get the receiver cell end index in the array
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1)
-        lsph->rho[ii] = 0.0; 
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)                                         // iterate over the receiver cell particles
+        lsph->rho[ii] = 0.0;                                                               // and initialize its densities to zero 
 
-      neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-        if(nblist[j]>=0){
-          //nb_hash  = nblist[j];
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                                  // then find the hashes of its neighbors 
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){              // and the iterate over them
+        if(nblist[j]>=0){                                                                  // if a given neighbor actually has particles
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );            // then get the contributing cell begin index
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );            // and get the contributing cell end index 
 
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,
-                                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);
+          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,            // and compute the density contribution from 
+                                         lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);      // the contributing cell to the receiver cell
         }
       }
     }
@@ -267,7 +288,26 @@ int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBo
 
   return 0;
 }
-
+/*
+ *  Function compute_density_3d_chunk_noomp:
+ *    Computes the SPH density contribution for a pair of cells, from nb_ indexes
+ *    to the node_ indexes. No parallelization is performed  with vectorization 
+ *    performed in the inner loop.
+ * 
+ *    Arguments:
+ *       node_begin <int>     : Begin index of the receiver cell
+ *       node_end   <int>     : End   index of the receiver cell
+ *       nb_begin <int>       : Begin index of the sender (neighbor) cell
+ *       nb_end   <int>       : End   index of the sender (neighbor) cell
+ *       h       <double>     : Smoothing Length for the Smoothing Kernel w_bspline
+ *       x       <double*>    : Array of particle's X positions
+ *       y       <double*>    : Array of particle's Y positions
+ *       z       <double*>    : Array of particle's Z positions
+ *       nu      <double*>    : Array of particle's density weights (i.e. masses)
+ *    Returns:
+ *       0                    : error code returned
+ *       lsph <SPHparticle*>  : SPH particle array is updated in the rho field by reference
+ */
 int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
                                    int64_t nb_begin, int64_t nb_end,double h,
                                    double* restrict x, double* restrict y,
@@ -276,88 +316,32 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
-    double rhoii = 0.0;
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){           // Iterate over the ii index of the chunk
+    double xii = x[ii];                                   // Load the X component of the ii particle position
+    double yii = y[ii];                                   // Load the Y component of the ii particle position
+    double zii = z[ii];                                   // Load the Z component of the ii particle position
+    double rhoii = 0.0;                                   // Initialize the chunk contribution to density 
    
-    #pragma omp simd reduction(+:rhoii) 
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
+    #pragma omp simd reduction(+:rhoii)                   // Hint at the compiler to vectorize
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){             // Iterate over the each other particle in jj loop
+      double q = 0.;                                      // Initialize the distance
 
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
+      double xij = xii-x[jj];                             // Load and subtract jj particle's X position component
+      double yij = yii-y[jj];                             // Load and subtract jj particle's Y position component
+      double zij = zii-z[jj];                             // Load and subtract jj particle's Z position component
 
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
+      q += xij*xij;                                       // Add the jj contribution to the ii distance in X
+      q += yij*yij;                                       // Add the jj contribution to the ii distance in X
+      q += zij*zij;                                       // Add the jj contribution to the ii distance in X
 
-      q = sqrt(q)*inv_h;
+      q = sqrt(q)*inv_h;                                  // Sqrt to compute the distance
 
-      rhoii += nu[jj]*w_bspline_3d_simd(q);
-    }
-    rho[ii] += rhoii*kernel_constant;
+      rhoii += nu[jj]*w_bspline_3d_simd(q);               // Add up the contribution from the jj particle
+    }                                                     // to the intermediary density and then
+    rho[ii] += rhoii*kernel_constant;                     // add the intermediary density to the full density
   }
 
   return 0;
-}
-
-int count_box_pairs(linkedListBox *box){
-  int64_t box_pair_count = 0;
-
-  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    int64_t node_hash=-1;
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
-
-    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
-      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-
-      node_hash  = kh_key(box->hbegin, kbegin);
-      
-      neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-        if(nblist[j]>=0){
-          box_pair_count += 1;
-        }
-      }
-    }
-  }
-  
-  return box_pair_count;
-}
-
-int setup_box_pairs(linkedListBox *box,
-                    int64_t *node_begin,int64_t *node_end,
-                    int64_t *nb_begin,int64_t *nb_end)
-{
-  int64_t box_pair_count = 0;
-
-  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    int64_t node_hash=-1;
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
-
-    if (kh_exist(box->hbegin, kbegin)){ 
-      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-
-      node_hash = kh_key(box->hbegin, kbegin);
-
-      neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-        if(nblist[j]>=0){
-          node_begin[box_pair_count] = kh_value(box->hbegin, kbegin);
-          node_end[box_pair_count]   = kh_value(box->hend, kend);
-          nb_begin[box_pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end[box_pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
-
-          box_pair_count += 1;
-        }
-      }
-    }
-  }
-
-  return box_pair_count;
 }
 
 /*

@@ -194,34 +194,34 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
 
-  err = compute_hash_MC3D(N,lsph,box);
-  if(err)
-    printf("error in compute_hash_MC3D\n");
+  err = compute_hash_MC3D(N,lsph,box);                       // Compute Morton Z 3D hash based on the 
+  if(err)                                                    // cell index for each of the X, Y and Z 
+    printf("error in compute_hash_MC3D\n");                  // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
-  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);
-  
+  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);     // Sort Particle Array according to hash, therefore
+                                                             // implicitly creating a cell of particles of same hash
   t2 = omp_get_wtime();
 
-  err = setup_interval_hashtables(N,lsph,box);
-  if(err)
-    printf("error in setup_interval_hashtables\n");
+  err = setup_interval_hashtables(N,lsph,box);               // Annotate the begining and end of each cell
+  if(err)                                                    // As to have a quick way to retrieve a cell 
+    printf("error in setup_interval_hashtables\n");          // given its hash . 
 
   t3 = omp_get_wtime();
 
-  err = compute_density_3d_cll_load_ballanced(N,h,lsph,box);
-  if(err)
-    printf("error in compute_density_3d_innerOmp\n");
+  err = compute_density_3d_cll_load_ballanced(N,h,lsph,box); // Compute the density of the particles based
+  if(err)                                                    // on the cell linked list method for fast
+    printf("error in compute_density_3d_innerOmp\n");        // neighbor search. 
 
   t4 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[5*run+0] = t1-t0;
-  times[5*run+1] = t2-t1;
-  times[5*run+2] = t3-t2;
-  times[5*run+3] = t4-t3;
+  times[5*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
+  times[5*run+1] = t2-t1;                                 // Time for sorting the particles
+  times[5*run+2] = t3-t2;                                 // Time for setting up the interval hash tables
+  times[5*run+3] = t4-t3;                                 // Time for computing the SPH particle densities
   times[5*run+4] =    0.;
 
   if(dbg){
@@ -253,21 +253,23 @@ int compute_density_3d_cll_load_ballanced(int N, double h, SPHparticle *lsph, li
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;
   int64_t max_box_pair_count = 0;
 
-  max_box_pair_count = count_box_pairs(box);
+  max_box_pair_count = count_box_pairs(box);                          // Count the number of cell pairs
   
-  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
-  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));
+  node_begin = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate node_begin accordingly
+  node_end   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate node_end   accordingly
+  nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate nb_begin   accordingly
+  nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate nb_end     accordingly
 
-  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // Then set the values for these
+                                                                      // arrays beforehand 
 
-  for(int64_t ii=0;ii<N;ii+=1)
-    lsph[ii].rho = 0.0; 
+  for(int64_t ii=0;ii<N;ii+=1)                                        // iterate over all particles and 
+    lsph[ii].rho = 0.0;                                               // initialize all densities to zero
 
-  #pragma omp parallel for 
-  for(size_t i=0;i<max_box_pair_count;i+=1)
-    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],nb_begin[i],nb_end[i],h,lsph);
+  #pragma omp parallel for                                            // iterate in parallel over the 
+  for(size_t i=0;i<max_box_pair_count;i+=1)                           // array of cell pairs 
+    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],         // then compute the contributions
+                                   nb_begin[i],nb_end[i],h,lsph);     // for each pair. 
   
   free(node_begin); 
   free(node_end);
@@ -300,75 +302,32 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
   const double inv_h = 1./h;
   const double kernel_constant = w_bspline_3d_constant(h);
 
-  
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = lsph[ii].r.x;
-    double yii = lsph[ii].r.y;
-    double zii = lsph[ii].r.z;
-    double rhoii = 0.0;
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){  // Iterate over the ii index of the chunk
+    double xii = lsph[ii].r.x;                   // Load the X component of the ii particle position
+    double yii = lsph[ii].r.y;                   // Load the Y component of the ii particle position
+    double zii = lsph[ii].r.z;                   // Load the Z component of the ii particle position
+    double rhoii = 0.0;                          // Initialize the chunk contribution to density 
    
-    #pragma omp simd reduction(+:rhoii)
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
+    #pragma omp simd reduction(+:rhoii)          // Hint at the compiler to vectorize
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){    // Iterate over the each other particle in jj loop
+      double q = 0.;                             // Initialize the distance
 
-      double xij = xii-lsph[jj].r.x;
-      double yij = yii-lsph[jj].r.y;
-      double zij = zii-lsph[jj].r.z;  
+      double xij = xii-lsph[jj].r.x;             // Load and subtract jj particle's X position component
+      double yij = yii-lsph[jj].r.y;             // Load and subtract jj particle's X position component
+      double zij = zii-lsph[jj].r.z;             // Load and subtract jj particle's X position component
 
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
+      q += xij*xij;                              // Add the jj contribution to the ii distance in X
+      q += yij*yij;                              // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                              // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q)*inv_h;
+      q = sqrt(q)*inv_h;                         // Sqrt to compute the distance
 
-      rhoii += lsph[jj].nu*w_bspline_3d_simd(q);
-    }
-    lsph[ii].rho += kernel_constant*rhoii;
+      rhoii += lsph[jj].nu*w_bspline_3d_simd(q); // Add up the contribution from the jj particle
+    }                                            // to the intermediary density and then
+    lsph[ii].rho += kernel_constant*rhoii;       // add the intermediary density to the full density
   }
 
   return 0;
-}
-
-/*
- *  Function w_bspline_3d_constant:
- *    Returns the 3d normalization constant for the cubic b-spline SPH smoothing kernel
- *    
- *    Arguments:
- *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *    Returns:
- *       3d bspline normalization density <double>
- */
-double w_bspline_3d_constant(double h){                            
-  return 3./(2.*M_PI*h*h*h);  // 3d normalization value for the b-spline kernel
-}
-
-/*
- *  Function w_bspline_3d_simd:
- *    Returns the un-normalized value of the cubic b-spline SPH smoothing kernel
- *    
- *    Arguments:
- *       q <double>           : Distance between particles normalized by the smoothing length h
- *    Returns:
- *       wq <double>          : Unnormalized value of the kernel
- * 
- *    Observation: 
- *       Why not else if(q<2.)? 
- *       Because if you use "else if", the compiler refuses to vectorize, 
- *       This results in a large slowdown, as of 2.5x slower for example_04
- */
-#pragma omp declare simd
-double w_bspline_3d_simd(double q){
-  double wq=0;
-  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
-  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
-  
-  if(q<2.)                                                         // If the distance is below 2
-    wq = wq2;                                                      // Use the 2nd polynomial for the spline
-  
-  if(q<1.)                                                         // If the distance is below 1
-    wq = wq1;                                                      // Use the 1st polynomial for the spline
-
-  return wq;                                                       // return which ever value corresponds to the distance
 }
 
 int count_box_pairs(linkedListBox *box){
@@ -431,4 +390,46 @@ int setup_box_pairs(linkedListBox *box,
   }
 
   return box_pair_count;
+}
+
+/*
+ *  Function w_bspline_3d_constant:
+ *    Returns the 3d normalization constant for the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
+ *    Returns:
+ *       3d bspline normalization density <double>
+ */
+double w_bspline_3d_constant(double h){                            
+  return 3./(2.*M_PI*h*h*h);  // 3d normalization value for the b-spline kernel
+}
+
+/*
+ *  Function w_bspline_3d_simd:
+ *    Returns the un-normalized value of the cubic b-spline SPH smoothing kernel
+ *    
+ *    Arguments:
+ *       q <double>           : Distance between particles normalized by the smoothing length h
+ *    Returns:
+ *       wq <double>          : Unnormalized value of the kernel
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
+ */
+#pragma omp declare simd
+double w_bspline_3d_simd(double q){
+  double wq=0;
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
+  
+  if(q<2.)                                                         // If the distance is below 2
+    wq = wq2;                                                      // Use the 2nd polynomial for the spline
+  
+  if(q<1.)                                                         // If the distance is below 1
+    wq = wq1;                                                      // Use the 1st polynomial for the spline
+
+  return wq;                                                       // return which ever value corresponds to the distance
 }

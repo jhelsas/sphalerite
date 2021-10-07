@@ -313,6 +313,101 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 	return 0;
 }
 
+int count_box_pairs(linkedListBox *box){
+  int64_t pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ 
+      node_hash = kh_key(box->hbegin, kbegin);
+      
+      neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          pair_count += 1;
+        }
+      }
+    }
+  }
+
+  return pair_count;
+}
+
+
+int setup_box_pairs(linkedListBox *box,
+                    int64_t *node_begin,int64_t *node_end,
+                    int64_t *nb_begin,int64_t *nb_end)
+{
+  int64_t box_pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ 
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
+      node_hash = kh_key(box->hbegin, kbegin);
+
+      neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          node_begin[box_pair_count] = kh_value(box->hbegin, kbegin);
+          node_end[box_pair_count]   = kh_value(box->hend, kend);
+          nb_begin[box_pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          nb_end[box_pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+          box_pair_count += 1;
+        }
+      }
+    }
+  }
+
+  return box_pair_count;
+}
+
+int setup_unique_box_pairs(linkedListBox *box,
+                           int64_t *node_begin,int64_t *node_end,
+                           int64_t *nb_begin,int64_t *nb_end)
+{
+  int64_t pair_count = 0, particle_pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){ // I have to call this!
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
+
+      node_hash = kh_key(box->hbegin, kbegin);
+
+      neighbour_hash_3d(node_hash,nblist,box->width,box);
+      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
+        if(nblist[j]>=0){
+          //nb_hash  = nblist[j];
+
+          if(kh_value(box->hbegin, kbegin) <= kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) ))
+          {
+            node_begin[pair_count] = kh_value(box->hbegin, kbegin);
+            node_end[pair_count]   = kh_value(box->hend, kend);
+            nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+            nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+
+            particle_pair_count += (nb_end[pair_count]-nb_begin[pair_count])*(node_end[pair_count]-node_begin[pair_count]);
+            pair_count += 1;
+          }
+        }
+      }
+    }
+  }
+
+  printf("particle_pair_count = %ld\n",particle_pair_count);
+
+  return pair_count;
+}
+
 int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, double h, 
 																long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
 	FILE *fp;

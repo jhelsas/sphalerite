@@ -300,29 +300,29 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              double* restrict z, double* restrict nu,
                              double* restrict rho){
 
-  #pragma omp parallel for
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = x[ii];
-    double yii = y[ii];
-    double zii = z[ii];
-    double rhoii = 0.0;
-    
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
+  #pragma omp parallel for                       // Execute the outer loop in parallel
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){  // Iterate over the ii index of the chunk
+    double xii = x[ii];                          // Load the X component of the ii particle position
+    double yii = y[ii];                          // Load the Y component of the ii particle position
+    double zii = z[ii];                          // Load the Z component of the ii particle position
+    double rhoii = 0.0;                          // Initialize the chunk contribution to density
+      
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){    // Iterate over each other particle in jj loop
+      double q = 0.;                             // Initialize the distance 
 
-      double xij = xii-x[jj];
-      double yij = yii-y[jj];
-      double zij = zii-z[jj];
+      double xij = xii-x[jj];                    // Load and subtract jj particle's X position component
+      double yij = yii-y[jj];                    // Load and subtract jj particle's Y position component
+      double zij = zii-z[jj];                    // Load and subtract jj particle's Z position component
 
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
+      q += xij*xij;                              // Add the jj contribution to the ii distance in X
+      q += yij*yij;                              // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                              // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q);
+      q = sqrt(q);                               // Sqrt to compute the distance
 
-      rhoii += nu[jj]*w_bspline_3d(q,h);
-    }
-    rho[ii] += rhoii;
+      rhoii += nu[jj]*w_bspline_3d(q,h);         // Add up the contribution from the jj particle 
+    }                                            // to the intermediary density and then
+    rho[ii] += rhoii;                            // add the intermediary density tot he full density
   }
 
   return 0;
