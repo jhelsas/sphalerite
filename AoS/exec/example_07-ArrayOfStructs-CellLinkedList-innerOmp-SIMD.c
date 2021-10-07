@@ -314,11 +314,11 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
       q += yij*yij;                                       // Add the jj contribution to the ii distance in Y
       q += zij*zij;                                       // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q);                                        // Sqrt to compute the distance
+      q = sqrt(q)*inv_h;                                  // Sqrt to compute the distance
 
       rhoii += lsph[jj].nu*w_bspline_3d_simd(q);          // Add up the contribution from the jj particle
     }                                                     // to the intermediary density and then
-    lsph[ii].rho += rhoii;                                // add the intermediary density to the full density
+    lsph[ii].rho += kernel_constant*rhoii;                // add the intermediary density to the full density
   }
 
   return 0;

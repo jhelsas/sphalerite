@@ -250,25 +250,26 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  */
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box){
   int64_t *node_begin,*node_end,*nb_begin,*nb_end;                     // Define the arrays for cell boundaries 
-  int64_t max_box_pair_count = 0;                                      // and the number of cell pairs
+  int64_t max_cell_pair_count = 0;                                     // and the number of cell pairs
   const double kernel_constant = w_bspline_3d_constant(h);               
 
-  max_box_pair_count = count_box_pairs(box);                           // compute the maximum number of cell pairs
+  max_cell_pair_count = count_box_pairs(box);                          // compute the maximum number of cell pairs
   
   node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for node_begin
   node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for node_end
   nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for nb_begin
   nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for nb_end
 
-  max_box_pair_count = setup_unique_box_pairs(box,node_begin,node_end, // set the values for cell pairs
-                                              nb_begin,nb_end); 
+  max_cell_pair_count = setup_unique_box_pairs(box,                    // set the values for cell pairs
+                                               node_begin,node_end,
+                                               nb_begin,nb_end); 
   
   for(int64_t ii=0;ii<N;ii+=1)                                         // initialize the density to zero
     lsph->rho[ii] = 0.0; 
                                                                        // Parallelism was moved 
                                                                        // to the level of unique pairs
   #pragma omp parallel for schedule(dynamic,5) proc_bind(master)       // Execute in parallel 
-  for(size_t i=0;i<max_box_pair_count;i+=1){                           // over the unique pairs' array
+  for(size_t i=0;i<max_cell_pair_count;i+=1){                          // over the unique pairs' array
     double local_rhoi[node_end[i] - node_begin[i]];                    // partial density array for node indexs
     double local_rhoj[  nb_end[i] -   nb_begin[i]];                    // partial density array for nb   indexs
 
