@@ -23,8 +23,8 @@
  *                      iteration.
  *                    Default value: 1
  *   -run_seed <int>: Flag to set an alternative seed use for
- *                      for the PNRG. Instead of feeding seed
- *                      to the PNRG directly, it feeds 
+ *                      for the PRNG. Instead of feeding seed
+ *                      to the PRNG directly, it feeds 
  *                      seed + iteration, as to generate different
  *                      configurations for each iteration. 
  *                    Default value: 0 - (possible 0/1)
@@ -156,7 +156,7 @@ int main(int argc, char **argv){
  *       run_seed <bool>      : boolean defining whether to use run index for seed or not
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       seed <long int>      : seed for GSL PNRG generator to generate particle positions
+ *       seed <long int>      : seed for GSL PRNG generator to generate particle positions
  *       box  <linkedListBox> : Box of linked list cells, encapsulating the 3d domain
  *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
  *       times <double>       : Array to store the computation timings to be updated

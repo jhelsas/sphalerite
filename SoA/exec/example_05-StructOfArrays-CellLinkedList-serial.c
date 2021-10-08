@@ -17,8 +17,8 @@
  *                      iteration.
  *                    Default value: 1
  *   -run_seed <int>: Flag to set an alternative seed use for
- *                      for the PNRG. Instead of feeding seed
- *                      to the PNRG directly, it feeds 
+ *                      for the PRNG. Instead of feeding seed
+ *                      to the PRNG directly, it feeds 
  *                      seed + iteration, as to generate different
  *                      configurations for each iteration. 
  *                    Default value: 0 - (possible 0/1)
