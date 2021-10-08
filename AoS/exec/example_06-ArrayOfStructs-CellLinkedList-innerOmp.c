@@ -122,7 +122,7 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = true;
-  const char *prefix = "innerOmp";
+  const char *prefix = "ex06,cll,AoS,innerOmp";
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 

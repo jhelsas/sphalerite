@@ -112,7 +112,7 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,box,lsph,times);
 
   bool is_cll = false;
-  const char *prefix = "simple";
+  const char *prefix = "ex01,naive,AoS,simple";
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 

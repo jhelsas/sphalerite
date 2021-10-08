@@ -561,7 +561,7 @@ int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, doub
 
 	if(is_cll){
 		sprintf(filename,
-						"data/cd3d(cll,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						"data/cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
 		fp = fopen(filename,"w");
@@ -572,7 +572,7 @@ int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, doub
 	} 
 	else{
 		sprintf(filename,
-						"data/cd3d(naive,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						"data/cd3d(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
 		fp = fopen(filename,"w");
@@ -612,7 +612,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
 
 	if(is_cll){
   	sprintf(filename,
-						"data/times-(cll,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
   	fp = fopen(filename,"w");
@@ -655,7 +655,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
 	}
 	else{
 		sprintf(filename,
-						"data/times-(naive,%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
+						"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
   	fp = fopen(filename,"w");

@@ -136,8 +136,9 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
   bool is_cll = true;
-  print_time_stats("SoA,simd,outer",is_cll,N,h,seed,runs,lsph,box,times);
-  print_sph_particles_density("SoA,simd,outer",is_cll,N,h,seed,runs,lsph,box);
+  const char *prefix = "ex08,cll,SoA,outer,simd";
+  print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
+  print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);

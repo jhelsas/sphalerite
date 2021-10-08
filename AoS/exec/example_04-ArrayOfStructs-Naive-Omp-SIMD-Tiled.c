@@ -123,7 +123,7 @@ int main(int argc, char **argv){
     main_loop(run,run_seed,N,h,seed,box,lsph,times);
 
   bool is_cll = false;
-  const char *prefix = "omp,simd,tiled";
+  const char *prefix = "ex04,naive,AoS,omp,simd,tiled";
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
