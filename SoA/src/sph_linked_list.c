@@ -414,19 +414,19 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
  *     box  <linkedListBox*>  : Box of cell linked lists
  */
 int count_box_pairs(linkedListBox *box){
-  int64_t pair_count = 0;                                                              // initialize the number of pairs as zero
+  int64_t pair_count = 0;                                                     // initialize the number of pairs as zero
 
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){ // iterate over the cells
     int64_t node_hash=-1; 
     int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
 
-    if (kh_exist(box->hbegin, kbegin)){                                                // check if the cell is valid
-      node_hash = kh_key(box->hbegin, kbegin);                                         // get the hash of that cell
+    if (kh_exist(box->hbegin, kbegin)){                                       // check if the cell is valid
+      node_hash = kh_key(box->hbegin, kbegin);                                // get the hash of that cell
       
-      neighbour_hash_3d(node_hash,nblist,box->width,box);                              // fetch the list of neighbors
-      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){          // and iterate over those neighbors
-        if(nblist[j]>=0){                                                              // if the neighbor is valid
-          pair_count += 1;                                                             // count it as a valid for a pair
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                     // fetch the list of neighbors
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){ // and iterate over those neighbors
+        if(nblist[j]>=0){                                                     // if the neighbor is valid
+          pair_count += 1;                                                    // count it as a valid for a pair
         }
       }
     }
