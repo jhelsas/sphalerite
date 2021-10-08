@@ -53,6 +53,15 @@ int compare_SPHparticle(const void *p,const void *q){
 		return 1;
 }
 
+/*
+ *  Function gen_unif_rdn_pos:
+ *    Generate particles positions uniformely in a [0,1]^3 box
+ * 
+ *    Arguments:
+ *       N          <int>     : Number of Particles
+ *     lsph <SPHparticle**>   : SoA Particles array
+ *     seed         <int>     : seed for the PRNG
+ */
 int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 
 	const gsl_rng_type *T=NULL;
@@ -61,31 +70,46 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
 	if(lsph==NULL)
 		return 1;
 
-	gsl_rng_env_setup();
+	gsl_rng_env_setup();                      // Initialize environment for PRNG generator
 
-	T = gsl_rng_default;
-	r = gsl_rng_alloc(T);
-	gsl_rng_set(r,seed);
+	T = gsl_rng_default;                      // Set generator type as default type
+	r = gsl_rng_alloc(T);                     // allocate state for it
+	gsl_rng_set(r,seed);                      // set seed accordingly
 
 	for(int64_t i=0;i<N;i+=1){
-		lsph[i].r.x = gsl_rng_uniform(r); lsph[i].r.y = gsl_rng_uniform(r);
-		lsph[i].r.z = gsl_rng_uniform(r); lsph[i].r.t = gsl_rng_uniform(r);
+		lsph[i].r.x = gsl_rng_uniform(r);        // Generate a uniform value for X component between 0 and 1
+		lsph[i].r.y = gsl_rng_uniform(r);        // Generate a uniform value for Y component between 0 and 1
+		lsph[i].r.z = gsl_rng_uniform(r);        // Generate a uniform value for Z component between 0 and 1
+		lsph[i].r.t = gsl_rng_uniform(r);        // Generate a uniform value for T component between 0 and 1
 
-		lsph[i].u.x = 0.0;  lsph[i].u.y = 0.0;
-		lsph[i].u.z = 0.0;  lsph[i].u.t = 0.0;
+		lsph[i].u.x = 0.0;  lsph[i].u.y = 0.0;   // set velocity and force components as zero
+		lsph[i].u.z = 0.0;  lsph[i].u.t = 0.0;   // as they will not be needed
 
 		lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;
 		lsph[i].F.z = 0.0;  lsph[i].F.t = 0.0;
 
-		lsph[i].nu = 1.0/N; lsph[i].rho  = 0.0;
-		lsph[i].id = i;     lsph[i].hash = 0;
+		lsph[i].nu = 1.0/N;                      // set each particle mass as to the total mass be 1
+		lsph[i].rho  = 0.0;                      // initialize density to zero
+		lsph[i].id = i;                          // set the particle's id     
+		lsph[i].hash = 0;                        // initialize particle's hash value as zero
 	}
 
-	gsl_rng_free(r);
+	gsl_rng_free(r);                           // release the PRNG
 
 	return 0;
 }
 
+/*
+ *  Function gen_unif_rdn_pos_box:
+ *    Generate particles positions uniformely in a 
+ *    [Xmin,Xmax]x[Ymin,Ymax]x[Zmin,Zmax] box
+ * 
+ *    Arguments:
+ *       N          <int>     : Number of Particles
+ *     lsph <SPHparticle**>   : SoA Particles array
+ *     seed         <int>     : seed for the PRNG
+ *      box  <linkedListBox*> : Cell Linked List box
+ */
 int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph){
 
   const gsl_rng_type *T=NULL;
@@ -94,25 +118,30 @@ int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *ls
   if(lsph==NULL)
     return 1;
 
-  gsl_rng_env_setup();
+  gsl_rng_env_setup();                      // Initialize environment for PRNG generator
 
-  T = gsl_rng_default;
-  r = gsl_rng_alloc(T);
-  gsl_rng_set(r,seed);
+  T = gsl_rng_default;                      // Set generator type as default type
+  r = gsl_rng_alloc(T);                     // allocate state for it
+  gsl_rng_set(r,seed);                      // set seed accordingly
 
   for(int64_t i=0;i<N;i+=1){
-    lsph[i].r.x = gsl_rng_uniform(r)*(box->Xmax-box->Xmin) + box->Xmin;
-    lsph[i].r.y = gsl_rng_uniform(r)*(box->Ymax-box->Ymin) + box->Ymin;
-    lsph[i].r.z = gsl_rng_uniform(r)*(box->Zmax-box->Zmin) + box->Zmin;
+    lsph[i].r.x = gsl_rng_uniform(r)*(box->Xmax-box->Xmin)  // Generate a uniform value for X 
+                          + box->Xmin;                      // component between Xmin and Xmax
+    lsph[i].r.y = gsl_rng_uniform(r)*(box->Ymax-box->Ymin)  // Generate a uniform value for Y
+                          + box->Ymin;                      // component between Ymin and Ymax
+    lsph[i].r.z = gsl_rng_uniform(r)*(box->Zmax-box->Zmin)  // Generate a uniform value for Z 
+                          + box->Zmin;                      // component between Zmin and Zmax
 
-		lsph[i].u.x = 0.0;  lsph[i].u.y = 0.0;
+		lsph[i].u.x = 0.0;  lsph[i].u.y = 0.0;   // set velocity and force components as zero
 		lsph[i].u.z = 0.0;  lsph[i].u.t = 0.0;
 
-		lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;
+		lsph[i].F.x = 0.0;  lsph[i].F.y = 0.0;   // as they will not be needed
 		lsph[i].F.z = 0.0;  lsph[i].F.t = 0.0;
 
-		lsph[i].nu = 1.0/N; lsph[i].rho  = 0.0;
-		lsph[i].id = i;     lsph[i].hash = 0;
+		lsph[i].nu = 1.0/N;                    // set each particle mass as to the total mass be 1
+    lsph[i].rho  = 0.0;                    // initialize density to zero
+		lsph[i].id = i;                        // set the particle's id     
+    lsph[i].hash = 0;                      // initialize particle's hash value as zero
   }
 
   gsl_rng_free(r);
@@ -120,6 +149,16 @@ int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *ls
   return 0;
 }
 
+/*
+ *  Function compute_hash_MC3D:
+ *    Compute the Morton Z hashes for all particles based on 
+ *    the parameters given by the Cell Linked List box
+ * 
+ *    Arguments:
+ *       N          <int>     : Number of Particles
+ *     lsph <SPHparticle**>   : SoA Particles array
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ */
 int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 
 	if(lsph==NULL)
@@ -130,16 +169,14 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 
 	for(int64_t i=0;i<N;i+=1){
 		uint32_t kx,ky,kz;
-		kx = (uint32_t)((lsph[i].r.x - box->Xmin)*box->Nx/(box->Xmax - box->Xmin));
-		ky = (uint32_t)((lsph[i].r.y - box->Ymin)*box->Ny/(box->Ymax - box->Ymin));
-		kz = (uint32_t)((lsph[i].r.z - box->Zmin)*box->Nz/(box->Zmax - box->Zmin));
+		kx = (uint32_t)((lsph[i].r.x - box->Xmin)*box->Nx/(box->Xmax - box->Xmin)); // Compute cell index in the X direction 
+		ky = (uint32_t)((lsph[i].r.y - box->Ymin)*box->Ny/(box->Ymax - box->Ymin)); // Compute cell index in the Y direction
+		kz = (uint32_t)((lsph[i].r.z - box->Zmin)*box->Nz/(box->Zmax - box->Zmin)); // Compute cell index in the Z direction
 
-		//printf("%")
-
-		if((kx<0)||(ky<0)||(kz<0))
-			return 1;
-		else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx))
-			return 1;
+    if((kx<0)||(ky<0)||(kz<0))                           // The can't be negative indexes
+      return 1;
+    else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx)) // Nor indexes greater than the upper bounds
+      return 1;
 		else
 			lsph[i].hash = ullMC3Dencode(kx,ky,kz);
 	}
@@ -147,10 +184,23 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 	return 0;
 }
 
+/*
+ *  Function setup_interval_hashtables:
+ *    Setup the information where each cell begins and ends in the SPH
+ *    Array in a pair of hash tables for quick consultation. 
+ *    This effectively completes the creation of the implicit 
+ *    cell linked list structure initiated by sorting the array 
+ *    according to hashes. 
+ * 
+ *    Arguments:
+ *       N          <int>     : Number of Particles
+ *     lsph <SPHparticle**>   : SoA Particles array
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ */
 int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 
 	int ret;
-	int64_t hash0 = lsph[0].hash;
+	int64_t hash0 = lsph[0].hash;                             // Store the first hash in hash0
 	khiter_t kbegin,kend;
 
 	if(lsph==NULL)
@@ -159,37 +209,54 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box){
 	if(box==NULL)
 		return 1;
 
-	kbegin = kh_put(0, box->hbegin, lsph[0].hash, &ret); kh_value(box->hbegin, kbegin) = (int64_t)0;
+	kbegin = kh_put(0, box->hbegin, lsph[0].hash, &ret);     // Insert start hash as first value
+  kh_value(box->hbegin, kbegin) = (int64_t)0;              // Set the start index of first cell as 0
 	for(int i=0;i<N;i+=1){
-		if(lsph[i].hash == hash0)
-			continue;
-		hash0 = lsph[i].hash;
-		kend   = kh_put(1, box->hend  , lsph[i-1].hash, &ret); kh_value(box->hend  , kend)   = i;
-		kbegin = kh_put(0, box->hbegin, lsph[i  ].hash, &ret); kh_value(box->hbegin, kbegin) = i;
+		if(lsph[i].hash == hash0)                              // If the the particle hash is the same as the previous
+			continue;                                            // skip because they are in the same cell
+		hash0 = lsph[i].hash;                                  // otherwise, store the new hash in hash0
+
+		kend   = kh_put(1, box->hend  , lsph[i-1].hash, &ret); // If so, insert the previous hash as an cell end 
+    kh_value(box->hend  , kend)   = i;                     // and set this index as the upper index of that cell
+
+		kbegin = kh_put(0, box->hbegin, lsph[i  ].hash, &ret); // and then insert this new hash as the begining
+    kh_value(box->hbegin, kbegin) = i;                     // of a new cell in with the lower index as this index
 	}
-	kend   = kh_put(1, box->hend  , lsph[N-1].hash, &ret); kh_value(box->hend  , kend)   = N;
+	kend   = kh_put(1, box->hend  , lsph[N-1].hash, &ret);   // finally set the last hash for the end of the last cell,
+  kh_value(box->hend  , kend)   = N;                       // and the number of particles as the index of the last cell
 
 	return 0;
 }
 
+/*
+ *  Function neighbour_hash_3d:
+ *    Find the hashes of all valid cells that neighbor cell with
+ *    int hash. 
+ * 
+ *    Arguments:
+ *       hash    <int64_t>    : Hash of the central cell 
+ *       nblist <int64_t*>    : Array for hashes of the neighbor cells
+ *       width     <int>      : Width of the neighborhood 
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ */
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box){
 	int idx=0,kx=0,ky=0,kz=0;
 
-	kx = ullMC3DdecodeX(hash);
-	ky = ullMC3DdecodeY(hash);
-	kz = ullMC3DdecodeZ(hash);
+	kx = ullMC3DdecodeX(hash);   // To find a given cell's neighbors, start by first 
+	ky = ullMC3DdecodeY(hash);   // recovering the integer index of that cell in 
+	kz = ullMC3DdecodeZ(hash);   // the overall box domain
 
-	for(int ix=-width;ix<=width;ix+=1){
-		for(int iy=-width;iy<=width;iy+=1){
+	for(int ix=-width;ix<=width;ix+=1){            // iterate over all cells surrounding the original cell
+		for(int iy=-width;iy<=width;iy+=1){          // as long as they are within width of the original cell
 			for(int iz=-width;iz<=width;iz+=1){
-				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))
-					nblist[idx++] = -1;
-				else if( (kx+ix>=box->Nx)||(ky+iy>=box->Ny)||(kz+iz>=box->Nz) )
-					nblist[idx++] = -1;
-				else if( kh_get(0, box->hbegin, ullMC3Dencode(kx+ix,ky+iy,kz+iz)) == kh_end(box->hbegin) )
-					nblist[idx++] = -1;
-				else
-					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);
+				if((kx+ix<0)||(ky+iy<0)||(kz+iz<0))                               // if the cell is off bounds for having lower index then 0
+					nblist[idx++] = -1;                                             // annotate the cell as invalid
+				else if( (kx+ix>=box->Nx)||(ky+iy>=box->Ny)||(kz+iz>=box->Nz) )   // or if it is off bounds for having higher index then                            
+					nblist[idx++] = -1;                                             // the maximum, also annotate as invalid
+				else if( kh_get(0, box->hbegin, ullMC3Dencode(kx+ix,ky+iy,kz+iz)) == kh_end(box->hbegin) )  // Also, if no corresponding hash
+					nblist[idx++] = -1;                                             // is not found in the hash table, also annotate as invalid
+				else                                                              // at last, if it has no problems
+					nblist[idx++] = ullMC3Dencode(kx+ix,ky+iy,kz+iz);               // annotate the hash of the corresponding cell
 			}
 		}
 	}

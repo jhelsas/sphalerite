@@ -22,6 +22,20 @@
 
 #include "sph_data_types.h"
 
+/*
+ *  Function arg_parse:
+ *    Easily allocate the SPHparticle array
+ * 
+ *    Arguments:
+ *      argc   <int>     : number of command line arguments
+ *      argv  <char*>    : array of command line arguments
+ *       N   <int64_t*>  : Number of SPH particles
+ *       h    <double>   : Smoothing length
+ *     seed   <long int> : Seed for the PRNG
+ *     runs     <int>    : number of repetitions of the density calculations
+ *     run_seed  <bool>  : boolean defining repeat or not the seed for all runs
+ *  box <linkedListBox*> : Box of linked list cells
+ */
 int arg_parse(int argc, char **argv, int64_t *N, double *h,
               long int *seed, int *runs, bool *run_seed, linkedListBox *box){
   bool intern_h = true;
@@ -29,11 +43,6 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
   box->Xmin = 0.0; box->Ymin = 0.0; box->Zmin = 0.0;
   box->Xmax = 1.0; box->Ymax = 1.0; box->Zmax = 1.0;
   
-  /*if(argc%2==0){
-    printf("wrong number of arguments!\n");
-    printf("Maybe an option is missing a value?\n");
-  }*/
-
   for(int i=1;i<argc;){
     if( strcmp(argv[i],"-N") == 0 ){
       *N = (int64_t) atol(argv[i+1]);

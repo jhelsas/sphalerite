@@ -208,6 +208,7 @@ int gen_unif_rdn_pos(int64_t N, int seed, SPHparticle *lsph){
  *       N          <int>     : Number of Particles
  *     lsph <SPHparticle**>   : SoA Particles array
  *     seed         <int>     : seed for the PRNG
+ *      box  <linkedListBox*> : Cell Linked List box
  */
 int gen_unif_rdn_pos_box(int64_t N, int seed, linkedListBox *box,SPHparticle *lsph){
 
