@@ -90,8 +90,6 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define dbg false
-
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 

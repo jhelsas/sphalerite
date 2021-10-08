@@ -81,8 +81,6 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define dbg false
-
 int main_loop(int run, bool run_seed, int64_t N, double h, 
               long int seed, linkedListBox *box,
               SPHparticle *lsph, double *times);
@@ -106,8 +104,6 @@ int main(int argc, char **argv){
   arg_parse(argc,argv,&N,&h,&seed,&runs,&run_seed,box);  // Parse the command line options
                                                          // line arguments and override default values
 
-  if(dbg)
-    printf("hello - 0\n");
   lsph = (SPHparticle*)malloc(N*sizeof(SPHparticle));    // Create an array of N particles
   
   double times[runs][5];
@@ -120,8 +116,6 @@ int main(int argc, char **argv){
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
-  if(dbg)
-    printf("hello - 10\n");
   free(lsph);
   safe_free_box(box);
   
@@ -152,8 +146,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h,
               SPHparticle *lsph, double *times)
 {
   int err;
-  if(dbg)
-    printf("hello - 1\n");
   
   // Initialize the particles' positions and other values
   if(run_seed)
@@ -163,9 +155,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h,
 
   if(err)
     printf("error in gen_unif_rdn_pos\n");
-
-  if(dbg)
-    printf("hello - 2\n");
 
   // ------------------------------------------------------ //
 
@@ -184,10 +173,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h,
   times[5*run+2] =    0.;
   times[5*run+3] =    0.;
   times[5*run+4] =    0.;
-
-  if(dbg){
-    printf("compute_density_3d SoA naive simple : %lf s \n",t1-t0);
-  }
 
   return 0;
 }

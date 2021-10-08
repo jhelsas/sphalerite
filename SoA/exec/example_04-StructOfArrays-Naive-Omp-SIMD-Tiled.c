@@ -120,7 +120,7 @@ int main(int argc, char **argv){
                                                          // line arguments and override default values
   int err = SPHparticle_SoA_malloc(N,&lsph);             // Create an arrays for the N particles
   if(err)
-    printf("error in SPHparticle_SoA_malloc\n");  // use fprintf to stderr?
+    fprintf(stderr,"error in SPHparticle_SoA_malloc\n");  
 
   void *swap_arr = malloc(N*sizeof(double));
   double times[runs][5]; // 5 what? maybe use a #define to give it a name without compromising runtime
@@ -169,7 +169,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    printf("error in gen_unif_rdn_pos\n"); // fprintf to stderr?
+    fprintf(stderr,"error in gen_unif_rdn_pos\n"); // fprintf to stderr?
 
   
   // ------------------------------------------------------ //

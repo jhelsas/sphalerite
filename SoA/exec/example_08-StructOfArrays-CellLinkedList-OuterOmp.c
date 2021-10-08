@@ -88,8 +88,6 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define dbg false
-
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -141,8 +139,6 @@ int main(int argc, char **argv){
   print_time_stats("SoA,simd,outer",is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density("SoA,simd,outer",is_cll,N,h,seed,runs,lsph,box);
 
-  if(dbg)
-    printf("hello - 10\n");
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);
   free(swap_arr);
@@ -173,9 +169,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
 {
   int err;
-  if(dbg)
-    printf("hello - 1\n");
-    
+  
   if(run_seed)
     err = gen_unif_rdn_pos_box(N,seed+run,box,lsph);
   else
@@ -183,9 +177,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   if(err)
     printf("error in gen_unif_rdn_pos\n");
-
-  if(dbg)
-    printf("hello - 2\n");
 
   // ------------------------------------------------------ //
 
@@ -228,16 +219,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   times[5*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
   times[5*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
   times[5*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
-
-  if(dbg){
-    printf("fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
-    printf("compute_hash_MC3D calc time                 : %lg s : %.2lg%%\n",t1-t0,100*(t1-t0)/(t5-t0));
-    printf("qsort calc time                             : %lg s : %.2lg%%\n",t2-t1,100*(t2-t1)/(t5-t0));
-    printf("reorder_lsph_SoA calc time                  : %lg s : %.2lg%%\n",t3-t2,100*(t3-t2)/(t5-t0));
-    printf("setup_interval_hashtables calc time         : %lg s : %.2lg%%\n",t4-t3,100*(t4-t3)/(t5-t0));
-    printf("compute_density_3d load balanced calc time  : %lg s : %.2lg%%\n",t5-t4,100*(t5-t4)/(t5-t0));
-    printf("compute_density_3d load balanced total time : %lg s : %.2lg%%\n",t5-t0,100*(t5-t0)/(t5-t0));
-  }
 
   return 0;
 }
