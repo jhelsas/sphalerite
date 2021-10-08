@@ -277,13 +277,13 @@ int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *bo
  *       nb_begin <int>       : Begin index of the sender (neighbor) cell
  *       nb_end   <int>       : End   index of the sender (neighbor) cell
  *       h       <double>     : Smoothing Length for the Smoothing Kernel w_bspline
- *       x       <double*>    : Array of particle's X positions
- *       y       <double*>    : Array of particle's Y positions
- *       z       <double*>    : Array of particle's Z positions
- *       nu      <double*>    : Array of particle's density weights (i.e. masses)
+ *       x       <double*>    : Array of particles' X positions
+ *       y       <double*>    : Array of particles' Y positions
+ *       z       <double*>    : Array of particles' Z positions
+ *       nu      <double*>    : Array of particles' density weights (i.e. masses)
  *    Returns:
  *       0                    : error code returned
- *       lsph <SPHparticle*>  : SPH particle array is updated in the rho field by reference
+ *       rho       <double*>  : Array of particles' densities
  */
 int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              int64_t nb_begin, int64_t nb_end,double h,

@@ -306,10 +306,13 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       x       <double*>    : Array of particles' X positions
+ *       y       <double*>    : Array of particles' Y positions
+ *       z       <double*>    : Array of particles' Z positions
+ *       nu      <double*>    : Array of particles' density weights (i.e. masses)
  *    Returns:
  *       0                    : error code returned
- *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       rho       <double*>  : Array of particles' densities
  */
 int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          int64_t nb_begin, int64_t nb_end,double h,

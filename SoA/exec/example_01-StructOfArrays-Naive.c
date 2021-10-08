@@ -194,10 +194,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
- *       lsph <SPHparticle>   : Array (pointer) of SPH particles to be updated
+ *       x       <double*>    : Array of particles' X positions
+ *       y       <double*>    : Array of particles' Y positions
+ *       z       <double*>    : Array of particles' Z positions
+ *       nu      <double*>    : Array of particles' density weights (i.e. masses)
  *    Returns:
  *       0                    : error code returned
- *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
+ *       rho       <double*>  : Array of particles' densities
  */
 int compute_density_3d_naive(int N,double h,
                              double* restrict x, double* restrict y,
