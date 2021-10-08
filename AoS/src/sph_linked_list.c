@@ -196,6 +196,137 @@ int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box
 	return 0;
 }
 
+/*
+ *  Function count_box_pairs:
+ *    Count the number of valid cell pairs
+ * 
+ *    Arguments:
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ */
+int count_box_pairs(linkedListBox *box){
+  int64_t pair_count = 0;                                                     // initialize the number of pairs as zero
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){ // iterate over the cells
+    int64_t node_hash=-1; 
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){                                       // check if the cell is valid
+      node_hash = kh_key(box->hbegin, kbegin);                                // get the hash of that cell
+      
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                     // fetch the list of neighbors
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){ // and iterate over those neighbors
+        if(nblist[j]>=0){                                                     // if the neighbor is valid
+          pair_count += 1;                                                    // count it as a valid for a pair
+        }
+      }
+    }
+  }
+
+  return pair_count;
+}
+
+/*
+ *  Function setup_box_pairs:
+ *    Pre-compute indexes for all valid cell pairs. 
+ * 
+ *  Arguments:
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ *  Returns:
+ *     node_begin <int64_t*>  : Array for receiver cell begin indexes
+ *     node_end   <int64_t*>  : Array for receiver cell end indexes
+ *     nb_begin   <int64_t*>  : Array for sender cell begin indexes
+ *     nb_end     <int64_t*>  : Array for sender cell end indexes
+ */
+int setup_box_pairs(linkedListBox *box,
+                    int64_t *node_begin,int64_t *node_end,
+                    int64_t *nb_begin,int64_t *nb_end)
+{
+  int64_t pair_count = 0,particle_pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){    // iterate over the cells
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){                                                       // check if the cell is valid
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));                     // get the iterator for the end index
+
+      node_hash = kh_key(box->hbegin, kbegin);                                                // and also get the corresponding hash
+
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                                     // fetch the list of neighbors
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){                 // and iterate over those neighbors
+        if(nblist[j]>=0){                                                                     // check if the neighbor is valid
+          node_begin[pair_count] = kh_value(box->hbegin, kbegin);                             // get the cell's begin index
+          node_end[pair_count]   = kh_value(box->hend, kend);                                 // get the cell's end index
+          nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) ); // get the neighbor's begin index
+          nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) ); // get the neighbor's end index
+
+          particle_pair_count += (nb_end[pair_count]-nb_begin[pair_count])*                   // just for bookeeping/profiling, 
+                                       (node_end[pair_count]-node_begin[pair_count]);         // annotate the number of particle pairs
+          pair_count += 1;                                                                    // that are part of the computation
+        }
+      }
+    }
+  }
+
+  printf("particle_pair_count = %ld\n",particle_pair_count);
+
+  return pair_count;
+}
+
+/*
+ *  Function setup_unique_box_pairs:
+ *    Pre-compute indexes for all valid unique cell pairs. 
+ *    by unique means that if [node_begin,node_end)x[nb_begin,nb_end)
+ *    is in the list, [nb_begin,nb_end)x[node_begin,node_end) is not. 
+ * 
+ *  Arguments:
+ *     box  <linkedListBox*>  : Box of cell linked lists
+ *  Returns:
+ *     node_begin <int64_t*>  : Array for receiver cell begin indexes
+ *     node_end   <int64_t*>  : Array for receiver cell end indexes
+ *     nb_begin   <int64_t*>  : Array for sender cell begin indexes
+ *     nb_end     <int64_t*>  : Array for sender cell end indexes
+ */
+int setup_unique_box_pairs(linkedListBox *box,
+                           int64_t *node_begin,int64_t *node_end,
+                           int64_t *nb_begin,int64_t *nb_end)
+{
+  int64_t pair_count = 0, particle_pair_count = 0;
+
+  for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){      // iterate over the cells
+    int64_t node_hash=-1;
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+
+    if (kh_exist(box->hbegin, kbegin)){                                                         // check if the cell is valid
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));                       // get the iterator for the end index
+
+      node_hash = kh_key(box->hbegin, kbegin);                                                  // and also get the corresponding hash
+
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                                       // fetch the list of neighbors
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){                   // and iterate over those neighbors
+        if(nblist[j]>=0){                                                                       // check if the neighbor is valid
+          if(kh_value(box->hbegin, kbegin) <=                                                   // and if the node_index is smaller
+                     kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) ))                 // then the neighbor index
+          {
+            node_begin[pair_count] = kh_value(box->hbegin, kbegin);                             // get the cell's begin index
+            node_end[pair_count]   = kh_value(box->hend, kend);                                 // get the cell's end index
+            nb_begin[pair_count]   = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) ); // get the neighbor's begin index
+            nb_end[pair_count]     = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) ); // get the neighbor's end index
+
+            particle_pair_count += (nb_end[pair_count]-nb_begin[pair_count])*                   // just for bookeeping/profiling, 
+                                         (node_end[pair_count]-node_begin[pair_count]);         // annotate the number of particle pairs
+            pair_count += 1;                                                                    // that are part of the computation
+          }
+        }
+      }
+    }
+  }
+
+  printf("particle_pair_count = %ld\n",particle_pair_count);
+
+  return pair_count;
+}
+
 int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, double h, 
 																long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
 	FILE *fp;

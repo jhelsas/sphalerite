@@ -131,7 +131,7 @@ int main(int argc, char **argv){
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
 
-  bool is_cell = true;
+  bool is_cll = true;
   const char *prefix = "ex09,cll,SoA,outer,simd,loadBallance";
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
@@ -217,16 +217,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   times[5*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
   times[5*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
   times[5*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
-
-  if(dbg){
-    fprintf(stderr,"fast neighbour search / SoA / outer-openMP / symmetric load balanced\n");
-    fprintf(stderr,"compute_hash_MC3D calc time                 : %lg s : %.2lg%%\n",t1-t0,100*(t1-t0)/(t5-t0));
-    fprintf(stderr,"qsort calc time                             : %lg s : %.2lg%%\n",t2-t1,100*(t2-t1)/(t5-t0));
-    fprintf(stderr,"reorder_lsph_SoA calc time                  : %lg s : %.2lg%%\n",t3-t2,100*(t3-t2)/(t5-t0));
-    fprintf(stderr,"setup_interval_hashtables calc time         : %lg s : %.2lg%%\n",t4-t3,100*(t4-t3)/(t5-t0));
-    fprintf(stderr,"compute_density_3d load balanced calc time  : %lg s : %.2lg%%\n",t5-t4,100*(t5-t4)/(t5-t0));
-    fprintf(stderr,"compute_density_3d load balanced total time : %lg s : %.2lg%%\n",t5-t0,100*(t5-t0)/(t5-t0));
-  }
 
   return 0;
 }

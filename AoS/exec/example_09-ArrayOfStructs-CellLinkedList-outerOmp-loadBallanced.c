@@ -207,14 +207,6 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   times[5*run+3] = t4-t3;                                 // Time for computing the SPH particle densities
   times[5*run+4] =    0.;
 
-  if(dbg){
-    fprintf(stderr,"compute_hash_MC3D          : %.5lf s : %.2lf%%\n",t1-t0,100*(t1-t0)/(t4-t0));
-    fprintf(stderr,"qsort calculation time     : %.5lf s : %.2lf%%\n",t2-t1,100*(t2-t1)/(t4-t0));
-    fprintf(stderr,"setup_interval_hashtables  : %.5lf s : %.2lf%%\n",t3-t2,100*(t3-t2)/(t4-t0));
-    fprintf(stderr,"compute_density_3d         : %.5lf s : %.2lf%%\n",t4-t3,100*(t4-t3)/(t4-t0));
-    fprintf(stderr,"compute_density_3d total   : %.5lf s : %.2lf%%\n",t4-t0,100*(t4-t0)/(t4-t0));
-  }
-
   return 0;
 }
 

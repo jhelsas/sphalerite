@@ -26,6 +26,16 @@ int setup_interval_hashtables(int64_t N,SPHparticle *lsph,linkedListBox *box);
 
 int neighbour_hash_3d(int64_t hash,int64_t *nblist,int width, linkedListBox *box);
 
+int count_box_pairs(linkedListBox *box);
+
+int setup_box_pairs(linkedListBox *box,
+                    int64_t *node_begin,int64_t *node_end,
+                    int64_t *nb_begin,int64_t *nb_end);
+
+int setup_unique_box_pairs(linkedListBox *box,
+                           int64_t *node_begin,int64_t *node_end,
+                           int64_t *nb_begin,int64_t *nb_end);
+
 int print_time_stats(const char *prefix,  bool is_cll,int64_t N, double h, 
 										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times);
 
