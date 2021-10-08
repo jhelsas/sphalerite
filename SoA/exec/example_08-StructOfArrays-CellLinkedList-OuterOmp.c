@@ -226,10 +226,10 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
 /*
  *  Function compute_density_3d_outerOmp:
- *    Computes the SPH density from the particles using cell linked list, 
- *    with parallelization at the level of the outer-most loop of this function, 
- *    i.e. at the cell level, and vectorization in the inner-most loop of the 
- *    chunk calculation. 
+ *    Computes the SPH density from the particles using cell linked list with
+ *    vectorization at the compute_density_3d_chunk level, but the parallelization
+ *    done at the level of the outer-most loop of the compute_density_3d_cll_outerOmp
+ *    function, not at the chunk level. 
  * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
@@ -305,7 +305,7 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
     double zii = z[ii];                                   // Load the Z component of the ii particle position
     double rhoii = 0.0;                                   // Initialize the chunk contribution to density 
    
-    #pragma omp simd reduction(+:rhoii)                   // Hint at the compiler to vectorize
+    #pragma omp simd                                      // Hint at the compiler to vectorize
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){             // Iterate over the each other particle in jj loop
       double q = 0.;                                      // Initialize the distance
 

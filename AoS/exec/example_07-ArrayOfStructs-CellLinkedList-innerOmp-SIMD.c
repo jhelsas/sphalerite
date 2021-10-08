@@ -210,7 +210,9 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
 /*
  *  Function compute_density_3d_cll_innerOmp:
- *    Computes the SPH density from the particles using cell linked list 
+ *    Computes the SPH density from the particles using cell linked list, 
+ *    with parallelization at the level of the outer-most loop of the chunk
+ *    contribution calculation and vectorization in the inner-most loop. 
  * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
@@ -255,8 +257,9 @@ int compute_density_3d_cll_innerOmp(int N, double h, SPHparticle *lsph, linkedLi
 /*
  *  Function compute_density_3d_chunk:
  *    Computes the SPH density contribution for a pair of cells, from nb_ indexes
- *    to the node_ indexes. The computation is performed serially and without 
- *    vectorization.
+ *    to the node_ indexes. The computation is performed in parallel at the 
+ *    level of the node_ index, the outer-most, but with vectorization in
+ *    the inner-most loop.
  * 
  *    Arguments:
  *       node_begin <int>     : Begin index of the receiver cell

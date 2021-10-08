@@ -269,7 +269,8 @@ int compute_density_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBo
  *  Function compute_density_3d_chunk:
  *    Computes the SPH density contribution for a pair of cells, from nb_ indexes
  *    to the node_ indexes. The computation is performed in parallel at the 
- *    level of the node_ index, the outer-most, with vectorization in the inner loop.
+ *    level of the node_ index, the outer-most, but with vectorization in
+ *    the inner-most loop.
  * 
  *    Arguments:
  *       node_begin <int>     : Begin index of the receiver cell

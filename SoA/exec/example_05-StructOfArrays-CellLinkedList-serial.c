@@ -222,7 +222,8 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
 /*
  *  Function compute_density_3d_cll:
- *    Computes the SPH density from the particles using cell linked list 
+ *    Computes the SPH density from the particles using cell linked list with
+ *    without parallelization or vectorization.
  * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run

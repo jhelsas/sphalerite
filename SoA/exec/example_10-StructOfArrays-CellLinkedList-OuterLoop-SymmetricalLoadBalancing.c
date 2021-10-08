@@ -226,9 +226,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 /*
  *  Function compute_density_3d_symmetrical_load_ballance:
  *    Computes the SPH density from the particles using cell linked list with
- *    parallelization in the outer-most loop, iterating over the cells. It also
+ *    vectorization at the compute_density_3d_chunk level, but the parallelization
+ *    done at the level of the outer-most loop of the compute_density_3d_cll_outerOmp
+ *    function, not at the chunk level. 
+ *
+ *    The parallelization is done at the level of unique cell pair instead of cells, 
+ *    with the indexes for the cell pairs pre-computed before parallelization. 
  *    
- * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
  *       h <double>           : Smoothing Length for the Smoothing Kernel w_bspline
@@ -299,9 +303,9 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 
 /*
  *  Function compute_density_3d_chunk_symmetrical:
- *    Computes the SPH density from the particles using cell linked list with
- *    parallelization in the outer-most loop, iterating over the cells. It also
- *    
+ *    Computes the SPH density contribution to both the node_ cell and the nb_ cell. 
+ *    Vectorization in the inner-most loop, but no parallelization. 
+ *    The density contribution is symmetrical.     
  * 
  *    Arguments:
  *       N <int>              : Number of SPH particles to be used in the run
