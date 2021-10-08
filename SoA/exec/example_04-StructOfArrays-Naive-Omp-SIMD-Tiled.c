@@ -135,7 +135,7 @@ int main(int argc, char **argv){
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);
   free(swap_arr);
-  // say goodbye if(dbg)?
+  
   return 0;
 }
 

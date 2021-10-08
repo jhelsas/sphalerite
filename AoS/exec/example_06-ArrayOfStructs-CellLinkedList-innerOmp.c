@@ -163,7 +163,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    printf("error in gen_unif_rdn_pos\n");
+    fprintf(stderr,"error in gen_unif_rdn_pos\n");
 
   // ------------------------------------------------------ //
 
@@ -173,7 +173,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   err = compute_hash_MC3D(N,lsph,box);
   if(err)
-    printf("error in compute_hash_MC3D\n");
+    fprintf(stderr,"error in compute_hash_MC3D\n");
 
   t1 = omp_get_wtime();
   
@@ -183,13 +183,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   err = setup_interval_hashtables(N,lsph,box);
   if(err)
-    printf("error in setup_interval_hashtables\n");
+    fprintf(stderr,"error in setup_interval_hashtables\n");
 
   t3 = omp_get_wtime();
 
   err = compute_density_3d_cll_innerOmp(N,h,lsph,box);
   if(err)
-    printf("error in compute_density_3d_innerOmp\n");
+    fprintf(stderr,"error in compute_density_3d_innerOmp\n");
 
   t4 = omp_get_wtime();
 

@@ -162,7 +162,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    printf("error in gen_unif_rdn_pos\n");
+    fprintf(stderr,"error in gen_unif_rdn_pos\n");
 
   // ------------------------------------------------------ //
 

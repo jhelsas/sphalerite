@@ -121,7 +121,7 @@ int main(int argc, char **argv){
 
   err = SPHparticle_SoA_malloc(N,&lsph);
   if(err)
-    printf("error in SPHparticle_SoA_malloc\n");
+    fprintf(stderr,"error in SPHparticle_SoA_malloc\n");
 
   void *swap_arr = malloc(N*sizeof(double));
   double times[runs][5];
@@ -170,7 +170,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    printf("error in gen_unif_rdn_pos\n");
+    fprintf(stderr,"error in gen_unif_rdn_pos\n");
 
   // ------------------------------------------------------ //
 
@@ -180,7 +180,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   err = compute_hash_MC3D(N,lsph,box);                    // Compute Morton Z 3D hash based on the 
   if(err)                                                 // cell index for each of the X, Y and Z 
-    printf("error in compute_hash_MC3D\n");               // directions, in which a given particle reside
+    fprintf(stderr,"error in compute_hash_MC3D\n");               // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
@@ -191,19 +191,19 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   err = reorder_lsph_SoA(N,lsph,swap_arr);                // Reorder all arrays according to the sorted hash,
   if(err)                                                 // As to have a quick way to retrieve a cell 
-    printf("error in reorder_lsph_SoA\n");                // given its hash. 
+    fprintf(stderr,"error in reorder_lsph_SoA\n");                // given its hash. 
 
   t3 = omp_get_wtime();
 
   err = setup_interval_hashtables(N,lsph,box);            // Annotate the begining and end of each cell
   if(err)                                                 // on the cell linked list method for fast
-    printf("error in setup_interval_hashtables\n");       // neighbor search
+    fprintf(stderr,"error in setup_interval_hashtables\n");       // neighbor search
 
   t4 = omp_get_wtime();
 
   err = compute_density_3d_innerOmp(N,h,lsph,box);        // Compute the density of the particles based
   if(err)                                                 // on the cell linked list method for fast
-    printf("error in compute_density\n");                 // neighbor search
+    fprintf(stderr,"error in compute_density\n");                 // neighbor search
 
   // ------------------------------------------------------ //
 
