@@ -33,7 +33,7 @@
  *                    Default value: 123123123
  *
  *   -N        <int>: Set the number of SPH particles to be used
- *                    Default value: 10000
+ *                    Default value: 1e5 = 100,000
  *   -h      <float>: Set the value of the smoothing kernel 
  *                      parameter h, which corresponds to half
  *                      of the support of the kernel. 
