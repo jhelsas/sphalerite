@@ -672,7 +672,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	fp = fopen(filename,"w");
 		fprintf(fp,"id,compute_density\n");
 		for(int run=0;run<runs;run+=1)
-			fprintf(fp,"%d %lf\n",run,times[COMPUTE_BLOCKS*run+0]);
+			fprintf(fp,"%d,%lf\n",run,times[COMPUTE_BLOCKS*run+0]);
 		fclose(fp);
 
   	total_time = 0.;
