@@ -8,6 +8,8 @@
 # (C) Copyright 2021 José Hugo Elsas
 # Author: José Hugo Elsas <jhelsas@gmail.com>
 #
+mkdir -p AoS/data/
+mkdir -p SoA/data/
 cd AoS/
 make clean
 make all
