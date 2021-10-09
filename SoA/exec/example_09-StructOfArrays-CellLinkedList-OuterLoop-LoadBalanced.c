@@ -183,42 +183,42 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
 
-  err = compute_hash_MC3D(N,lsph,box);                    // Compute Morton Z 3D hash based on the 
-  if(err)                                                 // cell index for each of the X, Y and Z 
-    fprintf(stderr,"error in compute_hash_MC3D\n");               // directions, in which a given particle reside
+  err = compute_hash_MC3D(N,lsph,box);                      // Compute Morton Z 3D hash based on the 
+  if(err)                                                   // cell index for each of the X, Y and Z 
+    fprintf(stderr,"error in compute_hash_MC3D\n");         // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);  // Sort the Particle Hash Hashes, getting the shuffled
-                                                          // index necessary to re-shuffle the remaining arrays
+  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);    // Sort the Particle Hash Hashes, getting the shuffled
+                                                            // index necessary to re-shuffle the remaining arrays
 
   t2 = omp_get_wtime();
 
-  err = reorder_lsph_SoA(N,lsph,swap_arr);                // Reorder all arrays according to the sorted hash,
-  if(err)                                                 // As to have a quick way to retrieve a cell 
-    fprintf(stderr,"error in reorder_lsph_SoA\n");                // given its hash. 
+  err = reorder_lsph_SoA(N,lsph,swap_arr);                  // Reorder all arrays according to the sorted hash,
+  if(err)                                                   // As to have a quick way to retrieve a cell 
+    fprintf(stderr,"error in reorder_lsph_SoA\n");          // given its hash. 
 
   t3 = omp_get_wtime();
 
-  err = setup_interval_hashtables(N,lsph,box);            // Annotate the begining and end of each cell
-  if(err)                                                 // on the cell linked list method for fast
-    fprintf(stderr,"error in setup_interval_hashtables\n");       // neighbor search
+  err = setup_interval_hashtables(N,lsph,box);              // Annotate the begining and end of each cell
+  if(err)                                                   // on the cell linked list method for fast
+    fprintf(stderr,"error in setup_interval_hashtables\n"); // neighbor search
 
   t4 = omp_get_wtime();
 
-  err = compute_density_3d_load_ballanced(N,h,lsph,box);  // Compute the density of the particles based
-  if(err)                                                 // on the cell linked list method for fast
-    fprintf(stderr,"error in compute_density\n");                 // neighbor search
+  err = compute_density_3d_load_ballanced(N,h,lsph,box);    // Compute the density of the particles based
+  if(err)                                                   // on the cell linked list method for fast
+    fprintf(stderr,"error in compute_density\n");           // neighbor search
 
   // ------------------------------------------------------ //
 
   t5 = omp_get_wtime();
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
-  times[COMPUTE_BLOCKS*run+1] = t2-t1;                                 // Time for sorting the particles' hashes
-  times[COMPUTE_BLOCKS*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
-  times[COMPUTE_BLOCKS*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
-  times[COMPUTE_BLOCKS*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                      // Time for compute morton Z 3d hash
+  times[COMPUTE_BLOCKS*run+1] = t2-t1;                      // Time for sorting the particles' hashes
+  times[COMPUTE_BLOCKS*run+2] = t3-t2;                      // Time for reordering all other arrays accordingly
+  times[COMPUTE_BLOCKS*run+3] = t4-t3;                      // Time for setting up the interval hash tables
+  times[COMPUTE_BLOCKS*run+4] = t5-t4;                      // Time for computing the SPH particle densities
 
   return 0;
 }
@@ -254,8 +254,7 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 
   setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // set the values for cell pairs
 
-  for(int64_t ii=0;ii<N;ii+=1)                                        // initialize the density to zero
-    lsph->rho[ii] = 0.0; 
+  memset(rho,(int)0,N*sizeof(double));                                // Pre-initialize the density to zero
 
   #pragma omp parallel for                                            // execute in parallel 
   for(size_t i=0;i<max_cell_pair_count;i+=1){                         // iterate over cell pairs' array

@@ -169,13 +169,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp(N,h,lsph);       // Compute the density for all particles
+  compute_density_3d_naive_omp(N,h,lsph);                   // Compute the density for all particles
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                       // Only one component to measure time
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                      // Only one component to measure time
 
   return 0;
 }

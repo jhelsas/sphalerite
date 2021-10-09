@@ -169,34 +169,34 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
 
-  err = compute_hash_MC3D(N,lsph,box);                    // Compute Morton Z 3D hash based on the 
-  if(err)                                                 // cell index for each of the X, Y and Z 
-    fprintf(stderr,"error in compute_hash_MC3D\n");               // directions, in which a given particle reside
+  err = compute_hash_MC3D(N,lsph,box);                          // Compute Morton Z 3D hash based on the 
+  if(err)                                                       // cell index for each of the X, Y and Z 
+    fprintf(stderr,"error in compute_hash_MC3D\n");             // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
-  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);  // Sort Particle Array according to hash, therefore
-                                                          // implicitly creating a cell of particles of same hash
+  qsort(lsph,N,sizeof(SPHparticle),compare_SPHparticle);        // Sort Particle Array according to hash, therefore
+                                                                // implicitly creating a cell of particles of same hash
   t2 = omp_get_wtime();
 
-  err = setup_interval_hashtables(N,lsph,box);            // Annotate the begining and end of each cell
-  if(err)                                                 // As to have a quick way to retrieve a cell 
-    fprintf(stderr,"error in setup_interval_hashtables\n");       // given its hash . 
+  err = setup_interval_hashtables(N,lsph,box);                  // Annotate the begining and end of each cell
+  if(err)                                                       // As to have a quick way to retrieve a cell 
+    fprintf(stderr,"error in setup_interval_hashtables\n");     // given its hash . 
 
   t3 = omp_get_wtime();
 
-  err = compute_density_3d_cll(N,h,lsph,box);             // Compute the density of the particles based
-  if(err)                                                 // on the cell linked list method for fast
-    fprintf(stderr,"error in compute_density_3d_innerOmp\n");     // neighbor search. 
+  err = compute_density_3d_cll(N,h,lsph,box);                   // Compute the density of the particles based
+  if(err)                                                       // on the cell linked list method for fast
+    fprintf(stderr,"error in compute_density_3d_innerOmp\n");   // neighbor search. 
 
   t4 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
-  times[COMPUTE_BLOCKS*run+1] = t2-t1;                                 // Time for sorting the particles
-  times[COMPUTE_BLOCKS*run+2] = t3-t2;                                 // Time for setting up the interval hash tables
-  times[COMPUTE_BLOCKS*run+3] = t4-t3;                                 // Time for computing the SPH particle densities
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                          // Time for compute morton Z 3d hash
+  times[COMPUTE_BLOCKS*run+1] = t2-t1;                          // Time for sorting the particles
+  times[COMPUTE_BLOCKS*run+2] = t3-t2;                          // Time for setting up the interval hash tables
+  times[COMPUTE_BLOCKS*run+3] = t4-t3;                          // Time for computing the SPH particle densities
 
   return 0;
 }
@@ -267,28 +267,28 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              int64_t nb_begin, int64_t nb_end,double h,
                              SPHparticle *lsph)
 {
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){           // Iterate over the ii index of the chunk
-    double xii = lsph[ii].r.x;                            // Load the X component of the ii particle position
-    double yii = lsph[ii].r.y;                            // Load the Y component of the ii particle position
-    double zii = lsph[ii].r.z;                            // Load the Z component of the ii particle position
-    double rhoii = 0.0;                                   // Initialize the chunk contribution to density 
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){ // Iterate over the ii index of the chunk
+    double xii = lsph[ii].r.x;                  // Load the X component of the ii particle position
+    double yii = lsph[ii].r.y;                  // Load the Y component of the ii particle position
+    double zii = lsph[ii].r.z;                  // Load the Z component of the ii particle position
+    double rhoii = 0.0;                         // Initialize the chunk contribution to density 
    
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){             // Iterate over the each other particle in jj loop
-      double q = 0.;                                      // Initialize the distance
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){   // Iterate over the each other particle in jj loop
+      double q = 0.;                            // Initialize the distance
 
-      double xij = xii-lsph[jj].r.x;                      // Load and subtract jj particle's X position component
-      double yij = yii-lsph[jj].r.y;                      // Load and subtract jj particle's Y position component
-      double zij = zii-lsph[jj].r.z;                      // Load and subtract jj particle's Z position component
+      double xij = xii-lsph[jj].r.x;            // Load and subtract jj particle's X position component
+      double yij = yii-lsph[jj].r.y;            // Load and subtract jj particle's Y position component
+      double zij = zii-lsph[jj].r.z;            // Load and subtract jj particle's Z position component
 
-      q += xij*xij;                                       // Add the jj contribution to the ii distance in X
-      q += yij*yij;                                       // Add the jj contribution to the ii distance in Y
-      q += zij*zij;                                       // Add the jj contribution to the ii distance in Z
+      q += xij*xij;                             // Add the jj contribution to the ii distance in X
+      q += yij*yij;                             // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                             // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q);                                        // Sqrt to compute the distance
+      q = sqrt(q);                              // Sqrt to compute the distance
 
-      rhoii += lsph[jj].nu*w_bspline_3d(q,h);             // Add up the contribution from the jj particle
-    }                                                     // to the intermediary density and then
-    lsph[ii].rho += rhoii;                                // add the intermediary density to the full density
+      rhoii += lsph[jj].nu*w_bspline_3d(q,h);   // Add up the contribution from the jj particle
+    }                                           // to the intermediary density and then
+    lsph[ii].rho += rhoii;                      // add the intermediary density to the full density
   }
 
   return 0;

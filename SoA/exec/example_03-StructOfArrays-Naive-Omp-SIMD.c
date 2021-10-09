@@ -177,13 +177,14 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp_simd(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);       // Compute the density for all particles
+  compute_density_3d_naive_omp_simd(N,h,lsph->x,lsph->y,
+                            lsph->z,lsph->nu,lsph->rho);    // Compute the density for all particles
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                  // Only one component to measure time
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                      // Only one component to measure time
 
   return 0;
 }
@@ -209,33 +210,34 @@ int compute_density_3d_naive_omp_simd(int N,double h,
                                       double* restrict x, double* restrict y,
                                       double* restrict z, double* restrict nu,
                                       double* restrict rho){
-  const double inv_h = 1./h;                                   // Pre-invert the smoothing distance 
-  const double kernel_constant = w_bspline_3d_constant(h);     // Pre-compute the 3d normalization constant
+  const double inv_h = 1./h;                                // Pre-invert the smoothing distance 
+  const double kernel_constant = w_bspline_3d_constant(h);  // Pre-compute the 3d normalization constant
 
-  #pragma omp parallel for                                     // Run the iteration in i in parallel 
-  for(int64_t ii=0;ii<N;ii+=1){                                // Iterate over i
-    double xii = x[ii];                                        // Load the position in X for ii
-    double yii = y[ii];                                        // Load the position in Y for ii 
-    double zii = z[ii];                                        // Load the position in Z for ii
-    double rhoii = 0.0;                                        // Initialize partial ii density to zero
+  memset(rho,(int)0,N*sizeof(double));                      // Pre-initialize the density to zero
+
+  #pragma omp parallel for                                  // Run the iteration in i in parallel 
+  for(int64_t ii=0;ii<N;ii+=1){                             // Iterate over i
+    double xii = x[ii];                                     // Load the position in X for ii
+    double yii = y[ii];                                     // Load the position in Y for ii 
+    double zii = z[ii];                                     // Load the position in Z for ii
     
-    #pragma omp simd reduction(+:rhoii) aligned(x,y,z,nu)      // Hint at the compiler to vectorize this loop
-    for(int64_t jj=0;jj<N;jj+=1){                              // and iterate over the jj part of the block
-      double q = 0.;                                           // initialize the distance variable
+    #pragma omp simd                                        // Hint at the compiler to vectorize this loop
+    for(int64_t jj=0;jj<N;jj+=1){                           // and iterate over the jj part of the block
+      double q = 0.;                                        // initialize the distance variable
 
-      double xij = xii-x[jj];                                  // Load and subtract the position in X for jj
-      double yij = yii-y[jj];                                  // Load and subtract the position in Y for jj
-      double zij = zii-z[jj];                                  // Load and subtract the position in Z for jj
+      double xij = xii-x[jj];                               // Load and subtract the position in X for jj
+      double yij = yii-y[jj];                               // Load and subtract the position in Y for jj
+      double zij = zii-z[jj];                               // Load and subtract the position in Z for jj
 
-      q += xij*xij;                                            // Add the jj contribution to the ii distance in X
-      q += yij*yij;                                            // Add the jj contribution to the ii distance in Y
-      q += zij*zij;                                            // Add the jj contribution to the ii distance in Z
+      q += xij*xij;                                         // Add the jj contribution to the ii distance in X
+      q += yij*yij;                                         // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                                         // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q)*inv_h;                                       // compute the normalized distance, measured in h
+      q = sqrt(q)*inv_h;                                    // compute the normalized distance, measured in h
 
-      rhoii += nu[jj]*w_bspline_3d_simd(q);                    // Add up the contribution from the jj particle
-    }                                                          // to the intermediary density and then
-    rho[ii] = kernel_constant*rhoii;                           // set the intermediary density to the full density
+      rhoii += nu[jj]*w_bspline_3d_simd(q);                 // Add up the contribution from the jj particle
+    }                                                       // to the intermediary density and then
+    rho[ii] = kernel_constant*rhoii;                        // set the intermediary density to the full density
   }
 
   return 0;

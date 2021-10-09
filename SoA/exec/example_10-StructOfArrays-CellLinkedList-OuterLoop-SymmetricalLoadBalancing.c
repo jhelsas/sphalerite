@@ -185,42 +185,42 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
 
-  err = compute_hash_MC3D(N,lsph,box);                    // Compute Morton Z 3D hash based on the 
-  if(err)                                                 // cell index for each of the X, Y and Z 
-    fprintf(stderr,"error in compute_hash_MC3D\n");               // directions, in which a given particle reside
+  err = compute_hash_MC3D(N,lsph,box);                               // Compute Morton Z 3D hash based on the 
+  if(err)                                                            // cell index for each of the X, Y and Z 
+    fprintf(stderr,"error in compute_hash_MC3D\n");                  // directions, in which a given particle reside
 
   t1 = omp_get_wtime();
   
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);  // Sort the Particle Hash Hashes, getting the shuffled
-                                                          // index necessary to re-shuffle the remaining arrays
+  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);             // Sort the Particle Hash Hashes, getting the shuffled
+                                                                     // index necessary to re-shuffle the remaining arrays
 
   t2 = omp_get_wtime();
 
-  err = reorder_lsph_SoA(N,lsph,swap_arr);                // Reorder all arrays according to the sorted hash,
-  if(err)                                                 // As to have a quick way to retrieve a cell 
-    fprintf(stderr,"error in reorder_lsph_SoA\n");                // given its hash. 
+  err = reorder_lsph_SoA(N,lsph,swap_arr);                           // Reorder all arrays according to the sorted hash,
+  if(err)                                                            // As to have a quick way to retrieve a cell 
+    fprintf(stderr,"error in reorder_lsph_SoA\n");                   // given its hash. 
 
   t3 = omp_get_wtime();
 
-  err = setup_interval_hashtables(N,lsph,box);            // Annotate the begining and end of each cell
-  if(err)                                                 // on the cell linked list method for fast
-    fprintf(stderr,"error in setup_interval_hashtables\n");       // neighbor search
+  err = setup_interval_hashtables(N,lsph,box);                       // Annotate the begining and end of each cell
+  if(err)                                                            // on the cell linked list method for fast
+    fprintf(stderr,"error in setup_interval_hashtables\n");          // neighbor search
 
   t4 = omp_get_wtime();
 
   err = compute_density_3d_symmetrical_load_ballance(N,h,lsph,box);  // Compute the density of the particles based
   if(err)                                                            // on the cell linked list method for fast  
-    fprintf(stderr,"error in compute_density_3d_load_ballanced\n");          // neighbor search
+    fprintf(stderr,"error in compute_density_3d_load_ballanced\n");  // neighbor search
 
-  // ------------------------------------------------------ //
+  // --------------------------------------------------------------- //
 
   t5 = omp_get_wtime();
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
-  times[COMPUTE_BLOCKS*run+1] = t2-t1;                                 // Time for sorting the particles' hashes
-  times[COMPUTE_BLOCKS*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
-  times[COMPUTE_BLOCKS*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
-  times[COMPUTE_BLOCKS*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                               // Time for compute morton Z 3d hash
+  times[COMPUTE_BLOCKS*run+1] = t2-t1;                               // Time for sorting the particles' hashes
+  times[COMPUTE_BLOCKS*run+2] = t3-t2;                               // Time for reordering all other arrays accordingly
+  times[COMPUTE_BLOCKS*run+3] = t4-t3;                               // Time for setting up the interval hash tables
+  times[COMPUTE_BLOCKS*run+4] = t5-t4;                               // Time for computing the SPH particle densities
 
   return 0;
 }
@@ -244,53 +244,50 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
  */
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int64_t *node_begin,*node_end,*nb_begin,*nb_end;                     // Define the arrays for cell boundaries 
-  int64_t max_cell_pair_count = 0;                                     // and the number of cell pairs
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end;                        // Define the arrays for cell boundaries 
+  int64_t max_cell_pair_count = 0;                                        // and the number of cell pairs
   const double kernel_constant = w_bspline_3d_constant(h);               
 
-  max_cell_pair_count = count_box_pairs(box);                          // compute the maximum number of cell pairs
+  max_cell_pair_count = count_box_pairs(box);                             // compute the maximum number of cell pairs
   
-  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for node_begin
-  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for node_end
-  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for nb_begin
-  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));  // allocate space for nb_end
+  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for node_begin
+  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for node_end
+  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for nb_begin
+  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for nb_end
 
-  max_cell_pair_count = setup_unique_box_pairs(box,                    // set the values for cell pairs
+  max_cell_pair_count = setup_unique_box_pairs(box,                       // set the values for cell pairs
                                                node_begin,node_end,
                                                nb_begin,nb_end); 
   
-  for(int64_t ii=0;ii<N;ii+=1)                                         // initialize the density to zero
-    lsph->rho[ii] = 0.0; 
-                                                                       // Parallelism was moved 
-                                                                       // to the level of unique pairs
-  #pragma omp parallel for schedule(dynamic,5) proc_bind(master)       // Execute in parallel 
-  for(size_t i=0;i<max_cell_pair_count;i+=1){                          // over the unique pairs' array
-    double local_rhoi[node_end[i] - node_begin[i]];                    // partial density array for node indexs
-    double local_rhoj[  nb_end[i] -   nb_begin[i]];                    // partial density array for nb   indexs
+  memset(rho,(int)0,N*sizeof(double));                                    // Pre-initialize the density to zero
 
-    for(size_t ii=0;ii<node_end[i]-node_begin[i];ii+=1)                // initialize node partial density to zero
-      local_rhoi[ii] = 0.;
+                                                                          // Parallelism was moved 
+                                                                          // to the level of unique pairs
+  #pragma omp parallel for schedule(dynamic,5) proc_bind(master)          // Execute in parallel 
+  for(size_t i=0;i<max_cell_pair_count;i+=1){                             // over the unique pairs' array
+    double local_rhoi[node_end[i] - node_begin[i]];                       // partial density array for node indexs
+    double local_rhoj[  nb_end[i] -   nb_begin[i]];                       // partial density array for nb   indexs
 
-    for(size_t ii=0;ii<nb_end[i]-nb_begin[i];ii+=1)                    // initialize nb partial density to zero
-      local_rhoj[ii] = 0.;
+    memset(local_rhoi,(int)0,(node_end[i]-node_begin[i])*sizeof(double)); // initialize node partial density to zero
+    memset(local_rhoj,(int)0,    (nb_end[i]-nb_begin[i])*sizeof(double)); // initialize nb partial density to zero
 
-    compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],    // Compute the density contribution
-                                         nb_begin[i],nb_end[i],h,      // from this particular cell pair
-                                         lsph->x,lsph->y,lsph->z,      // for both node and nb partial density
+    compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],       // Compute the density contribution
+                                         nb_begin[i],nb_end[i],h,         // from this particular cell pair
+                                         lsph->x,lsph->y,lsph->z,         // for both node and nb partial density
                                          lsph->nu,local_rhoi,          
                                          local_rhoj);
 
     // merging the results can result in race conditions, therefore needs to be serialized
-    #pragma omp critical                                               // this serializes this code section
+    #pragma omp critical                                                  // this serializes this code section
     {
 
-      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1){               // iterate over the node_ cell
-        lsph->rho[ii] += kernel_constant*local_rhoi[ii-node_begin[i]]; // add the partial density contribution
+      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1){                  // iterate over the node_ cell
+        lsph->rho[ii] += kernel_constant*local_rhoi[ii-node_begin[i]];    // add the partial density contribution
       }
       
-      if(node_begin[i] != nb_begin[i])                                 // if sender and receiver are different
-        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1){                 // iterate over the nb_ cell
-          lsph->rho[ii] += kernel_constant*local_rhoj[ii-nb_begin[i]]; // add the partial density contribution
+      if(node_begin[i] != nb_begin[i])                                    // if sender and receiver are different
+        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1){                    // iterate over the nb_ cell
+          lsph->rho[ii] += kernel_constant*local_rhoj[ii-nb_begin[i]];    // add the partial density contribution
         }
     }
   }

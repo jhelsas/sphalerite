@@ -174,13 +174,14 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);       // Compute the density for all particles
+  compute_density_3d_naive(N,h,lsph->x,lsph->y,
+                           lsph->z,lsph->nu,lsph->rho);     // Compute the density for all particles
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                  // Only one component to measure time
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                      // Only one component to measure time
 
   return 0;
 }
@@ -205,15 +206,16 @@ int compute_density_3d_naive(int N,double h,
                              double* restrict z,double* restrict nu,
                              double* restrict rho)
 {
-
+  
+  memset(rho,(int)0,N*sizeof(double));        // Pre-initialize the density to zero
+  
   for(int64_t ii=0;ii<N;ii+=1){               // For every particle
-    rho[ii] = 0;                              // initialize the density to zero 
     for(int64_t jj=0;jj<N;jj+=1){             // Run over every other particle
       double dist = 0.;                       // initialize the distance and add
-                                              // The contributions fom each direction
-      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);
-      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);
-      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);
+                                              
+      dist += (x[ii]-x[jj])*(x[ii]-x[jj]);    // The contributions fom the X direction
+      dist += (y[ii]-y[jj])*(y[ii]-y[jj]);    // The contributions fom the Y direction
+      dist += (z[ii]-z[jj])*(z[ii]-z[jj]);    // The contributions fom the Z direction
 
       dist = sqrt(dist);                      // then take the sqrt to have the distance
       rho[ii] += nu[jj]*w_bspline_3d(dist,h); // and add the contribution 

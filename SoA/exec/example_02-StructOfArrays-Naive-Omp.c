@@ -174,7 +174,8 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t0 = omp_get_wtime();
   
-  compute_density_3d_naive_omp(N,h,lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);      // Compute the density for all particles
+  compute_density_3d_naive_omp(N,h,lsph->x,lsph->y,lsph->z,
+                               lsph->nu,lsph->rho);         // Compute the density for all particles
 
   t1 = omp_get_wtime();
 
@@ -205,9 +206,10 @@ int compute_density_3d_naive_omp(int N,double h,
                                  double* restrict x, double* restrict y,
                                  double* restrict z,double* restrict nu,
                                  double* restrict rho){
+  memset(rho,(int)0,N*sizeof(double));        // Pre-initialize the density to zero
+
   #pragma omp parallel for                    // Iterate in parallel
   for(int64_t ii=0;ii<N;ii+=1){               // For every particle
-    rho[ii] = 0;                              // Initialize the density to zero
     for(int64_t jj=0;jj<N;jj+=1){             // Run over every other particle
       double dist = 0.;                       // the contributions from each direction by 
 

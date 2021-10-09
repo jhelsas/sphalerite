@@ -172,8 +172,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
     err = gen_unif_rdn_pos_box(N,seed,box,lsph);
 
   if(err)
-    fprintf(stderr,"error in gen_unif_rdn_pos\n"); // fprintf to stderr?
-
+    fprintf(stderr,"error in gen_unif_rdn_pos\n");
   
   // ------------------------------------------------------ //
 
@@ -182,13 +181,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   t0 = omp_get_wtime();
   
   compute_density_3d_naive_omp_simd_tiled(N,h,lsph->x,lsph->y,      // Compute the density for all particles
-                                              lsph->z,lsph->nu,lsph->rho);
+                                    lsph->z,lsph->nu,lsph->rho);
 
   t1 = omp_get_wtime();
 
   // ------------------------------------------------------ //
   
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                  // Only one component to measure time
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                      // Only one component to measure time
   
   return 0;
 }
@@ -220,10 +219,7 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
   const double kernel_constant = w_bspline_3d_constant(h);         // Pre-compute the 3d normalization constant
   const int64_t STRIP = 500;                                       // Setting the size of the strip or block 
 
-  #pragma omp parallel for                                         // Run the iteration in Parallel
-  for(int64_t ii=0;ii<N;ii+=1)                                     // Iterate 
-    rho[ii] = 0.;                                                  // Pre-initialize the density to zero
-	// why not memset() this in serial?
+  memset(rho,(int)0,N*sizeof(double));                             // Pre-initialize the density to zero
 
   #pragma omp parallel for                                         // Run the iteration in i in parallel
   for(int64_t i=0;i<N;i+=STRIP){                                   // Breaking up the i and j iterations in blocks

@@ -201,12 +201,12 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t4 = omp_get_wtime();
 
-  // ------------------------------------------------------ //
+  // ------------------------------------------------------- //
 
-  times[COMPUTE_BLOCKS*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
-  times[COMPUTE_BLOCKS*run+1] = t2-t1;                                 // Time for sorting the particles
-  times[COMPUTE_BLOCKS*run+2] = t3-t2;                                 // Time for setting up the interval hash tables
-  times[COMPUTE_BLOCKS*run+3] = t4-t3;                                 // Time for computing the SPH particle densities
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                       // Time for compute morton Z 3d hash
+  times[COMPUTE_BLOCKS*run+1] = t2-t1;                       // Time for sorting the particles
+  times[COMPUTE_BLOCKS*run+2] = t3-t2;                       // Time for setting up the interval hash tables
+  times[COMPUTE_BLOCKS*run+3] = t4-t3;                       // Time for computing the SPH particle densities
 
   return 0;
 }
@@ -240,13 +240,13 @@ int compute_density_3d_cll_load_ballanced(int N, double h, SPHparticle *lsph, li
   nb_begin   = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate nb_begin   accordingly
   nb_end     = (int64_t*)malloc(max_box_pair_count*sizeof(int64_t));  // Allocate nb_end     accordingly
 
-  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // Then set the values for these
-                                                                      // arrays beforehand 
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // Then set the values for cell 
+                                                                      // boudary arrays beforehand 
 
   for(int64_t ii=0;ii<N;ii+=1)                                        // iterate over all particles and 
     lsph[ii].rho = 0.0;                                               // initialize all densities to zero
 
-  #pragma omp parallel for                                            // iterate in parallel over the 
+  #pragma omp parallel for                                            // Iterate in parallel over the 
   for(size_t i=0;i<max_box_pair_count;i+=1)                           // array of cell pairs 
     compute_density_3d_chunk_noomp(node_begin[i],node_end[i],         // then compute the contributions
                                    nb_begin[i],nb_end[i],h,lsph);     // for each pair. 
