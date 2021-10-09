@@ -195,7 +195,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  */
 int compute_density_3d_naive_omp(int N,double h,SPHparticle *lsph){
 
-  #pragma omp parallel for
+  #pragma omp parallel for          // Execute in parallel
   for(int64_t ii=0;ii<N;ii+=1){     // For every particle 
     lsph[ii].rho = 0;               // initialize the density to zero
     for(int64_t jj=0;jj<N;jj+=1){   // Run over every other particle
