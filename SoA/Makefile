@@ -5,9 +5,9 @@
 # quite common, or at least simple, but it wasn't. Finding the right source took me several days.
 #
 CC = gcc
-CFLAGS0 = -std=c11 -Wall -O0
-CFLAGS1 = -std=c11 -Wall -O2
-CFLAGS2 = -std=c11 -Wall -O3
+CFLAGS0 = -std=c11 -Wall 
+CFLAGS1 = -std=c11 -Wall -O0
+CFLAGS2 = -std=c11 -Wall -O2
 CFLAGS3 = -std=c11 -Wall -O3
 CFLAGS4 = -std=c11 -Wall -O3 -fopenmp #-fopt-info-vec-missed
 CFLAGS5 = -std=c11 -Wall -O3 -fopenmp -march=native #-fopt-info-vec-missed
