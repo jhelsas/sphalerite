@@ -1,3 +1,11 @@
+#
+# SPDX-License-Identifier:  BSD-3-Clause
+#
+# Makefile :
+#
+# (C) Copyright 2021 José Hugo Elsas
+# Author: José Hugo Elsas <jhelsas@gmail.com>
+#
 # Makefile based on the link below:
 # https://stackoverflow.com/questions/23854810/makefile-for-multiple-executables-with-folders
 #
