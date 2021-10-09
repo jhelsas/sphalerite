@@ -236,7 +236,7 @@ int compute_density_3d_innerOmp(int N, double h, SPHparticle *lsph, linkedListBo
   int64_t nb_begin= 0, nb_end = 0;                                               // initialize the neighbor indexes 
   int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];            // prepare a list of potential neighbor 
 
-  memset(rho,(int)0,N*sizeof(double));                                           // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                                     // Pre-initialize the density to zero
 
   for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){ // Iterate over each receiver cell begin index 
     if (kh_exist(box->hbegin, kbegin)){                                          // verify if that given iterator actually exists

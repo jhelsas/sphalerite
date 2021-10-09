@@ -242,13 +242,13 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
  */
 int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
+  memset(lsph->rho,(int)0,N*sizeof(double));                                             // Pre-initialize the density to zero
+
   #pragma omp parallel for                                                                 // Execute the iteration in parallel
   for (khint32_t kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){ // Iterate over each receiver cell begin index 
     int64_t node_hash=-1,node_begin=0, node_end=0;                                         // Start initializing the node indexes on the array 
     int64_t nb_begin= 0, nb_end = 0;                                                       // initialize the neighbor indexes 
     int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];                    // prepare a list of potential neighbor hashes
-
-    memset(rho,(int)0,N*sizeof(double));                                                   // Pre-initialize the density to zero
 
     if (kh_exist(box->hbegin, kbegin)){                                                    // verify if that given iterator actually exists
       khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));                  // Then get the end of the receiver cell iterator

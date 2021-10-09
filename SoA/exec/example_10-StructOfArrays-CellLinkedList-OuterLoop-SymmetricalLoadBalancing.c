@@ -259,7 +259,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
                                                node_begin,node_end,
                                                nb_begin,nb_end); 
   
-  memset(rho,(int)0,N*sizeof(double));                                    // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                             // Pre-initialize the density to zero
 
                                                                           // Parallelism was moved 
                                                                           // to the level of unique pairs

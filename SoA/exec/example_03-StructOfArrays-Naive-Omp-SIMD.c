@@ -220,6 +220,7 @@ int compute_density_3d_naive_omp_simd(int N,double h,
     double xii = x[ii];                                     // Load the position in X for ii
     double yii = y[ii];                                     // Load the position in Y for ii 
     double zii = z[ii];                                     // Load the position in Z for ii
+    double rhoii=0.;
     
     #pragma omp simd                                        // Hint at the compiler to vectorize this loop
     for(int64_t jj=0;jj<N;jj+=1){                           // and iterate over the jj part of the block
@@ -276,7 +277,6 @@ double w_bspline_3d_simd(double q){
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
-
   if(q<2.)                                                         // If the distance is below 2
     wq = wq2;                                                      // Use the 2nd polynomial for the spline
   

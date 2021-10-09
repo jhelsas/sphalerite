@@ -201,7 +201,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
  *    Reference: https://en.wikipedia.org/wiki/Loop_nest_optimization
  *    
  *    Arguments:
- *       N <int>              : Number of SPH particles to be used in the run
+ *       N  <int>             : Number of SPH particles to be used in the run
  *       h  <double>          : Smoothing Length for the Smoothing Kernel w_bspline
  *       x  <double*>         : X position array of the particles
  *       y  <double*>         : Y position array of the particles

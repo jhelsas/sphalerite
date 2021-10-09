@@ -254,7 +254,7 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 
   setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // set the values for cell pairs
 
-  memset(rho,(int)0,N*sizeof(double));                                // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                          // Pre-initialize the density to zero
 
   #pragma omp parallel for                                            // execute in parallel 
   for(size_t i=0;i<max_cell_pair_count;i+=1){                         // iterate over cell pairs' array
@@ -305,7 +305,7 @@ int compute_density_3d_chunk_noomp(int64_t node_begin, int64_t node_end,
     double zii = z[ii];                         // Load the Z component of the ii particle position
     double rhoii = 0.0;                         // Initialize the chunk contribution to density 
    
-    #pragma omp simd reduction(+:rhoii)         // Hint at the compiler to vectorize
+    #pragma omp simd                            // Hint at the compiler to vectorize
     for(int64_t jj=nb_begin;jj<nb_end;jj+=1){   // Iterate over the each other particle in jj loop
       double q = 0.;                            // Initialize the distance
 
