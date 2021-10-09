@@ -33,6 +33,8 @@
 #include "sph_data_types.h"
 #include "sph_linked_list.h"
 
+#define dbg false
+
 int safe_free_box(linkedListBox *box){
 	kh_destroy(0, box->hbegin);
 	kh_destroy(1, box->hend);
@@ -479,7 +481,8 @@ int setup_box_pairs(linkedListBox *box,
     }
   }
 
-  printf("particle_pair_count = %ld\n",particle_pair_count);
+  if(dbg)
+    printf("particle_pair_count = %ld\n",particle_pair_count);
 
   return pair_count;
 }
@@ -533,7 +536,8 @@ int setup_unique_box_pairs(linkedListBox *box,
     }
   }
 
-  printf("particle_pair_count = %ld\n",particle_pair_count);
+  if(dbg)
+    printf("particle_pair_count = %ld\n",particle_pair_count);
 
   return pair_count;
 }
@@ -618,7 +622,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
   	fp = fopen(filename,"w");
-		fprintf(fp,"id, compute_hash_MC3D, sorting, reorder_lsph_SoA, setup_interval_hashtables, compute_density\n");
+		fprintf(fp,"id,compute_hash_MC3D,sorting,reorder_lsph_SoA,setup_interval_hashtables,compute_density\n");
 		for(int run=0;run<runs;run+=1)
 			fprintf(fp,"%d,%lf,%lf,%lf,%lf,%lf\n",run,times[COMPUTE_BLOCKS*run+0],times[COMPUTE_BLOCKS*run+1],times[COMPUTE_BLOCKS*run+2],
                                                 times[COMPUTE_BLOCKS*run+3],times[COMPUTE_BLOCKS*run+4]);
@@ -649,12 +653,14 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	dtotal_time /= runs;
   	dtotal_time = sqrt(dtotal_time);
 
-  	printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
-  	printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
-  	printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
-  	printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
-  	printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
-  	printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
+  	if(dbg){
+      printf("compute_hash_MC3D calc time                 : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[0],dt[0],100*t[0]/total_time,100*dt[0]/total_time);
+  	  printf("qsort calc time                             : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[1],dt[1],100*t[1]/total_time,100*dt[1]/total_time);
+  	  printf("reorder_lsph_SoA calc time                  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[2],dt[2],100*t[2]/total_time,100*dt[2]/total_time);
+  	  printf("setup_interval_hashtables calc time         : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[3],dt[3],100*t[3]/total_time,100*dt[3]/total_time);
+  	  printf("compute_density_3d load balanced calc time  : %.5lf +- %.6lf s : %.3lg%% +- %.3lg%%\n",t[4],dt[4],100*t[4]/total_time,100*dt[4]/total_time);
+  	  printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
+    }
 	}
 	else{
     const int COMPUTE_BLOCKS = 1;
@@ -664,7 +670,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
 
   	fp = fopen(filename,"w");
-		fprintf(fp,"id, compute_density\n");
+		fprintf(fp,"id,compute_density\n");
 		for(int run=0;run<runs;run+=1)
 			fprintf(fp,"%d %lf\n",run,times[COMPUTE_BLOCKS*run+0]);
 		fclose(fp);
@@ -694,7 +700,8 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	dtotal_time /= runs;
   	dtotal_time = sqrt(dtotal_time);
 
-  	printf("compute_density_3d naive %s : %.5lf +- %.6lf s : %.3lf%%\n",prefix,total_time,dtotal_time,100.);
+  	if(dbg)
+      printf("compute_density_3d naive %s : %.5lf +- %.6lf s : %.3lf%%\n",prefix,total_time,dtotal_time,100.);
 	}
 
 

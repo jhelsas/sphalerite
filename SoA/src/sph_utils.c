@@ -22,6 +22,8 @@
 
 #include "sph_data_types.h"
 
+#define dbg false
+
 /*
  *  Function arg_parse:
  *    Easily allocate the SPHparticle array
@@ -46,82 +48,92 @@ int arg_parse(int argc, char **argv, int64_t *N, double *h,
   for(int i=1;i<argc;){
     if( strcmp(argv[i],"-N") == 0 ){
       *N = (int64_t) atol(argv[i+1]);
-      printf("N particles = %ld\n",*N);
+      if(dbg)
+        printf("N particles = %ld\n",*N);
       i+=2;
     }
     else if( strcmp(argv[i],"-seed") == 0 ){
       *seed = (long int) atol(argv[i+1]);
-      printf("seed = %ld\n",*seed);
+      if(dbg)
+        printf("seed = %ld\n",*seed);
       i+=2;
     }
     else if( strcmp(argv[i],"-runs") == 0 ){
       *runs = (int) atoi(argv[i+1]);
-      printf("runs = %d\n",*runs);
+      if(dbg)
+        printf("runs = %d\n",*runs);
       i+=2;
     }
     else if( strcmp(argv[i],"-run_seed") == 0 ){
-      /*int ran_seed = (int) atoi(argv[i+1]);
-      if(ran_seed)
-        *run_seed = true;
-      else
-        *run_seed = false;*/
       *run_seed=true;
-      printf("run_seed = %d\n",true);
+      if(dbg)
+        printf("run_seed = %d\n",true);
       i+=1;
     }
     else if( strcmp(argv[i],"-h") == 0 ){
       *h = atof(argv[i+1]);
-      printf("h = %lf\n",*h);
+      if(dbg)
+        printf("h = %lf\n",*h);
       intern_h = false;
       i+=2;
     }
     else if( strcmp(argv[i],"-Xmin") == 0 ){
       box->Xmin = atof(argv[i+1]);
-      printf("Xmin = %lf\n",box->Xmin);
+      if(dbg)
+        printf("Xmin = %lf\n",box->Xmin);
       i+=2;
     }
     else if( strcmp(argv[i],"-Ymin") == 0 ){
       box->Ymin = atof(argv[i+1]);
-      printf("Ymin = %lf\n",box->Ymin);
+      if(dbg)
+        printf("Ymin = %lf\n",box->Ymin);
       i+=2;
     }
     else if( strcmp(argv[i],"-Zmin") == 0 ){
       box->Zmin = atof(argv[i+1]);
-      printf("Zmin = %lf\n",box->Zmin);
+      if(dbg)
+        printf("Zmin = %lf\n",box->Zmin);
       i+=2;
     }
     else if( strcmp(argv[i],"-Xmax") == 0 ){
       box->Xmax = atof(argv[i+1]);
-      printf("Xmax = %lf\n",box->Xmax);
+      if(dbg)
+        printf("Xmax = %lf\n",box->Xmax);
       i+=2;
     }
     else if( strcmp(argv[i],"-Ymax") == 0 ){
       box->Ymax = atof(argv[i+1]);
-      printf("Ymax = %lf\n",box->Ymax);
+      if(dbg)
+        printf("Ymax = %lf\n",box->Ymax);
       i+=2;
     }
     else if( strcmp(argv[i],"-Zmax") == 0 ){
       box->Zmax = atof(argv[i+1]);
-      printf("Zmax = %lf\n",box->Zmax);
+      if(dbg)
+        printf("Zmax = %lf\n",box->Zmax);
       i+=2;
     }
     else if( strcmp(argv[i],"-Nx") == 0 ){
       box->Nx   = atol(argv[i+1]);
-      printf("Nx = %d\n",box->Nx);
+      if(dbg)
+        printf("Nx = %d\n",box->Nx);
       i+=2;
     }
     else if( strcmp(argv[i],"-Ny") == 0 ){
       box->Ny   = atol(argv[i+1]);
-      printf("Ny = %d\n",box->Ny);
+      if(dbg)
+        printf("Ny = %d\n",box->Ny);
       i+=2;
     }
     else if( strcmp(argv[i],"-Nz") == 0 ){
       box->Nz   = atol(argv[i+1]);
-      printf("Nz = %d\n",box->Nz);
+      if(dbg)
+        printf("Nz = %d\n",box->Nz);
       i+=2;
     }
     else{
-      printf("unknown option: %s %s\n",argv[i],argv[i+1]);
+      if(dbg)
+        printf("unknown option: %s %s\n",argv[i],argv[i+1]);
       i+=2;
     }
   }
