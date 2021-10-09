@@ -1,3 +1,14 @@
+#
+# SPDX-License-Identifier:  BSD-3-Clause
+#
+# timings_statistics.py :
+#     Print the statistics for the different 
+#     computation modes
+#
+# (C) Copyright 2021 José Hugo Elsas
+# Author: José Hugo Elsas <jhelsas@gmail.com>
+#
+
 import re
 import glob
 import numpy as np

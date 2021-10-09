@@ -1,3 +1,13 @@
+#
+# SPDX-License-Identifier:  BSD-3-Clause
+#
+# diff_ref.py :
+#     Diff for density between ref and different calculations
+#
+# (C) Copyright 2021 José Hugo Elsas
+# Author: José Hugo Elsas <jhelsas@gmail.com>
+#
+
 import glob
 import numpy as np
 import pandas as pd

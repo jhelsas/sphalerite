@@ -1,3 +1,13 @@
+#
+# SPDX-License-Identifier:  BSD-3-Clause
+#
+# quick_run.py :
+#     Execution script for a small number of runs 
+#     and default parameters
+#
+# (C) Copyright 2021 José Hugo Elsas
+# Author: José Hugo Elsas <jhelsas@gmail.com>
+#
 cd AoS/
 make clean
 make all
