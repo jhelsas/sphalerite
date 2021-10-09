@@ -191,7 +191,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t4 = omp_get_wtime();
 
-  // ------------------------------------------------------ //
+  // ---------------------------------------------------------- //
 
   times[COMPUTE_BLOCKS*run+0] = t1-t0;                          // Time for compute morton Z 3d hash
   times[COMPUTE_BLOCKS*run+1] = t2-t1;                          // Time for sorting the particles

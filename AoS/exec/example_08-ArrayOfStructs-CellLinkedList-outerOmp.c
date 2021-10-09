@@ -171,7 +171,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   if(err)
     fprintf(stderr,"error in gen_unif_rdn_pos\n");
 
-  // ------------------------------------------------------ //
+  // --------------------------------------------------------- //
 
   double t0,t1,t2,t3,t4;
 
