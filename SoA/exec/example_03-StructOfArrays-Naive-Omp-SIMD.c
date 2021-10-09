@@ -87,6 +87,8 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+#define COMPUTE_BLOCKS 1
+
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -120,7 +122,7 @@ int main(int argc, char **argv){
     fprintf(stderr,"error in SPHparticle_SoA_malloc\n");
 
   void *swap_arr = malloc(N*sizeof(double));
-  double times[runs][5];
+  double times[runs*COMPUTE_BLOCKS];
 
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
@@ -181,11 +183,7 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   // ------------------------------------------------------ //
 
-  times[5*run+0] = t1-t0;                  // Only one component to measure time
-  times[5*run+1] =    0.;
-  times[5*run+2] =    0.;
-  times[5*run+3] =    0.;
-  times[5*run+4] =    0.;
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                  // Only one component to measure time
 
   return 0;
 }

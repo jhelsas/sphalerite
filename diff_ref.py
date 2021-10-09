@@ -2,7 +2,7 @@ import glob
 import numpy as np
 import pandas as pd
 
-file_refs = "AoS/data/cd3d(naive,simple,runs=1)-P(seed=123123123,N=100000,h=0.05)-B(Nx=10,Ny=10,Nz=10)-D(0,0,0,1,1,1).csv"
+file_refs = "AoS/data/cd3d(ex01,naive,AoS,simple,runs=1)-P(seed=123123123,N=100000,h=0.05)-B(Nx=10,Ny=10,Nz=10)-D(0,0,0,1,1,1).csv"
 files_SoA = glob.glob("SoA/data/cd3d*.csv")
 files_AoS = glob.glob("AoS/data/cd3d*.csv")
 

@@ -88,6 +88,8 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+#define COMPUTE_BLOCKS 5
+
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -124,7 +126,7 @@ int main(int argc, char **argv){
     fprintf(stderr,"error in SPHparticle_SoA_malloc\n");
 
   void *swap_arr = malloc(N*sizeof(double));
-  double times[runs][5];
+  double times[runs*COMPUTE_BLOCKS];
 
   for(int run=0;run<runs;run+=1)
     main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
@@ -210,11 +212,11 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t5 = omp_get_wtime();
 
-  times[5*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
-  times[5*run+1] = t2-t1;                                 // Time for sorting the particles' hashes
-  times[5*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
-  times[5*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
-  times[5*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
+  times[COMPUTE_BLOCKS*run+0] = t1-t0;                                 // Time for compute morton Z 3d hash
+  times[COMPUTE_BLOCKS*run+1] = t2-t1;                                 // Time for sorting the particles' hashes
+  times[COMPUTE_BLOCKS*run+2] = t3-t2;                                 // Time for reordering all other arrays accordingly
+  times[COMPUTE_BLOCKS*run+3] = t4-t3;                                 // Time for setting up the interval hash tables
+  times[COMPUTE_BLOCKS*run+4] = t5-t4;                                 // Time for computing the SPH particle densities
 
   return 0;
 }
@@ -356,6 +358,7 @@ double w_bspline_3d_simd(double q){
   double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
   double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
   
+
   if(q<2.)                                                         // If the distance is below 2
     wq = wq2;                                                      // Use the 2nd polynomial for the spline
   

@@ -608,10 +608,11 @@ int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, doub
 int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h, 
 										 long int seed, int runs, SPHparticle *lsph, linkedListBox *box,double *times){
   FILE *fp;
-  double t[5], dt[5], total_time, dtotal_time;
 	char filename[1024+1];
 
 	if(is_cll){
+    const int COMPUTE_BLOCKS = 5;
+    double t[COMPUTE_BLOCKS], dt[COMPUTE_BLOCKS], total_time, dtotal_time;
   	sprintf(filename,
 						"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
@@ -619,17 +620,18 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	fp = fopen(filename,"w");
 		fprintf(fp,"id, compute_hash_MC3D, sorting, reorder_lsph_SoA, setup_interval_hashtables, compute_density\n");
 		for(int run=0;run<runs;run+=1)
-			fprintf(fp,"%d %lf %lf %lf %lf %lf\n",run,times[5*run+0],times[5*run+1],times[5*run+2],times[5*run+3],times[5*run+4]);
+			fprintf(fp,"%d,%lf,%lf,%lf,%lf,%lf\n",run,times[COMPUTE_BLOCKS*run+0],times[COMPUTE_BLOCKS*run+1],times[COMPUTE_BLOCKS*run+2],
+                                                times[COMPUTE_BLOCKS*run+3],times[COMPUTE_BLOCKS*run+4]);
 		fclose(fp);
 
   	total_time = 0.;
-  	for(int k=0;k<5;k+=1){
+  	for(int k=0;k<COMPUTE_BLOCKS;k+=1){
     	t[k]=0.; dt[k]=0.;
     	for(int run=0;run<runs;run+=1)
-      	t[k] += times[5*run+k];
+      	t[k] += times[COMPUTE_BLOCKS*run+k];
     	t[k] /= runs;
     	for(int run=0;run<runs;run+=1)
-      	dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+      	dt[k] += (times[COMPUTE_BLOCKS*run+k]-t[k])*(times[COMPUTE_BLOCKS*run+k]-t[k]);
     	dt[k] /= runs;
     	dt[k] = sqrt(dt[k]);
 
@@ -639,8 +641,8 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	dtotal_time = 0.;
   	for(int run=0;run<runs;run+=1){
 	    double rgm = 0.;
-  	  for(int k=0;k<5;k+=1)
-    	  rgm += times[5*run+k];
+  	  for(int k=0;k<COMPUTE_BLOCKS;k+=1)
+    	  rgm += times[COMPUTE_BLOCKS*run+k];
 
     	dtotal_time += (rgm-total_time)*(rgm-total_time);
   	}
@@ -655,6 +657,8 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	printf("compute_density_3d load balanced total time : %.5lf +- %.6lf s : %.3lf%%\n",total_time,dtotal_time,100.);
 	}
 	else{
+    const int COMPUTE_BLOCKS = 1;
+    double t[COMPUTE_BLOCKS], dt[COMPUTE_BLOCKS], total_time, dtotal_time;
 		sprintf(filename,
 						"data/times-(%s,runs=%d)-P(seed=%ld,N=%ld,h=%lg)-B(Nx=%d,Ny=%d,Nz=%d)-D(%lg,%lg,%lg,%lg,%lg,%lg).csv",
 						prefix,runs,seed,N,h,box->Nx,box->Ny,box->Nz,box->Xmin,box->Ymin,box->Zmin,box->Xmax,box->Ymax,box->Zmax);
@@ -662,17 +666,17 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	fp = fopen(filename,"w");
 		fprintf(fp,"id, compute_density\n");
 		for(int run=0;run<runs;run+=1)
-			fprintf(fp,"%d %lf\n",run,times[5*run+0]);
+			fprintf(fp,"%d %lf\n",run,times[COMPUTE_BLOCKS*run+0]);
 		fclose(fp);
 
   	total_time = 0.;
-  	for(int k=0;k<1;k+=1){
+  	for(int k=0;k<COMPUTE_BLOCKS;k+=1){
     	t[k]=0.; dt[k]=0.;
     	for(int run=0;run<runs;run+=1)
-      	t[k] += times[5*run+k];
+      	t[k] += times[COMPUTE_BLOCKS*run+k];
     	t[k] /= runs;
     	for(int run=0;run<runs;run+=1)
-      	dt[k] += (times[5*run+k]-t[k])*(times[5*run+k]-t[k]);
+      	dt[k] += (times[COMPUTE_BLOCKS*run+k]-t[k])*(times[COMPUTE_BLOCKS*run+k]-t[k]);
     	dt[k] /= runs;
     	dt[k] = sqrt(dt[k]);
 
@@ -683,7 +687,7 @@ int print_time_stats(const char *prefix, bool is_cll, int64_t N, double h,
   	for(int run=0;run<runs;run+=1){
 	    double rgm = 0.;
   	  for(int k=0;k<1;k+=1)
-    	  rgm += times[5*run+k];
+    	  rgm += times[COMPUTE_BLOCKS*run+k];
 
     	dtotal_time += (rgm-total_time)*(rgm-total_time);
   	}
