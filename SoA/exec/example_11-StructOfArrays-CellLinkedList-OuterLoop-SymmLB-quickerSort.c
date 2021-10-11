@@ -208,29 +208,11 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t1 = omp_get_wtime();
   
-  //qsort(hash,N,sizeof(int64_t),cmp_int64_t);
-  //mergeSort(hash,0,N-1);
-  //quickSort_int64_t_2(hash,0,N-1);
-
   counting_sort(N,box,lsph,swap_arr,temp_hash);
 
-  //qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);             // Sort the Particle Hash Hashes, getting the shuffled
-                                                                     // index necessary to re-shuffle the remaining arrays
-  // for(int64_t i=0;i<N;i+=1)
-  //   printf("%ld %ld\n",lsph->hash[2*i+0],lsph->hash[2*i+1]);
-  //quickSort_int64_t2(lsph->hash,0,N-1);
-  //quickSort_int64_t_2(lsph->hash,0,N-1);
   t2 = omp_get_wtime();
 
-  // err = reorder_lsph_SoA(N,lsph,swap_arr);                           // Reorder all arrays according to the sorted hash,
-  // if(err)                                                            // As to have a quick way to retrieve a cell 
-  //   fprintf(stderr,"error in reorder_lsph_SoA\n");                   // given its hash. 
-
   t3 = omp_get_wtime();
-
-  // err = setup_interval_hashtables(N,lsph,box);                       // Annotate the begining and end of each cell
-  // if(err)                                                            // on the cell linked list method for fast
-  //   fprintf(stderr,"error in setup_interval_hashtables\n");          // neighbor search
 
   t4 = omp_get_wtime();
 
@@ -447,9 +429,7 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
   double t31,t32,t33,t34;
 
   t0 = omp_get_wtime();
-
-  //khash_t(2) *idx_table = kh_init(2);
-  
+ 
   for(int64_t i=0;i<N;i+=1){
     int ret; 
     khiter_t k = kh_put(0, box->hbegin, lsph->hash[2*i+0], &ret);
@@ -484,22 +464,6 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
   qsort(hash,dict_size,sizeof(int64_t),cmp_int64_t);
 
   t3 = omp_get_wtime();
-
-  // for(int i=0;i<dict_size;i+=1){
-  //   printf("%ld\n",hash[i]);
-  // }
-
-  // for(int i = 0; i< dict_size;i+=1){
-  //   khiter_t k = kh_get(2, idx_table, hash[i]);
-  //   counts[i] = kh_value(idx_table, k);
-  // }
-
-  // for(int i = 0; i< dict_size;i+=1){
-  //   prefix[i] = 0;
-  //   for(int j = 0; j<i;j+=1){
-  //     prefix[i] += counts[j];
-  //   }
-  // }
 
   prefix[0] = 0;
   for(int i=1;i<dict_size;i+=1){
@@ -542,15 +506,6 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   t34 = omp_get_wtime();
 
-  // for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
-  //   if (kh_exist(idx_table, k)){
-  //     int ret;
-  //     int64_t hash = kh_key(idx_table,k);
-  //     khiter_t ke = kh_put(1, box->hend, hash, &ret);
-  //     kh_value(box->hend, ke) = kh_value(idx_table, k);
-  //   }
-  // }
-
   t4 = omp_get_wtime();
 
   for(int64_t i=0;i<N;i+=1){
@@ -565,10 +520,6 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
   }
 
   t4 = omp_get_wtime();
-
-  // for(int64_t i=0;i<N;i+=1)
-  //   swap_arr[lsph->hash[2*i+1]] = lsph->x[i];
-  // memcpy(lsph->x,swap_arr,N*sizeof(double));
 
   int64_t *int64_temp_swap = (int64_t *)swap_arr;
   swap_loop(N,lsph,int64_temp_swap,id ,int64_t);
@@ -605,7 +556,7 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
     printf("5: %lf \n",t5-t4);
     printf("6: %lf \n",t6-t5);
   }
-  
+
   return;
 }
 
