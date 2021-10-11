@@ -559,18 +559,3 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   return;
 }
-
-    /*
-    if(pi-low-1 >= MIN_DEPTH){
-      quickSort_int64_t2(arr, low, pi-1);
-    }
-    else{
-      insertionSort_int64_t2(arr,low,pi-1);
-    }
-
-    if(high - (pi+1) >= MIN_DEPTH){
-      quickSort_int64_t2(arr, pi+1, high);
-    }
-    else{
-      insertionSort_int64_t2(arr,pi+1,high);
-    }*/
