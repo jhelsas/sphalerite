@@ -95,7 +95,7 @@
 #define COMPUTE_BLOCKS 5
 
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
-              void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times);
+              void *swap_arr,int64_t *temp_hash, linkedListBox *box, SPHparticle *lsph, double *times);
 
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box);
 
@@ -105,10 +105,22 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          double* restrict z, double* restrict nu,
                                          double* restrict rhoi, double* restrict rhoj);
 
+//void quickSort_int64_t2(int64_t *arr, int64_t low, int64_t high);
+
+void quickSort_int64_t_2(int64_t *arr, int64_t low, int64_t high);
+
+void mergeSort(int64_t arr[], int64_t l, int64_t r);
+
 double w_bspline_3d_constant(double h);
 
 #pragma omp declare simd
 double w_bspline_3d_simd(double q);
+
+#define ip_swap(a,b) (b)^=((a)^=((b)^=(a)))
+
+KHASH_MAP_INIT_INT64(2, int64_t)
+
+void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_arr,int64_t *temp_hash);
 
 int main(int argc, char **argv){
   bool run_seed = false;       // By default the behavior is is to use the same seed
@@ -130,19 +142,21 @@ int main(int argc, char **argv){
     fprintf(stderr,"error in SPHparticle_SoA_malloc\n");
 
   void *swap_arr = malloc(N*sizeof(double));
+  int64_t *temp_hash = (int64_t*)malloc(2*N*sizeof(int64_t));
   double times[runs*COMPUTE_BLOCKS];
 
   for(int run=0;run<runs;run+=1)
-    main_loop(run,run_seed,N,h,seed,swap_arr,box,lsph,times);
+    main_loop(run,run_seed,N,h,seed,swap_arr,temp_hash,box,lsph,times);
 
   bool is_cll = true;
-  const char *prefix = "ex10,cll,SoA,outer,simd,summLB";
+  const char *prefix = "ex11,cll,SoA,outer,simd,symmLB,quicker";
   print_time_stats(prefix,is_cll,N,h,seed,runs,lsph,box,times);
   print_sph_particles_density(prefix,is_cll,N,h,seed,runs,lsph,box);
 
   SPHparticleSOA_safe_free(N,&lsph);
   safe_free_box(box);
   free(swap_arr);
+  free(temp_hash);
 
   return 0;
 }
@@ -166,8 +180,9 @@ int main(int argc, char **argv){
  *       lsph <SPHparticle>   : SPH particle array is updated in the rho field by reference
  *       times <double>       : Times is updated by reference
  */
+
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
-              void *swap_arr, linkedListBox *box, SPHparticle *lsph, double *times)
+              void *swap_arr, int64_t *temp_hash, linkedListBox *box, SPHparticle *lsph, double *times)
 {
   int err;
     
@@ -191,19 +206,29 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
 
   t1 = omp_get_wtime();
   
-  qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);             // Sort the Particle Hash Hashes, getting the shuffled
+  //qsort(hash,N,sizeof(int64_t),cmp_int64_t);
+  //mergeSort(hash,0,N-1);
+  //quickSort_int64_t_2(hash,0,N-1);
+
+  counting_sort(N,box,lsph,swap_arr,temp_hash);
+
+  //qsort(lsph->hash,N,2*sizeof(int64_t),compare_int64_t);             // Sort the Particle Hash Hashes, getting the shuffled
                                                                      // index necessary to re-shuffle the remaining arrays
+  // for(int64_t i=0;i<N;i+=1)
+  //   printf("%ld %ld\n",lsph->hash[2*i+0],lsph->hash[2*i+1]);
+  //quickSort_int64_t2(lsph->hash,0,N-1);
+  //quickSort_int64_t_2(lsph->hash,0,N-1);
   t2 = omp_get_wtime();
 
-  err = reorder_lsph_SoA(N,lsph,swap_arr);                           // Reorder all arrays according to the sorted hash,
-  if(err)                                                            // As to have a quick way to retrieve a cell 
-    fprintf(stderr,"error in reorder_lsph_SoA\n");                   // given its hash. 
+  // err = reorder_lsph_SoA(N,lsph,swap_arr);                           // Reorder all arrays according to the sorted hash,
+  // if(err)                                                            // As to have a quick way to retrieve a cell 
+  //   fprintf(stderr,"error in reorder_lsph_SoA\n");                   // given its hash. 
 
   t3 = omp_get_wtime();
 
-  err = setup_interval_hashtables(N,lsph,box);                       // Annotate the begining and end of each cell
-  if(err)                                                            // on the cell linked list method for fast
-    fprintf(stderr,"error in setup_interval_hashtables\n");          // neighbor search
+  // err = setup_interval_hashtables(N,lsph,box);                       // Annotate the begining and end of each cell
+  // if(err)                                                            // on the cell linked list method for fast
+  //   fprintf(stderr,"error in setup_interval_hashtables\n");          // neighbor search
 
   t4 = omp_get_wtime();
 
@@ -258,7 +283,7 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
                                                node_begin,node_end,
                                                nb_begin,nb_end); 
   
-  memset(lsph->rho,(int)0,N*sizeof(double));                             // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                              // Pre-initialize the density to zero
 
                                                                           // Parallelism was moved 
                                                                           // to the level of unique pairs
@@ -393,3 +418,198 @@ double w_bspline_3d_simd(double q){
 
   return wq;                                                       // return which ever value corresponds to the distance
 }
+
+int cmp_int64_t(const void *p,const void *q){
+  int64_t *data1,*data2;
+  data1 = (int64_t*)p;
+  data2 = (int64_t*)q;
+
+  if(*data1 < *data2)         // data[0] is the hash value, 
+    return -1;                    
+  else if(*data1 == *data2)   // in the unsorted array
+    return 0;
+  else
+    return 1;
+}
+
+ #define swap_loop(N,lsph,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
+                                                   (temp_swap)[i] = (lsph)->member[(lsph)->hash[2*i+1]];\
+                                                 memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
+
+// #define swap_loop(N,lsph,hash,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
+//                                                        (temp_swap)[hash[i]] = (lsph)->member[i];\
+//                                                      memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
+
+void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_arr,int64_t *temp_hash){
+
+  double t0,t1,t2,t3,t4,t5,t6;
+  double t31,t32,t33,t34;
+
+  t0 = omp_get_wtime();
+
+  khash_t(2) *idx_table = kh_init(2);
+  
+  for(int64_t i=0;i<N;i+=1){
+    int ret; 
+    khiter_t k = kh_put(2, idx_table, lsph->hash[2*i], &ret);
+    if(ret==1)
+      kh_value(idx_table, k) = 1;
+    else if(ret==0){
+      int64_t val = kh_value(idx_table, k);
+      kh_value(idx_table, k) = val + 1;
+    }
+    else{
+      printf("error radixSort init");
+      return;
+    }
+  }
+
+  t1 = omp_get_wtime();
+
+  unsigned int dict_size = kh_size(idx_table);
+  int64_t hash[dict_size];
+  int64_t prefix[dict_size];
+  int64_t counts[dict_size];
+  int idx = 0;
+
+  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
+    if (kh_exist(idx_table, k)){
+      hash[idx] = kh_key(idx_table,k);
+      idx+=1;
+    }
+  }
+
+  t2 = omp_get_wtime();
+
+  qsort(hash,dict_size,sizeof(int64_t),cmp_int64_t);
+
+  t3 = omp_get_wtime();
+
+  // for(int i = 0; i< dict_size;i+=1){
+  //   khiter_t k = kh_get(2, idx_table, hash[i]);
+  //   counts[i] = kh_value(idx_table, k);
+  // }
+
+  // for(int i = 0; i< dict_size;i+=1){
+  //   prefix[i] = 0;
+  //   for(int j = 0; j<i;j+=1){
+  //     prefix[i] += counts[j];
+  //   }
+  // }
+
+  prefix[0] = 0;
+  for(int i=1;i<dict_size;i+=1){
+    prefix[i] += prefix[i-1];
+
+    khiter_t k = kh_get(2, idx_table, hash[i-1]);
+    prefix[i] += kh_value(idx_table, k);
+  }
+
+  t31 = omp_get_wtime();
+
+  for(int i = 0; i< dict_size;i+=1){
+    khiter_t kp = kh_get(2, idx_table, hash[i]);
+    kh_value(idx_table, kp) = prefix[i];
+  }
+
+  t32 = omp_get_wtime();
+
+  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
+    if (kh_exist(idx_table, k)){
+      int ret;
+      int64_t hash = kh_key(idx_table,k);
+      khiter_t kb = kh_put(0, box->hbegin, hash, &ret);
+      kh_value(box->hbegin, kb) = kh_value(idx_table, k);
+    }
+  }
+
+  t33 = omp_get_wtime();
+
+  for(int64_t i=0;i<N;i+=1){
+    khiter_t kp = kh_get(2, idx_table, lsph->hash[2*i]);
+    lsph->hash[2*i+1] = kh_value(idx_table, kp);
+    kh_value(idx_table, kp) += 1;
+  }
+
+  t34 = omp_get_wtime();
+
+  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
+    if (kh_exist(idx_table, k)){
+      int ret;
+      int64_t hash = kh_key(idx_table,k);
+      khiter_t ke = kh_put(1, box->hend, hash, &ret);
+      kh_value(box->hend, ke) = kh_value(idx_table, k);
+    }
+  }
+
+  t4 = omp_get_wtime();
+  
+
+  for(int64_t i=0;i<N;i+=1){
+    int64_t idx = lsph->hash[2*i+1];
+    temp_hash[2*idx+0] = lsph->hash[2*i+0];
+    temp_hash[2*idx+1] = i;
+  }
+ 
+  for(int64_t i=0;i<N;i+=1){
+    lsph->hash[2*i+0] = temp_hash[2*i+0];
+    lsph->hash[2*i+1] = temp_hash[2*i+1];
+  }
+
+  t4 = omp_get_wtime();
+
+  // for(int64_t i=0;i<N;i+=1)
+  //   swap_arr[lsph->hash[2*i+1]] = lsph->x[i];
+  // memcpy(lsph->x,swap_arr,N*sizeof(double));
+
+  int64_t *int64_temp_swap = (int64_t *)swap_arr;
+  swap_loop(N,lsph,int64_temp_swap,id ,int64_t);
+  double *double_temp_swap = (double *)swap_arr;
+  swap_loop(N,lsph,double_temp_swap,nu ,double);
+  swap_loop(N,lsph,double_temp_swap,rho,double);
+  swap_loop(N,lsph,double_temp_swap,x  ,double);
+  swap_loop(N,lsph,double_temp_swap,y  ,double);
+  swap_loop(N,lsph,double_temp_swap,z  ,double);
+  swap_loop(N,lsph,double_temp_swap,ux ,double);
+  swap_loop(N,lsph,double_temp_swap,uy ,double);
+  swap_loop(N,lsph,double_temp_swap,uz ,double);
+  swap_loop(N,lsph,double_temp_swap,Fx ,double);
+  swap_loop(N,lsph,double_temp_swap,Fy ,double);
+  swap_loop(N,lsph,double_temp_swap,Fz ,double);
+
+  t5 = omp_get_wtime();
+  
+  for(int64_t i=0;i<N;i+=1)
+    lsph->hash[i] = lsph->hash[2*i];
+
+  t6 = omp_get_wtime();
+
+  // printf("1: %lf \n",t1-t0);
+  // printf("2: %lf \n",t2-t1);
+  // printf("3: %lf \n",t3-t2);
+  // printf("4: %lf \n",t4-t3);
+  // printf("  31: %lf\n",t31-t3);
+  // printf("  32: %lf\n",t32-t31);
+  // printf("  33: %lf\n",t33-t32);
+  // printf("  34: %lf\n",t34-t33);
+  // printf("  35: %lf\n",t4-t34);
+  // printf("5: %lf \n",t5-t4);
+  // printf("6: %lf \n",t6-t5);
+
+  return;
+}
+
+    /*
+    if(pi-low-1 >= MIN_DEPTH){
+      quickSort_int64_t2(arr, low, pi-1);
+    }
+    else{
+      insertionSort_int64_t2(arr,low,pi-1);
+    }
+
+    if(high - (pi+1) >= MIN_DEPTH){
+      quickSort_int64_t2(arr, pi+1, high);
+    }
+    else{
+      insertionSort_int64_t2(arr,pi+1,high);
+    }*/

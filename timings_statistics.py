@@ -14,7 +14,7 @@ import glob
 import numpy as np
 import pandas as pd
 
-for fname in list(glob.glob("AoS/data/times-*runs=5*.csv")):
+for fname in list(glob.glob("AoS/data/times-*runs=*.csv")):
     df = pd.read_csv(fname)
     df.drop(['id'],axis=1,inplace=True)
     df["Total Time"] = df.sum(axis=1)
@@ -25,7 +25,7 @@ for fname in list(glob.glob("AoS/data/times-*runs=5*.csv")):
 
 print("\n")
 
-for fname in list(glob.glob("SoA/data/times-*runs=5*.csv")):
+for fname in list(glob.glob("SoA/data/times-*runs=*.csv")):
     df = pd.read_csv(fname)
     df.drop(['id'],axis=1,inplace=True)
     df["Total Time"] = df.sum(axis=1)
