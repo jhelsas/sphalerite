@@ -94,6 +94,8 @@
 
 #define COMPUTE_BLOCKS 5
 
+#define dbg false
+
 int main_loop(int run, bool run_seed, int64_t N, double h, long int seed, 
               void *swap_arr,int64_t *temp_hash, linkedListBox *box, SPHparticle *lsph, double *times);
 
@@ -239,6 +241,9 @@ int main_loop(int run, bool run_seed, int64_t N, double h, long int seed,
   // --------------------------------------------------------------- //
 
   t5 = omp_get_wtime();
+
+  kh_clear(0, box->hbegin);
+  kh_clear(1, box->hend);
 
   times[COMPUTE_BLOCKS*run+0] = t1-t0;                               // Time for compute morton Z 3d hash
   times[COMPUTE_BLOCKS*run+1] = t2-t1;                               // Time for sorting the particles' hashes
@@ -432,13 +437,9 @@ int cmp_int64_t(const void *p,const void *q){
     return 1;
 }
 
- #define swap_loop(N,lsph,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
-                                                   (temp_swap)[i] = (lsph)->member[(lsph)->hash[2*i+1]];\
-                                                 memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
-
-// #define swap_loop(N,lsph,hash,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
-//                                                        (temp_swap)[hash[i]] = (lsph)->member[i];\
-//                                                      memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
+#define swap_loop(N,lsph,temp_swap,member,type) for(int64_t i=0;i<(N);i+=1)                            \
+                                                  (temp_swap)[i] = (lsph)->member[(lsph)->hash[2*i+1]];\
+                                                memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
 
 void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_arr,int64_t *temp_hash){
 
@@ -447,16 +448,16 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   t0 = omp_get_wtime();
 
-  khash_t(2) *idx_table = kh_init(2);
+  //khash_t(2) *idx_table = kh_init(2);
   
   for(int64_t i=0;i<N;i+=1){
     int ret; 
-    khiter_t k = kh_put(2, idx_table, lsph->hash[2*i], &ret);
+    khiter_t k = kh_put(0, box->hbegin, lsph->hash[2*i+0], &ret);
     if(ret==1)
-      kh_value(idx_table, k) = 1;
+      kh_value(box->hbegin, k) = 1;
     else if(ret==0){
-      int64_t val = kh_value(idx_table, k);
-      kh_value(idx_table, k) = val + 1;
+      int64_t val = kh_value(box->hbegin, k);
+      kh_value(box->hbegin, k) = val + 1;
     }
     else{
       printf("error radixSort init");
@@ -466,15 +467,14 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   t1 = omp_get_wtime();
 
-  unsigned int dict_size = kh_size(idx_table);
+  unsigned int dict_size = kh_size(box->hbegin);
   int64_t hash[dict_size];
   int64_t prefix[dict_size];
-  int64_t counts[dict_size];
   int idx = 0;
 
-  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
-    if (kh_exist(idx_table, k)){
-      hash[idx] = kh_key(idx_table,k);
+  for (khiter_t k = kh_begin(box->hbegin); k != kh_end(box->hbegin); ++k){
+    if (kh_exist(box->hbegin, k)){
+      hash[idx] = kh_key(box->hbegin,k);
       idx+=1;
     }
   }
@@ -484,6 +484,10 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
   qsort(hash,dict_size,sizeof(int64_t),cmp_int64_t);
 
   t3 = omp_get_wtime();
+
+  // for(int i=0;i<dict_size;i+=1){
+  //   printf("%ld\n",hash[i]);
+  // }
 
   // for(int i = 0; i< dict_size;i+=1){
   //   khiter_t k = kh_get(2, idx_table, hash[i]);
@@ -499,58 +503,62 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   prefix[0] = 0;
   for(int i=1;i<dict_size;i+=1){
-    prefix[i] += prefix[i-1];
+    prefix[i] = prefix[i-1];
 
-    khiter_t k = kh_get(2, idx_table, hash[i-1]);
-    prefix[i] += kh_value(idx_table, k);
+    khiter_t k = kh_get(0, box->hbegin, hash[i-1]);
+    prefix[i] += kh_value(box->hbegin, k);
   }
 
   t31 = omp_get_wtime();
 
   for(int i = 0; i< dict_size;i+=1){
-    khiter_t kp = kh_get(2, idx_table, hash[i]);
-    kh_value(idx_table, kp) = prefix[i];
+    khiter_t kp = kh_get(0, box->hbegin, hash[i]);
+    kh_value(box->hbegin, kp) = prefix[i];
   }
 
   t32 = omp_get_wtime();
 
-  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
-    if (kh_exist(idx_table, k)){
+  for (khiter_t k = kh_begin(box->hbegin); k != kh_end(box->hbegin); ++k){
+    if (kh_exist(box->hbegin, k)){
       int ret;
-      int64_t hash = kh_key(idx_table,k);
-      khiter_t kb = kh_put(0, box->hbegin, hash, &ret);
-      kh_value(box->hbegin, kb) = kh_value(idx_table, k);
+      int64_t hash = kh_key(box->hbegin,k);
+      khiter_t ke = kh_put(1, box->hend, hash, &ret);
+      kh_value(box->hend, ke) = kh_value(box->hbegin, k);
     }
   }
 
   t33 = omp_get_wtime();
 
   for(int64_t i=0;i<N;i+=1){
-    khiter_t kp = kh_get(2, idx_table, lsph->hash[2*i]);
-    lsph->hash[2*i+1] = kh_value(idx_table, kp);
-    kh_value(idx_table, kp) += 1;
+    khiter_t kp = kh_get(1, box->hend, lsph->hash[2*i]);
+    if (kh_exist(box->hend, kp)){
+      lsph->hash[2*i+1] = kh_value(box->hend, kp);
+      kh_value(box->hend, kp) += 1;
+    }
+    else{
+      printf("there is an issue\n");
+    }
   }
 
   t34 = omp_get_wtime();
 
-  for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
-    if (kh_exist(idx_table, k)){
-      int ret;
-      int64_t hash = kh_key(idx_table,k);
-      khiter_t ke = kh_put(1, box->hend, hash, &ret);
-      kh_value(box->hend, ke) = kh_value(idx_table, k);
-    }
-  }
+  // for (khiter_t k = kh_begin(idx_table); k != kh_end(idx_table); ++k){
+  //   if (kh_exist(idx_table, k)){
+  //     int ret;
+  //     int64_t hash = kh_key(idx_table,k);
+  //     khiter_t ke = kh_put(1, box->hend, hash, &ret);
+  //     kh_value(box->hend, ke) = kh_value(idx_table, k);
+  //   }
+  // }
 
   t4 = omp_get_wtime();
-  
 
   for(int64_t i=0;i<N;i+=1){
     int64_t idx = lsph->hash[2*i+1];
     temp_hash[2*idx+0] = lsph->hash[2*i+0];
     temp_hash[2*idx+1] = i;
   }
- 
+
   for(int64_t i=0;i<N;i+=1){
     lsph->hash[2*i+0] = temp_hash[2*i+0];
     lsph->hash[2*i+1] = temp_hash[2*i+1];
@@ -584,18 +592,20 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
 
   t6 = omp_get_wtime();
 
-  // printf("1: %lf \n",t1-t0);
-  // printf("2: %lf \n",t2-t1);
-  // printf("3: %lf \n",t3-t2);
-  // printf("4: %lf \n",t4-t3);
-  // printf("  31: %lf\n",t31-t3);
-  // printf("  32: %lf\n",t32-t31);
-  // printf("  33: %lf\n",t33-t32);
-  // printf("  34: %lf\n",t34-t33);
-  // printf("  35: %lf\n",t4-t34);
-  // printf("5: %lf \n",t5-t4);
-  // printf("6: %lf \n",t6-t5);
-
+  if(dbg){
+    printf("1: %lf \n",t1-t0);
+    printf("2: %lf \n",t2-t1);
+    printf("3: %lf \n",t3-t2);
+    printf("4: %lf \n",t4-t3);
+    printf("  31: %lf\n",t31-t3);
+    printf("  32: %lf\n",t32-t31);
+    printf("  33: %lf\n",t33-t32);
+    printf("  34: %lf\n",t34-t33);
+    printf("  35: %lf\n",t4-t34);
+    printf("5: %lf \n",t5-t4);
+    printf("6: %lf \n",t6-t5);
+  }
+  
   return;
 }
 

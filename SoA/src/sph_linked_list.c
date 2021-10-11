@@ -283,7 +283,8 @@ int compute_hash_MC3D(int64_t N, SPHparticle *lsph, linkedListBox *box){
 		else if((kx>=box->Nx)||(ky>=box->Nx)||(kz>=box->Nx)) // Nor indexes greater than the upper bounds
 			return 1;
 		else{
-			lsph->hash[2*i] = ullMC3Dencode(kx,ky,kz);         // If ok, compute the corresponding Morton Z hash
+			lsph->hash[2*i+0] = ullMC3Dencode(kx,ky,kz);         // If ok, compute the corresponding Morton Z hash
+      lsph->hash[2*i+1] = i;
 		}
 	}
 

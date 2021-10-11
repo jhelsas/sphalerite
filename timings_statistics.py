@@ -20,7 +20,7 @@ for fname in list(glob.glob("AoS/data/times-*runs=*.csv")):
     df["Total Time"] = df.sum(axis=1)
     print(fname.split("(")[1][:-3],":")
     for col in df.columns:
-        print("    {} : {:.4g} +- {:.4g}".format(col,df[col].mean(),df[col].std()))
+        print("    {} : {:.7g} +- {:.7g}".format(col,df[col].mean(),df[col].std()))
     del df
 
 print("\n")
@@ -31,5 +31,5 @@ for fname in list(glob.glob("SoA/data/times-*runs=*.csv")):
     df["Total Time"] = df.sum(axis=1)
     print(fname.split("(")[1][:-3],":")
     for col in df.columns:
-        print("    {} : {:.4g} +- {:.4g}".format(col,df[col].mean(),df[col].std()))
+        print("    {} : {:.7g} +- {:.7g}".format(col,df[col].mean(),df[col].std()))
     del df
