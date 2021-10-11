@@ -22,7 +22,7 @@ CFLAGS5 = -std=c11 -Wall -O3 -fopenmp -march=native #-fopt-info-vec-missed
 CFLAGS6 = -std=c11 -Wall -O3 -fopenmp -march=native -ffast-math  #-fopt-info-vec-missed
 CFLAGS7 = -std=c11 -Wall -O3 -march=native -fopt-info-vec-missed
 CFLAGS8 = -std=c11 -Wall -O0 -ggdb
-CFLAGS = $(CFLAGS8)
+CFLAGS = $(CFLAGS6)
 
 LDFLAGS = -lm -lgsl 
 LDFLAGS += -fopenmp
