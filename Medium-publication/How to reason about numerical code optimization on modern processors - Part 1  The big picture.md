@@ -47,7 +47,7 @@ $$
 
 ​	The basic calculation can be translated pretty much literally to a double loop. Before anything else, it is important to start defining the data structures that will be operated upon. The simplest solution to begin with is to conceptualize each particle as an entity in itself, and the particle system work as an array of particles. The implementation I started with was using the C programming language, without any of the extra help coming from high-level abstractions such as STL Vectors in C++. I did so because I am much more familiarized with the C language than with the C++ language, and this was my first project in a C-like language in a very long time, and since I did my original SPH code, of which this is a re-writing of, in C, I felt much more comfortable doing it this way. 
 
-​	The basic data structure is a single particle, that has positions `r`, velocities `u`, forces `F`, mass `nu`, density `rho` and additional integer fields named `id` and `hash`. Each of the vector fields can have up to for values stored, one for each dimension, and one for time keeping or for computations that are specific for [relativistic hydrodynamics](https://en.wikipedia.org/wiki/Relativistic_Euler_equations), but are unimportant for this discussion. All the data for a given particle is packed together, and the overall feel is that what should be together is being moved together. 
+​	The basic data structure is a single particle, that has positions `r`, velocities `u`, forces `F`, mass `nu`, density `rho` and additional integer fields named `id` and `hash`. Each of the vector fields can have up to four values stored, one for each dimension, and one for time keeping or for computations that are specific for [relativistic hydrodynamics](https://en.wikipedia.org/wiki/Relativistic_Euler_equations), but are unrelated to this example. All the data for a given particle is packed together, and the overall feel is that what should be together is being moved together. 
 
 ```c
 typedef struct double4 {
@@ -77,7 +77,7 @@ double w_bspline_3d(double r,double h){
   
   q = r/h;                                    // Compute the normalized distance
   if(q<=1)                                    // If the distance is small
-    return A_d*(2./3.-q*q + q*q*q/2.0);       // Compute this first polynomal
+    return A_d*(2./3.-q*q + q*q*q/2.0);       // Compute this first polynomial
   else if((1.<=q)&&(q<2.))                    // If the distance is a bit larger
     return A_d*(1./6.)*(2.-q)*(2.-q)*(2.-q);  // Compute this other polynomial 
   else                                        // Otherwise, if the distance is large
@@ -138,15 +138,15 @@ for i in range(N):
     rho.append(copy.copy(rho_val))
 ```
 
-​	This is a highly non-optimized code and would run terribly slowly if tried. That said, it showcases how would a very naive implementation of the same idea could be tried in python.
+​	This is a highly non-optimized code and would run terribly slowly if tried. That said, it showcases how would a very naive implementation of the same idea be attempted in python.
 
-## Choosing good algorithms: Cell Linked List 
+## Understanding Different cultures: Algorithm Design vs Software Architecture
 
-​	One great thing emphasized in the [Algorithms and Data Structures](https://www.geeksforgeeks.org/data-structures/) literature is the focus on how to achieve a goal in more than one way and the attention to algorithm complexity, the main message being: **Don't do work that doesn't need to be done**. As an example, **don't** use bubble sort when quick/heap/merge sort is available, mostly because bubble sort requires $\mathcal{O}(N^2)$ comparisons for an array of size $N$, while the others only require $\mathcal{O}(N\log(N))$ which happen to be the lowest possible asymptotic complexity for the problem of sorting. 
+One great thing emphasized in the [Algorithms and Data Structures](https://www.geeksforgeeks.org/data-structures/) literature is the focus on how to achieve a goal in more than one way and the attention to algorithm complexity, the main message being: **Don't do work that doesn't need to be done**. As an example, **don't** use bubble sort when quick/heap/merge sort is available, mostly because bubble sort requires $\mathcal{O}(N^2)$ comparisons for an array of size $N$, while the others only require $\mathcal{O}(N\log(N))$ which happen to be the lowest possible asymptotic complexity for the problem of sorting. 
 
-​	Though it is usually self-evident that choosing good algorithms is a **good practice**, when implementing good algorithms involves revamping or re-structuring your entire code-base to incorporate the added logic, it usually is easier than not to left aside them in favor of having a working prototype **going as soon as possible**, an approach that can be easily found in the [agile mindset](https://en.wikipedia.org/wiki/Agile_software_development) of software development. When dealing with numerically intensive code, which is usually meant to be of high performance, this is a mistake because it under-emphasizes important early planning in the project where it would be optimal to find the best algorithm to structure your code around, in favor of a very high number of incremental steps that might lead to easier choices in the beginning that will later make overly cumbersome to switch to the optimal solution. 
+​	Though it is usually self-evident that choosing good algorithms is a **good practice**, when implementing good algorithms involves revamping or re-structuring your entire code-base to incorporate the added logic, it usually is easier than not to left aside them in favor of having a working prototype **going as soon as possible**, an approach that can be easily found in the [agile mindset](https://en.wikipedia.org/wiki/Agile_software_development) of software development. When dealing with numerically intensive code, which is usually meant to be of high performance, this is a mistake because it under-emphasizes important early planning in the project where it would be optimal to find the best algorithm to structure your code around, in favor of a very high number of incremental steps that might lead to easier choices in the beginning that will later make overly cumbersome to switch to the optimal solution. 	
 
-​	This is not usually a problem in most of software development because most of the software being written **is not performance sensitive**, therefore the developers' efforts as measured in terms of development time, ease of maintenance and reliability are much more important than whether the code runs a bit faster or slower, which justifies many of the premises related to Agile and related mindsets. A common, very cited, related quote is the following one by Knuth, in which it explains his reasoning why **premature** optimization is the root of all evil:
+This is not usually a problem in most of software development because most of the software being written **is not performance sensitive**, therefore the developers' efforts as measured in terms of development time, ease of maintenance and reliability are much more important than whether the code runs a bit faster or slower, which justifies many of the premises related to Agile and related mindsets. A common, very cited, related quote is the following one by Knuth, in which it explains his reasoning why **premature** optimization is the root of all evil:
 
 "The conventional wisdom shared by many of today’s software engineers calls for ignoring efficiency in the small; **but I believe this is simply an overreaction to the abuses they see being practiced by pennywise- and-pound-foolish programmers, who can’t debug or maintain their “optimized” programs**. In established engineering disciplines a 12% improvement, easily obtained, is never considered marginal; and I believe the same viewpoint should prevail in software engineering. Of  course I wouldn’t bother making such optimizations on a one-shot job, but when it’s a question of preparing quality programs, I don’t want to  restrict myself to tools that deny me such efficiencies.
 
@@ -166,11 +166,13 @@ There is no doubt that the grail of efficiency leads to abuse. Programmers waste
 
 ![](https://www.androidpolice.com/wp-content/uploads/2015/11/nexus2cee_compiling.png)
 
-​	Back to the problem of computing the SPH density, the **same principle** can be applied. The basic observation to be exploited is: the kernel $W(r,h) = 0$ if $r/h > 2$ , therefore adding contributions of particles that are farther then $2h$ away from the particle of interest do not contribute meaningfully to the density calculation. The way we can lower the computational cost is to skip the additions we know for sure are going to be zero: even if we do some needless additions, if we can skip the majority of the zero contributions there is considerable speedup to be gained. 
+## Choosing good algorithms: Cell Linked List 
+
+​	On the problem of computing the SPH density the **same principle** discussed before,  "don't do work that doesn't need to be done", can be applied. The basic observation to be exploited is: the kernel $W(r,h) = 0$ if $r/h > 2$ , therefore adding contributions of particles that are farther then $2h$ away from the particle of interest do not contribute meaningfully to the density calculation. The way we can lower the computational cost is to skip the additions we know for sure are going to be zero: even if we do some needless additions, if we can skip the majority of the zero contributions there is considerable speedup to be gained. 
 
 ### The Cell and the List
 
-​	As with anything in life, a good rule of thumb is: **If it doesn't need to be done, don't do it**. In our case, the work that needs skipping is computing the contribution of  for density of particles which we know beforehand that is going to be zero. Just using the present data structures there is no way to clearly split which particles are far away from a given particle, therefore not meaningfully contributing to its density, and which are near and need to be accounted for. 
+​	In our case, the work that needs skipping is computing the contribution of  for density of particles which we know beforehand that is going to be zero. Just using the present data structures there is no way to clearly split which particles are far away from a given particle, therefore not meaningfully contributing to its density, and which are near and need to be accounted for. 
 
 ​	The way this is executed in  is by overlaying an additional support structure that allows us to short-cut the inner loop of the density calculation, which is normally called the "Box", in the method called [Cell Linked List](https://en.wikipedia.org/wiki/Cell_lists). The Box is a grid of smaller boxes (or cells), either explicit or implicit, in which each small box "stores" the particles that falls in its bounds. The idea is that if it is quick to find which particles are in a given box, knowing the width of the smaller box it is possible to only fetch the particles that are in the boxes closer than $2h$ to the one you are interested in. The simplest case is using the smaller boxes width equals to $2h$ , which allows only the adjacent boxes to be selected, which yields to 9 boxes in 2D and 27 boxes in 3D. 
 
@@ -194,7 +196,7 @@ typedef struct linkedListBox{
 } linkedListBox;
 ```
 
-​	Though it might feel good, and I did implement in a very similar fashion in my original code, I would strongly argue against doing this way now a days. There is several reasons why this is now a very good way to implement this search:
+​	Though it might feel good, and I did implement in a very similar fashion in my original code, I would strongly argue against doing this way now a days. There are several reasons why this is now a very good way to implement this search:
 
 - The Box structure consumes considerable memory or complexity: Either you will need to store a potentially `NULL` pointer value for each possible cell, regardless of whether there are particles there or not, or you will need this structure and an additional structure like a hash table to book-keep which cells are filled and, therefore, that can be used for referencing the actual particles. 
 - Using linked lists require wrapping your Struct: though not too important, this adds a bit more complexity and consumes more memory, and this can be avoided if the cell Box is implemented implicitly.
@@ -214,7 +216,7 @@ hash = kx + Nx*( ky + Ny*kz )
 
 ​	This is a linear index, which is what linear translation from 3D to 1D would happen using a [multi-dimensional array](https://stackoverflow.com/questions/22259306/indexing-multidimensional-arrays-in-c), credible solution for collapsing the data into cells, but it does have a somewhat inconvenient feature: even if you have to boxes with the same `kx` and `ky`, `kz` and `kz+1` will produce values that are `Nx*Ny` apart, so most of the boxes that are spatially close will be mapped into hashes that are quite far apart. In the `y` direction is a bit less dramatic, but no better in practice. This can have consequences for performance and will be discussed later. 
 
-​	 Though it is not possible to create a hash that will **always** map nearby cells in 3D to nearby hashes, it is possible to create a hashes that will perform like that **most of the time**. Examples of hashes are the [Hilbert Curve hash](https://en.wikipedia.org/wiki/Hilbert_curve#Applications_and_mapping_algorithms) and the [Morton Z-order Curve hash](https://en.wikipedia.org/wiki/Hilbert_curve#Applications_and_mapping_algorithms) (MZC), the later which was used in this work. The MZC hash uses bit interleaving of the 2D or 3D indices to create a composite number that encodes the 3D position while still preserving a fair amount of spatial locality. From the **point of view of the developer** all you need to know is: How you choose the $3D$ to $1D$ mapping matters, find a library which implements the hash you like, don't fuss to much about afterwards. Also, MZC is a good default.
+​	 Though it is not possible to create a hash that will **always** map nearby cells in 3D to nearby hashes, it is possible to create a hashes that will perform like that **most of the time**. Examples of hashes are the [Hilbert Curve hash](https://en.wikipedia.org/wiki/Hilbert_curve#Applications_and_mapping_algorithms) and the [Morton Z-order Curve hash](https://en.wikipedia.org/wiki/Hilbert_curve#Applications_and_mapping_algorithms) (MZC), the later which was used in this work. The MZC hash uses bit interleaving of the 2D or 3D indices to create a composite number that encodes the 3D position while still preserving a fair amount of spatial locality. From the **point of view of the developer** all you need to know is: How you choose the $3D$ to $1D$ mapping matters, find a library which implements the hash you like, don't fuss to much about afterwards. Also, MZC is a good default for this kind of spatial mapping problems.
 
 ​	![600px-Z-curve.svg](https://upload.wikimedia.org/wikipedia/commons/3/30/Z-curve.svg)
 
@@ -352,7 +354,7 @@ int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *bo
 
 ## Analising the Gains:
 
-​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **190 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing a $53\times$! 
+​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **180 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing a $53\times$! 
 
 ​	The back of envelope calculation goes like this: Supposing each box has an equal number of particles, there are:
 $$
