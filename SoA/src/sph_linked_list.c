@@ -112,6 +112,20 @@ int SPHparticle_SoA_malloc(int N,SPHparticle **lsph){
   safe_check_alloc((*lsph)->rho , N ,double);
   safe_check_alloc((*lsph)->id  , N ,int64_t);
   safe_check_alloc((*lsph)->hash,2*N,int64_t);
+
+  // SPHparticle_SoA_malloc((*lsph)->x   , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->y   , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->z   , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->ux  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->uy  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->uz  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->Fx  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->Fy  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->Fz  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->nu  , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->rho , 32, N ,double);
+  // SPHparticle_SoA_malloc((*lsph)->id  , 32, N ,int64_t);
+  // SPHparticle_SoA_malloc((*lsph)->hash, 32,2*N,int64_t);
   
 
 finishlabel:
@@ -563,7 +577,7 @@ int setup_unique_box_pairs(linkedListBox *box,
 int print_sph_particles_density(const char *prefix, bool is_cll, int64_t N, double h, 
 																long int seed, int runs, SPHparticle *lsph, linkedListBox *box){
 	FILE *fp;
-	char filename[1024+1];
+	char filename[2048+1];
 
 	if(is_cll){
 		sprintf(filename,
