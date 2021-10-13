@@ -1,10 +1,10 @@
 # How to reason about numerical code optimization on modern processors - Part 2 : Compilers, Data Layout and Threads
 
-​	In the previous article of this series, we discussed the physical problem we are interested in and how to translate the mathematical concepts that are involved in modeling it into computer code. We also discussed an important resource to enable realistic simulations to be performed called the Fast Neighbor Search, which lowers the overall computational cost by skipping a substantial fraction of computations, known a priori to be useless. 
+​	In the previous article of this series, we discussed the physical problem we are interested in and how to translate the mathematical concepts that are involved in modeling it into computer code. We also discussed an important resource to enable realistic simulations to be performed called the Cell Linked List, which lowers the overall computational cost by skipping a substantial fraction of computations, known a priori to be useless. 
 
 ​	Another point that became clear in the previous article is that an **efficient** implementation of numerical algorithms is not simply a thoughtless translation of mathematical concepts into code, requiring taking into account several avenues on how to convey "material reality" (or rather "digital reality") to a given abstraction, in which some avenues are clearly better then others. 
 
-​	Now, we turn our attention to more concrete forms of optimization: how to use the compiler, how to lay down data in the system memory and how to execute computations of a for loop in parallel using threads. Most of the content presented in this section is, at least partially, based on the course [Fundamentals of Parallelism on Intel Architecture](https://www.coursera.org/learn/parallelism-ia), lectured by Dr. Valdmirov from Colfax International. It is a great introductory course that covers many of the most important techniques for code optimization, specially the "micro" type optimization involving the topics discussed hereon. 
+​	Now, we turn our attention to more concrete forms of optimization: how to use the compiler, how to lay down data in the system memory and how to execute computations of a for loop in parallel using threads. Most of the content presented in this section is, at least partially, based on the course [Fundamentals of Parallelism on Intel Architecture](https://www.coursera.org/learn/parallelism-ia), lectured by Dr. Valdmirov from Colfax International. It is a great introductory course that covers many of the most important techniques for code optimization, specially the "implementation" type optimization involving the topics discussed hereon. 
 
 ​	As said, algorithm type optimizations are important because they reduce the cost by cutting down unnecessary work or approximating efficiently what would otherwise be incredibly expensive to compute exactly. Implementation type optimizations are important because no amount of cheating will lower the cost beyond a certain level, and thus for the code to run faster it is necessary to not "**leave performance in the table**" by under-utilizing the CPU. If you prefer, think this way: If you could make your complete in $1/3$ of the time **without too much hassle**, and you don't, you are effectively **paying full price for a third of the performance**, and most people wouldn't accept a Corolla driving at 11 MPG just because the mechanic forgot to enable the electronic injection correctly. 
 
@@ -116,7 +116,7 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
 ​	We load `node_end-node_begin` elements `lsph[ii].r` , `nb_end-nb_begin` elements `lsph[jj].r` and `lsph[jj].nu` (though this is done repeatedly), and we perform `(node_end-node_begin)*(nb_end-nb_begin)` distance and kernel calculations. For a feeling of how large this is, lets make some estimates: There are $10^5$ particles uniformly distributed between $10\times 10\times 10 = 1000$ boxes, therefore both `node_end-node_begin` and `nb_end-nb_begin` are around $\approx 10^5/1000 = 100$ particles per box. 
 
-​	So, each call read around 300 data from `ii` for loop,  400 data from `jj` for loop, and perform $100\times 100 = 10^4$ batches of arithmetic operations to compute the contribution to the density. For each batch, there are $3\times 1+5 \times 2 + 22 = 35$ operations in each call of the inner-most loop, which sums to $3.5 \times 10^5$  arithmetic operations, or **over three hundred thousand operations**, every single time `compute_density_3d_chunk` is called. For the entire execution, there are $21232$ calls to `compute_density_3d_chunk`, totaling $21232 \times 3.5 \times 10^5 \approx 7.4 \times 10^{9}$   operations for this very simple example, which means that even a very small case can require **almost 10 Billion arithmetic operations** to be performed. This is very large number of operations, and overwhelms pretty much anything else going on in the rest of the code and, for this reason, regions like these are called **critical sections**. 
+​	So, each call read around 300 data from `ii` for loop,  400 data from `jj` for loop, and perform $100\times 100 = 10^4$ batches of arithmetic operations to compute the contribution to the density. For each batch, there are $3\times 1+5 \times 2 + 22 = 35$ operations in each call of the inner-most loop, which sums to $3.5 \times 10^5$  arithmetic operations, or **over three hundred thousand operations**, every single time `compute_density_3d_chunk` is called. For the entire execution, there are $21232$ calls to `compute_density_3d_chunk`, totaling $21232 \times 3.5 \times 10^5 \approx 7.4 \times 10^{9}$   operations for this very simple example, which means that even a very small case can require **almost 10 Billion arithmetic operations** to be performed. This is a very large number of operations, and overwhelms pretty much anything else going on in the rest of the code and, for this reason, regions like these are called **critical sections**. 
 
 ​	**Finding and improving critical sections** of your code is a major part of optimizing numerical codes, and improving just them respond for the majority of performance gains. This means that, *before* the critical regions are optimized, it is usually not worth bothering with the rest of the code, in what concerns performance. For these parts, which are outside the critical section, the more conventional recommendations about code development applies: Readability trumps smarts, maintainability trumps performance. Later we will discuss more how these improvements in the critical section can be done. 
 
@@ -130,14 +130,14 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
 ​	The community wisdom is that `-O2` is considered a "safe" start and is a very commonly used optimization option, and was the first option I tried. So, how did our two examples from the previous article performed with this flag? 
 
-- The naïve implementation came down from $\sim 190\ \mbox{s}$ to around $\sim 53\ \mbox{s}$ , representing an speedup of around $3.4 \times$ ! 
-- The Fast Neighbor Search implementation came down from $\sim 3.5\ \mbox{s}$ to around $\sim 1.59\ \mbox{s}$, also representing a $\sim 2.2\times$ speedup!
+- The naïve implementation came down from $\sim 180\ \mbox{s}$ to around $\sim 53\ \mbox{s}$ , representing an speedup of around $3.4 \times$ ! 
+- The Cell Linked List implementation came down from $\sim 3.5\ \mbox{s}$ to around $\sim 1.59\ \mbox{s}$, also representing a $\sim 2.2\times$ speedup!
 
 ​	Therefore, by just adding 3 characters to the Makefile, we were able to gain over a ${\mathbf 3\times}$ speedup over the simple compilation without modifying any of the existing code (Time to call the mechanic to complain). 
 
 ​	The main lesson we gain from this is: **Knowing how to use the compiler matter** . 
 
-​	Now, how does our code perform by using `-O3`? The naive version did not perform any better, staying $\sim 50\ \mbox{s}$ , nor did the fast neighbor search version. This means that, though somewhat automated, using the compiler to speedup code is not a fully automatic endeavor, and a fair share of the rest of this series will be dedicated to structure your code in ways that make it **easier** for the compiler to optimize the code. Though this is not hassle free, if it is done soon enough in the development process it can be fairly painless, though adapting it afterwards can be a headache in many cases. 
+​	Now, how does our code perform by using `-O3`? The naive version did not perform any better, staying $\sim 50\ \mbox{s}$ , nor did the Cell Linked List version. This means that, though somewhat automated, using the compiler to speedup code is not a fully automatic endeavor, and a fair share of the rest of this series will be dedicated to structure your code in ways that make it **easier** for the compiler to optimize the code. Though this is not hassle free, if it is done soon enough in the development process it can be fairly painless, though adapting it afterwards can be a headache in many cases. 
 
 ## Data Layout : Array of Structs vs Struct of Arrays
 
@@ -149,13 +149,13 @@ typedef struct double4 {
     double y;
     double z;
     double t;
-} double4;
+} double4; // defines a "vector" of 4 components: x, y, z and t
 
 typedef struct SPHparticle
 {
-    double4 r,u,F;
-	int64_t id,hash;
-	double nu,rho;
+    double4 r,u,F;   // r, u and F store position, velocity and force data respectively for the SPHparticle
+	int64_t id,hash; // id is the unique-ID, set at the start, hash is the index of the cell in which it resides 
+	double nu,rho;  // nu  correspond to the mass of the particle, rho is density at the particle position
 } SPHparticle; 
 ```
 
@@ -223,8 +223,8 @@ int compute_density_3d_naive(int N,double h,
 
 - SoA + Naïve + -O2 : $\sim 45\ \mbox{s}$
 - SoA + Naïve + -O3 : $\sim 45\ \mbox{s}$
-- SoA + FNS   + -O2 : $\sim 1.073\ \mbox{s}$
-- SoA + FNS   + -O3 : $\sim 1.599\ \mbox{s}$
+- SoA + CLL   + -O2 : $\sim 1.073\ \mbox{s}$
+- SoA + CLL   + -O3 : $\sim 1.599\ \mbox{s}$
 
 ​	Though not substantial, between $5\%$ and $15\%$, there was some gain which is positive. It will be later seen that this transformation will enable other, more effective, optimizations to be realized. Nevertheless, small gains are still gains!
 
@@ -325,19 +325,19 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 ​	So, scoring time, how did the applications perform?
 
 - AoS / Naïve / OpenMP / -O3 : $\sim\ 4.09\ \mbox{s}$
-- AoS /  FNS  / OpenMP / -O3 : $\sim\ 0.28\ \mbox{s}$
+- AoS /  CLL  / OpenMP / -O3 : $\sim\ 0.28\ \mbox{s}$
 - SoA / Naïve / OpenMP / -O3 : $\sim\ 1.94\ \mbox{s}$
-- SoA /  FNS  / OpenMP / -O3 : $\sim\ 0.22\ \mbox{s}$
+- SoA /  CLL  / OpenMP / -O3 : $\sim\ 0.22\ \mbox{s}$
 
 ​	So, now we have some very interesting results. For the AoS data layout we went down from  $53\ \mbox{s}$ and $1.08\ \mbox{s}$ **down to** $4.09\ \mbox{s}$ and $0.28\ \mbox{s}$, this is equivalent to an speedup of $13\times$ and $3.85 \times$ respectively! This is quite an impressive result, but it is not the end of it.
 
-​	For the SoA layout, the respective speedups are $23 \times$ and $4.75\times$ which are greater then the speedups for the AoS layout, specially in the case of the naïve implementation, which the ratio jumped from $1.17 \times$ to $2.11\times$, indicating that the SoA transformation has a bigger important than first anticipated only looking at the results from the previous section.
+​	For the SoA layout, the respective speedups are $23 \times$ and $4.75\times$ which are greater then the speedups for the AoS layout, specially in the case of the naïve implementation, which the ratio jumped from $1.17 \times$ to $2.11\times$, indicating that the SoA transformation has a bigger importance than first anticipated only looking at the results from the previous section.
 
 ​	One nice indicator to point out, the difference of $13\times$ to $23 \times$ from the AoS to SoA versions of the openMP implementation is an indication of the memory bandwidth issue mentioned in the previous section: While one thread might not be enough to pull so much data from the RAM such as to gob all the available bandwidth, 24 threads quite likely are. Therefore, if you are wasting bandwidth with unused struct fields, you are consuming resources in a way to form a bottleneck in the possible performance. 
 
-​	We also note that the speedup provided the parallelization is quite different between the naïve version and the fast neighbor search versions. This is an indication of a suboptimal implementation of the Fast Neighbor Search parallelization, which is not too difficult to see why: Function `compute_density_3d_chunk` calculates the density contribution to `node` cell from `nb` cell, and it is called inside two loops iterating over each cell pair of a given cell. 
+​	We also note that the speedup provided the parallelization is quite different between the naïve version and the Cell Linked List versions. This is an indication of a suboptimal implementation of the Cell Linked List parallelization, which is not too difficult to see why: Function `compute_density_3d_chunk` calculates the density contribution to `node` cell from `nb` cell, and it is called inside two loops iterating over each cell pair of a given cell. 
 
-​	To see why this is a problem, note that the `#pragma omp parallel for` directive is called over and over again. Each time `#pragma omp parallel for` , there is a cost in launching the threads, and joining them at the end of the block, and threads are not kept alive from one launch to the other. This have a cost, and turns out that launching threads is actually quite expensive, and piles up quickly if it is called up too many times. This opens up an avenue of improvement that will be discussed in Part 3: moving the openMP call up the nested `for`s. 
+​	To see why this is a problem, note that the `#pragma omp parallel for` directive is called over and over again. Each time `#pragma omp parallel for` , there is a cost in launching the threads, and joining them at the end of the block, and threads are not kept alive from one launch to the other. This has a cost, and turns out that launching threads is actually quite expensive, and piles up quickly if it is called up too many times. This opens up an avenue of improvement that will be discussed in Part 4: moving the openMP call up the nested `for`s. 
 
 ​	The main lesson from this section is: **Utilizing the available cores matter** and **data layout matter (again)**. 
 

@@ -1,4 +1,4 @@
-# How to reason about numerical code optimization on modern processors - Part 3 : SIMD, Architecture and Tiling
+# How to reason about numerical code optimization on modern processors - Part 3 : SIMD, Architecture and Strip Mining
 
 ​	In the previous two Parts, we covered several topic on how to improve numerical code performance. Algorithm choice, basic compiler flags and basic thread parallelism were covered, and to an extent they are common ground in most writings in the subject of improving performance. 
 
@@ -6,9 +6,9 @@
 
 ​	Though very rare in the past, and at times restricted to specialty hardware, this kind of hardware-level parallelism is quite common in the present day because of the limitations of further increasing clock speed of processors. I can have a 12 core desktop CPU that is capable of executing 16 floating point instructions per clock per core at $4\ \mbox{GHz}$, but it is basically unfeasible to built a single-core CPU that can run at $700+\ \mbox{GHz}$ without it melting. 
 
-​	Contrary to what used to happen in the past, in which performance increases with increasing frequency translated directly to code performance without the developer needing to do anything, resources like SIMD units require explicit programmer awareness to correctly create code that execute on the available hardware. The need for this awareness is, to a fair extent, a reasonable demand for the existence of this series of articles. 
+​	Contrary to what used to happen in the past, in which performance increases with increasing frequency translated directly into execution performance without the developer needing to do anything, resources like SIMD units require explicit programmer awareness to correctly create code that execute on the available hardware. The need for this awareness is, to some extent, a reasonable demand for the existence of this series of articles. 
 
-​	To effectively utilize these SIMD units, it is necessary to annotate your code to correctly warn the compiler that is can be translated to vectorized code and also instruct the compiler directly to do so, in the form of correct compiler flags, both topics being the subject of this part of the series. By the end of this part, I hope you come to appreciate the amazing evolution and cleverness of modern CPU architectures, and also realize that, though not free, it is not overly complex to adapt your code to take advantage of these resources. 
+​	To effectively utilize these SIMD units, it is necessary to annotate your code to correctly warn the compiler that is can be translated to vectorized code and also instruct the compiler directly to do so, in the form of correct compiler flags, both topics being the subject of this part of the series. By the end of this part, I hope you come to appreciate the amazing evolution and cleverness of modern CPU architectures, and also realize that, though not free, it is not overly complex to adapt your code to take advantage of these resources. We will also make a first foray into advanced performance techniques, like strip mining, and how to map them into your code. Some of these more advanced techniques will be covered in the next part of this series..
 
 ​	Similarly as done with the previous parts, we present a summary of the results of this part in comparison with the previous ones:
 
@@ -43,7 +43,7 @@
 
 ### Ending compiler divination: `-fopt-info-vec-missed`
 
-​	At first glance, it should be the compiler's job do produce the code that runs on the underlying hardware, even somewhat "exotic" hardware like these SIMD units. Unfortunately, it can be quite complicated to divine what the compiler is doing, so actually **making the compiler print** some reports on how it is optimizing the code is quite important. The main flag I used to report on vectorization of the code was the flag `-fopt-info-vec-missed` from `gcc`. The flags make the compiler print a report on which loops it failed to vectorize and why. Tracing back to the code, it is possible to read what is says and try to understand. In our case, for the `compute_density_3d_AoS_naive_omp-100k.c` file have the following report:
+​	At first glance, it should be the compiler's job do produce the code that runs on the underlying hardware, even somewhat "exotic" hardware like these SIMD units. Unfortunately, it can be quite complicated to divine what the compiler is doing, so actually **making the compiler print** some reports on how it is optimizing the code is quite important. The main flag I used to report on vectorization of the code was the flag `-fopt-info-vec-missed` of `gcc`. The flags make the compiler print a report on which loops it failed to vectorize and why. Tracing back to the code, it is possible to read what is says and try to understand. In our case, for the `compute_density_3d_AoS_naive_omp-100k.c` file have the following report:
 
 ```
 exec/compute_density_3d_AoS_naive_omp-100k.c:21:5: missed: statement clobbers memory: exit (10);
@@ -104,7 +104,7 @@ double w_bspline_3d_simd(double q){                                // Use as inp
 }
 ```
 
-​	The re-worked naïve computation can be seen below. We also introduce hints to the compiler to indicate that the inner-most loop should be vectorized, this is done with `#pragma omp simd` . The additional `reduction(+:rhoii)` indicates that the variable `rhoii` will be accumulated on during the loop and `aligned(x,y,z,nu)` indicates to the compiler that the arrays indicated have the [proper memory alignment](https://stackoverflow.com/questions/31089502/aligned-and-unaligned-memory-access-with-avx-avx2-intrinsics), which I find to be one of the more arcane requirements to utilize vectorization. 
+​	The re-worked naïve computation can be seen below. We also introduce hints to the compiler to indicate that the inner-most loop should be vectorized, this is done with `#pragma omp simd` . It may be needed to use an option `aligned(x,y,z,nu)` in the `#pragma`, though it was not necessary here,  indicating to the compiler that the arrays indicated have the [proper memory alignment](https://stackoverflow.com/questions/31089502/aligned-and-unaligned-memory-access-with-avx-avx2-intrinsics), which I find to be one of the more arcane requirements to utilize vectorization. 
 
 ​	Another impediment to vectorization is if the memory regions on the the involved arrays have some overlap, which is named *array aliasing*,  which can result in incorrect execution. By default **the compiler will not vectorize** the code if it suspects that it is the case, and thus it is necessary to explicitly indicate that we **promise** not to feed aliased arrays to the function. This hint is done by the C99 keyword `restrict`, as in the `double* restrict x` declaration. 
 
@@ -153,9 +153,9 @@ int compute_density_3d_naive_omp_simd(int N,double h,
 ​	Now, the results :
 
 - AoS / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.45\ \mbox{s} $
-- AoS /  FNS  / OpenMP / -O3 / SIMD : $\sim\ 0.27\ \mbox{s} $
+- AoS /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.27\ \mbox{s} $
 - SoA / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.13\ \mbox{s}$
-- SoA /  FNS  / OpenMP / -O3 / SIMD : $\sim\ 0.21\ \mbox{s}$
+- SoA /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.21\ \mbox{s}$
 
 ​	Now, that are some curious results. The naïve implementations presented an speedup of just under $2 \times$ , but the fast neighbor search either barely budge or had a much more modest speedup, under $50\%$. The speedup is real, and yet it seems a bit less than it should be. Looking at the compiler report for :
 
@@ -188,7 +188,7 @@ exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: 
     wq = wq1;
 ```
 
-​	Which interfere with the parallelization process. The compiler was able to parallelize the computations `q += xij*xij;` and `q = sqrt(q)*inv_h;`, but it still has problems with the kernel because of the conditionals. The exact reason for this limitation will be discussed down below, but it has to do with how the compiler chooses which hardware instructions to map your code to. Some ways to vectorize your code can cope with conditionals, others can't. So, to improve the present results, what we need to do is return to the compiler. 
+​	Which interfere with the parallelization process. The compiler was able to vectorize the computations `q += xij*xij;` and `q = sqrt(q)*inv_h;`, but it still has problems with the kernel because of the conditionals. The exact reason for this limitation will be discussed down below, but it has to do with how the compiler chooses which hardware instructions to map your code to. Some ways to vectorize your code can cope with conditionals, others can't. So, to improve the present results, what we need to do is return to the compiler. 
 
 ​	The main lesson from this section is: **Critical sections are called "critical" for a reason, pay attention to them**. 
 
@@ -200,11 +200,11 @@ exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: 
 
 ### Actually compiling for your CPU: `-march=native`
 
-​	[Optimizing code can be strange.](https://stackoverflow.com/questions/19470873/why-does-gcc-generate-15-20-faster-code-if-i-optimize-for-size-instead-of-speed?rq=1) One of the reasons that optimizing can strange is because it is necessary to take into account the hardware that is actually going to run the hardware. **By default**, most compilers choose to generate code that run **best on an average CPU**, and **not best on your CPU.** This means that it has to take into account compatibility issues and whether a given instruction will be generally available or not. This compatibility issue happens to be present in the SIMD instruction generation we need to speedup the code. 
+​	[Optimizing code can be strange.](https://stackoverflow.com/questions/19470873/why-does-gcc-generate-15-20-faster-code-if-i-optimize-for-size-instead-of-speed?rq=1) One of the reasons that optimizing can strange is because it is necessary to take into account the hardware that is actually going to run the hardware. **By default**, most compilers choose to generate code that run **best on an *average* CPU**, and **not best on *your* CPU.** This means that it has to take into account compatibility issues and whether a given instruction will be generally available or not. This compatibility issue happens to be present in the SIMD instruction generation we need to speedup the code. 
 
 ​	Modern CPUs can have a lot of moving parts, and quite a few quirks too when compared to "old" CPUs, in the 2000s and before. When you arrive in a modern day processor, you see things like the **absolute beast** shown below in the diagram of the architecture of my CPU, the Zen 2 micro-architecture. Each core have an overall structure described in the diagram, which have 4 [ALU](https://en.wikipedia.org/wiki/Arithmetic_logic_unit)s for computing up to 4 independent integer instructions per core per clock, and 3 [AGU](https://en.wikipedia.org/wiki/Address_generation_unit)s for computing memory addresses of data that needs to be used. Most of this stuff is hidden from both of the user and the developer, appearing a somewhat "free" performance gain ([at least most of the time](https://en.wikipedia.org/wiki/Branch_predictor)). 
 
-​	Regarding the CPU, each core hash two floating point units, with 4 "pipes" each, supporting a "single-op AVX256". What this means is that the CPU can process those FMA3 instructions mentioned before, on 4 blocks of 64-bit floats. The deal is: Not all CPUs support AVX256, specially older CPUs. The first introduction of AVX256 to x86 processors was in the Intel Haswell micro-architecture, which is why AVX2 is also referred as Haswell New Instructions. 
+​	Regarding the CPU, each core hash two floating point units, with 4 "pipes" each, supporting a "single-op AVX256". What this means is that the CPU can process those FMA3 instructions mentioned before, on 4 blocks of 64-bit floats. The deal is: Not all CPUs support AVX256, specially older CPUs. The first introduction of AVX256 to x86 processors was in the Intel Haswell micro-architecture, which is why AVX2 is sometimes referred as Haswell New Instructions. 
 
 ​	As mentioned, the compiler will produce by default the best code it can for the **broadest possible** range of CPU architectures, and since AVX2 is not that available, it **will not produce** AVX2 code **unless explicitly instructed**. What the compiler actually does is produce is code for an older set of of SIMD instructions [called SSE](https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), which are more widely available. SSE happen to be a SIMD standard that can process 2 streams of floats (called pipes), while AVX256 can process 4 streams simultaneously for potentially twice the performance. 
 
@@ -217,19 +217,19 @@ Extracted from [Anandtech](https://www.anandtech.com/show/14525/amd-zen-2-microa
 ​	The `-ffast-math` had some, though limited effect, but how did it perform alongside with `-O3` and `-march=native`?
 
 - AoS / Naive / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 4.5\ \mbox{s}$
-- AoS /  FNS  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.25\ \mbox{s}$
+- AoS /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.25\ \mbox{s}$
 - SoA / Naive / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.75\ \mbox{s}$
-- SoA /  FNS  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.17\ \mbox{s}$
+- SoA /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.17\ \mbox{s}$
 
-​	These are some promising, if not puzzling, results. We actually observed a **regression** of performance with the AoS layout, which is unexpected to say the least since we do not expect to have **worse** performance by **enabling** further optimizations on the compiler. On the other hand, the SoA layout presented quite the **performance improvement** with the AVX2 SIMD enabling, with the Naive and FNS versions presenting a $2.6 \times$ and $1.3\times$ respectively. 
+​	These are some promising, if not puzzling, results. We actually observed a **regression** of performance with the AoS layout, which is unexpected to say the least since we do not expect to have **worse** performance by **enabling** further optimizations on the compiler. On the other hand, the SoA layout presented quite the **performance improvement** with the AVX2 SIMD enabling, with the Naive and CLL versions presenting a $2.6 \times$ and $1.3\times$ respectively. 
 
 ​	The over $2\times$ performance improvement for the SoA indicates that there is something bigger at play than simply the widening of the SIMD instruction, from $2$ to $4$ pipes. Part of the improvement is related to the `-O3` optimization flag, part of it has to do with the `-march=native`, which allows for the compiler to use SIMD instructions capable of coping with the `if(q<1)` branching that are available in AVX2 but not in SSE, and lastly it has somewhat to do with better cache utilization.
 
 ​	The main lesson from this section is: **Know your hardware, know your compiler, understand flags and use them correctly, not all flags are important, but the ones that are, are *really* important**.
 
-### Naïve on Steroids: Loop Tiling and Cache Utilization
+## Naïve on Steroids: Loop Tiling and Cache Utilization
 
-​	As of this moment, the naive implementation if both parallelized with openMP threads and vectorized with SIMD, which would indicate that is has reached the limit of what was available to it. The number of calculations hasn't changed, therefore it is still $\mathcal{O}(N^2)$, so we should expect a $100\times$ increase in the time for each $10\times$ increase in the size of the particle array. If we run for $10^5$ particles we take around $\sim 0.77\ \mbox{s}$, but running for $10^6$ takes over $220\ \mbox{s}$! It was expected to take closer to $80 \mbox{s}$ to run this example, so why the dramatic decrease in performance?
+​	As of this moment, the naive implementation is both parallelized with openMP threads and vectorized with SIMD, which would suggests that is has reached the limit of what was available to it. The number of calculations hasn't changed, therefore it is still $\mathcal{O}(N^2)$, so we should expect a $100\times$ increase in the time for each $10\times$ increase in the size of the particle array. If we run for $10^5$ particles we take around $\sim 0.77\ \mbox{s}$, but running for $10^6$ takes over $220\ \mbox{s}$! It was expected to take closer to $80 \mbox{s}$ to run this example, so why the dramatic decrease in performance?
 
 ​	As explained before, there is a big gap in memory performance and CPU performance. Under normal circumstances it is not possible for the main memory to feed enough data to the CPU to keep all hardware busy. The solution found to bridge this gap was to introduce a variety of intermediary memories **in between** the storage the CPU uses to perform calculations, called the **register**, and the **main system memory**. These memories are called caches, and are numbered according to how far away they are from the actual processing units, ALU and FPU, and therefore how large and slower they are. Level 1 cache (L1) is the fastest in-chip memory, and L3 is usually the slowest. They have varying sizes and speed, but they are always **smaller and faster** than main memory. Most of the time they are automatically managed by the CPU itself, but in some processors [they can be programmable](https://en.wikipedia.org/wiki/Scratchpad_memory), requiring you to program. The most widely know example is Nvidia Cuda's Shared Memory, which corresponds to a programmable L1 cache. 
 
@@ -239,7 +239,7 @@ Extracted from [Anandtech](https://www.anandtech.com/show/14525/amd-zen-2-microa
 
 ​	In our case, what happened in the first example was that the original data, of $10^5$ particles, actually **fit inside the cache**, allowing for the program to run with very high performance by exploiting not the bandwidth of the main memory, but rather the memory bandwidth of the cache. The way to recover the previous performance is to improve data reuse through a technique called [loop blocking or loop tiling](https://en.wikipedia.org/wiki/Loop_nest_optimization). 
 
-​	The basic idea is rewriting a single `for(int64_t i=0;i<N;i+=1)` as two nested loops in which the original data is run through in "blocks" or "strips", and the loops corresponding to the blocks are joined together, which require an interchange between two of the new inner loops, justifying the name sometimes this technique is also referred as "strip mine and interchange". The resulting code is considerably more complex than the original, despite doing exactly the same calculation, but is also performs considerably better:
+​	The basic idea is rewriting a single `for(int64_t i=0;i<N;i+=1)` as two nested loops in which the original data is run through in "blocks" or "strips", and the loops corresponding to the blocks are joined together, which require an interchange between two of the new inner loops, justifying the name sometimes this technique is also referred as "strip mine and interchange". The resulting code is somewhat more complex than the original, despite doing exactly the same calculation, but is also performs considerably better:
 
 ```c
 int compute_density_3d_naive_omp_simd_tiled(int N,double h,
@@ -294,8 +294,9 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
 
 ​	The way to do it is through the **fast in-chip memory** named cache(s). The closest cache to the computing units, the L1 cache, is able to transfer 32 bytes/cycle to the [registers](https://en.wikipedia.org/wiki/Processor_register), which are where the data is needed to perform the operations. Computing the aggregate memory bandwidth provided by the L1 cache from all 12 cores, the **potential aggregate L1 bandwidth** adds to $12 \times 32\ \mbox{B/(cycle * port)} \times 2\ \mbox{port} \times\ 4.0\ \mbox{GHz} \approx 3.072\ \mbox{TB/s}$, which is not quite yet what we would theoretically need to fully execute a FMA3 instructions in the CPU every cycle, but it is not difficult to see how data re-use could help bridge the last $3 \times$ factor, which **would be the case** in many applications such as ours because there is a natural data re-use in the form of the reduction inherent to the calculation of the distance, and it is also present in the reduction used in the density calculation, which is essentially a reduction computation for each particle. In this sense, the cache don't need to provide the bandwidth for **all** FMA3 computations, but only for the **new** data needed to perform additional computations. 
 
-​	The way that is translated to the code is by **re-ordering the operations** in the code, without actually doing any new operations. The change of order allow for the CPU to re-use data stored in cache in a calculation that is performed **not long after** the one that fetched the original data. By iterating over data stripes, each stripe's data is re-used by re-using indexes in a given stripe, e.g. `for(int64_t ii=i;ii<i+STRIP;ii+=1)` loop uses data of `x[ii]` between `i` and `i+STRIP`, by having `for(int64_t j=0;j<N_prime;j+=STRIP)` outside, on a new iteration for `j` the bound `i` and `i+STRIP` remain unchanged. 
+​	The way that is translated to the code is by **re-ordering the operations** in the code, without actually doing any new operations. The change of order allow for the CPU to re-use data stored in cache in a calculation that is performed **not long after** the one that fetched the original data. By iterating over data stripes, each stripe's data is re-used by re-using indexes in a given stripe, e.g. `for(int64_t ii=i;ii < ((i+STRIP<N)?(i+STRIP):N); ii+=1)` loop uses data of `x[ii]` between `i` and `i+STRIP`, and the same for `jj`. 
 
-​	The CPU ordinarily would get the data for `x[ii]` from the main memory but, since this data was requested in a previous iteration, it already resides inside the CPU cache and it can be re-used. For $N\sim 10^5$ , the data is so small that it is possible to simply store the full array
+​	The CPU ordinarily would get the data for `x[ii]` from the main memory but, since this data was requested in a previous iteration, it already resides inside the CPU cache and it can be re-used. For $N\sim 10^5$ , the data is so small that it is possible to simply store the full array in cache, thus making so that the tiling technique is somewhat redundant for this small case. 
 
 ​	The main lesson from this section is: **Memory bandwidth is a finite resource and imposes real constraints for performance. Understanding the memory hierarchy of your particular hardware does make a difference, and this means that writing your program considering temporal locality of your data is Important**.
+

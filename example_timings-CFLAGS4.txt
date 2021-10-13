@@ -14,10 +14,6 @@ ex03,naive,AoS,omp,simd,runs=5 :
     compute_density : 2.444 +- 0.08684
     Total Time : 2.444 +- 0.08684
 
-ex04,naive,AoS,omp,simd,tiled,runs=5 :
-    compute_density : 2.145 +- 0.03017
-    Total Time : 2.145 +- 0.03017
-
 ex05,cll,AoS,simple,runs=5 :
     compute_hash_MC3D : 0.0008952 +- 6.659e-05
     sorting : 0.01203 +- 0.001104
@@ -38,20 +34,6 @@ ex07,cll,AoS,innerOmp,SIMD,runs=5 :
     setup_interval_hashtables : 0.000285 +- 5.551e-05
     compute_density : 0.2492 +- 0.02001
     Total Time : 0.2634 +- 0.01971
-
-ex08,cll,AoS,outerOmp,SIMD,runs=5 :
-    compute_hash_MC3D : 0.0009516 +- 1.41e-05
-    sorting : 0.01256 +- 0.0004464
-    setup_interval_hashtables : 0.0002988 +- 4.246e-05
-    compute_density : 0.124 +- 0.003574
-    Total Time : 0.1378 +- 0.00318
-
-ex09,cll,AoS,outerOmp,SIMD,loadBallance,runs=5 :
-    compute_hash_MC3D : 0.001055 +- 0.0001225
-    sorting : 0.01272 +- 0.0003287
-    setup_interval_hashtables : 0.0003434 +- 9.026e-05
-    compute_density : 0.07412 +- 0.0038
-    Total Time : 0.08824 +- 0.003697
 
 ================================================================
 

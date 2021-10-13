@@ -10,7 +10,7 @@
 
 ​	In that era, if you code didn't run fast enough for what you wanted all you needed to do was to wait a couple of years for the performance to double or triple and all was fine. Unfortunately, that age is over, at least somewhat. The reason is that most computer code was written to be executed a single stream of sequentially dependent instructions, otherwise known as *thread*, which fed an ever faster CPU core that was able to easily fetch data from Ram, the only barrier (mostly) being how fast the computation could be performed. Since then, CPU design bumped in a roadblock that turned into a rock wall, related to how high clock frequencies can be pushed. 
 
-​	![core_counts_cpu_perf](/home/jhelsas/Manuscripts/Medium-publication/core_counts_cpu_perf.png)
+​	![core_counts_cpu_perf](core_counts_cpu_perf.png)
 
 ​	Extracted from [Wikipedia]()
 
