@@ -8,8 +8,12 @@
 # (C) Copyright 2021 José Hugo Elsas
 # Author: José Hugo Elsas <jhelsas@gmail.com>
 #
+rm AoS/data/*
+rm SoA/data/*
 mkdir -p AoS/data/
 mkdir -p SoA/data/
+cp makefiles/Makefile_CFLAGS6 AoS/Makefile
+cp makefiles/Makefile_CFLAGS6 SoA/Makefile
 cd AoS/
 make clean
 make all
@@ -38,3 +42,4 @@ make all
 ./bin/example_10-StructOfArrays-CellLinkedList-OuterLoop-SymmetricalLoadBalancing -runs 5
 cd .. 
 python diff_ref.py 
+python timings_statistics.py > timing_results_6.txt

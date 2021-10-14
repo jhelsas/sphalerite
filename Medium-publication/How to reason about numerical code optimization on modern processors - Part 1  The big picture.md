@@ -352,7 +352,7 @@ int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *bo
 }
 ```
 
-## Analising the Gains:
+## Analyzing the Gains:
 
 ​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **180 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing a $53\times$! 
 
