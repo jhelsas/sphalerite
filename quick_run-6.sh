@@ -40,6 +40,7 @@ make all
 ./bin/example_08-StructOfArrays-CellLinkedList-OuterOmp -runs 5
 ./bin/example_09-StructOfArrays-CellLinkedList-OuterLoop-LoadBalanced -runs 5
 ./bin/example_10-StructOfArrays-CellLinkedList-OuterLoop-SymmetricalLoadBalancing -runs 5
+./bin/example_11-StructOfArrays-CellLinkedList-OuterLoop-SymmLB-quickerSort -runs 5
 cd .. 
 python diff_ref.py 
 python timings_statistics.py > timing_results_6.txt

@@ -10,16 +10,16 @@
 
 ​	Similarly as done with the previous part, we present a summary of the results of this part in comparison with the previous one:
 
-|          Algorithm / Implementation / Configuration          |  Time (Seconds)   | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :---------------: | :-----------------------: |
-| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  187.7 +- 2.083   |          **1 x**          |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.489 +- 0.003958 |         **53 x**          |
-| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 |   54 +- 0.6953    |        **3.47 x**         |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 | 1.586 +- 0.006889 |         **118 x**         |
-| Naive Calculation (i.e. direct two loop) / SoA, single thread / gcc -std=c11 -Wall -O3 |  45.61 +- 0.3301  |        **4.11 x**         |
-| Cell Linked List / SoA, single thread / gcc -std=c11 -Wall -O3 | 1.599 +- 0.02623  |         **117 x**         |
-| Naive Calculation (i.e. direct two loop) / SoA, OpenMP / gcc -std=c11 -Wall -O3 | 2.059 +- 0.01938  |         **91 x**          |
-|   Cell Linked List / SoA, OpenMP / gcc -std=c11 -Wall -O3    | 0.336 +- 0.05685  |         **558 x**         |
+|          Algorithm / Implementation / Configuration          |   Time (Seconds)    | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :-----------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  186.64 +- 0.9799   |          **1 x**          |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.654219 +- 0.02075 |         **51 x**          |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 |    51.55 +- 0.24    |        **3,62 x**         |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 |    1.57 +- 0.02     |         **118 x**         |
+| Naive Calculation (i.e. direct two loop) / SoA, single thread / gcc -std=c11 -Wall -O3 |   43.894 +- 0.349   |        **4.25 x**         |
+| Cell Linked List / SoA, single thread / gcc -std=c11 -Wall -O3 |  1.5902  +- 0.0096  |         **117 x**         |
+| Naive Calculation (i.e. direct two loop) / SoA, OpenMP / gcc -std=c11 -Wall -O3 |   4.220 +- 0.046    |         **44 x**          |
+|   Cell Linked List / SoA, OpenMP / gcc -std=c11 -Wall -O3    | 0.24816  +- 0.00934 |         **750 x**         |
 
 ​	
 
@@ -30,11 +30,11 @@
 ​	Four functions could mean that there are are a lot of places where performance gains can be obtained, right? The only way to find out is benchmarking the code and see what happens. The results for the cell linked list version can be seen below:
 
 ```bash
-compute_hash_MC3D         : 0.001827 +- 1.953e-05 s : 0,052%
-sorting                   : 0.01296  +- 0.0002384 s : 0.371%
-setup_interval_hashtables : 0.000344 +- 3.708e-05 s : 0.0098%
-compute_density           : 3.474    +- 0.003932  s : 99.570%
-Total Time                : 3.489    +- 0.003958  s : 100%
+compute_hash_MC3D         : 0.0008162 +- 4.095974e-05 :   0.05229% +- 0.002624%
+sorting                   : 0.0111234 +- 0.0003941926 :   0.7126%  +- 0.02525%
+setup_interval_hashtables : 0.0002076 +- 2.068333e-05 :   0.0133%  +- 0.001325%
+compute_density           : 1.548835 +- 0.03304986    :  99.22%    +- 2.117%
+Total Time                : 1.560982 +- 0.03325097    : 100.00%    +- 2.13%
 ```
 
 ​	So, despite having several moving parts the code spends almost $99\%$ of the time in a single part of the code. It is common to call this parts, which make the code spend almost all of its time in, "hot spots". This hot spot is exactly where the actual density calculation is being performed, which surprises no-one. A distant second place of relevance is the sorting operation, `qsort`, with $< 1\%$ of the execution time. This results shows that the only region of the code worth bothering with, right now, is `compute_density_3d`. 
@@ -130,10 +130,10 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
 ​	The community wisdom is that `-O2` is considered a "safe" start and is a very commonly used optimization option, and was the first option I tried. So, how did our two examples from the previous article performed with this flag? 
 
-- The naïve implementation came down from $\sim 180\ \mbox{s}$ to around $\sim 53\ \mbox{s}$ , representing an speedup of around $3.4 \times$ ! 
-- The Cell Linked List implementation came down from $\sim 3.5\ \mbox{s}$ to around $\sim 1.59\ \mbox{s}$, also representing a $\sim 2.2\times$ speedup!
+- The naïve implementation came down from $\sim 180\ \mbox{s}$ to around $\sim 50\ \mbox{s}$ , representing an speedup of around $3.7 \times$ ! 
+- The Cell Linked List implementation came down from $\sim 3.5\ \mbox{s}$ to around $\sim 1.6\ \mbox{s}$, also representing a $\sim 2.2\times$ speedup!
 
-​	Therefore, by just adding 3 characters to the Makefile, we were able to gain over a ${\mathbf 3\times}$ speedup over the simple compilation without modifying any of the existing code (Time to call the mechanic to complain). 
+​	Therefore, by just adding 3 characters to the Makefile, we were able to gain over a ${\mathbf 2\times}$ speedup over the simple compilation without modifying any of the existing code (Time to call the mechanic to complain). 
 
 ​	The main lesson we gain from this is: **Knowing how to use the compiler matter** . 
 
@@ -222,11 +222,11 @@ int compute_density_3d_naive(int N,double h,
 ​	With the components being fed separately to the function call. This is not terribly different from before, but the most important question: How does it perform?
 
 - SoA + Naïve + -O2 : $\sim 45\ \mbox{s}$
-- SoA + Naïve + -O3 : $\sim 45\ \mbox{s}$
-- SoA + CLL   + -O2 : $\sim 1.073\ \mbox{s}$
+- SoA + Naïve + -O3 : $\sim 44\ \mbox{s}$
+- SoA + CLL   + -O2 : $\sim 1.512\ \mbox{s}$
 - SoA + CLL   + -O3 : $\sim 1.599\ \mbox{s}$
 
-​	Though not substantial, between $5\%$ and $15\%$, there was some gain which is positive. It will be later seen that this transformation will enable other, more effective, optimizations to be realized. Nevertheless, small gains are still gains!
+​	Though not substantial, between $5\%$ and $15\%$, there was some gain which is positive for the naive case. The result for the Cell Linked list it somewhat undefined. Nevertheless, it will be later seen that this transformation will enable other, more effective, optimizations to be realized. Nevertheless, small gains are still gains!
 
 ​	The main lesson from this section is: **How to map your data to your the computer memory, i..e data layout, matter**. 
 
@@ -324,16 +324,18 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
 
 ​	So, scoring time, how did the applications perform?
 
-- AoS / Naïve / OpenMP / -O3 : $\sim\ 4.09\ \mbox{s}$
-- AoS /  CLL  / OpenMP / -O3 : $\sim\ 0.28\ \mbox{s}$
-- SoA / Naïve / OpenMP / -O3 : $\sim\ 1.94\ \mbox{s}$
-- SoA /  CLL  / OpenMP / -O3 : $\sim\ 0.22\ \mbox{s}$
+- AoS / Naïve / OpenMP / -O3 : $\sim\ 4.22\ \mbox{s}$
+- AoS /  CLL  / OpenMP / -O3 : $\sim\ 0.25\ \mbox{s}$
+- SoA / Naïve / OpenMP / -O3 : $\sim\ 4.03\ \mbox{s}$
+- SoA /  CLL  / OpenMP / -O3 : $\sim\ 0.32\ \mbox{s}$
 
-​	So, now we have some very interesting results. For the AoS data layout we went down from  $53\ \mbox{s}$ and $1.08\ \mbox{s}$ **down to** $4.09\ \mbox{s}$ and $0.28\ \mbox{s}$, this is equivalent to an speedup of $13\times$ and $3.85 \times$ respectively! This is quite an impressive result, but it is not the end of it.
+​	So, now we have some very interesting results. For the AoS data layout we went down from  $53\ \mbox{s}$ and $1.6\ \mbox{s}$ **down to** $2.41\ \mbox{s}$ and $0.25\ \mbox{s}$, this is equivalent to an speedup of $22\times$ and $6.4 \times$ respectively! This is quite an impressive result, but it is not the end of it.
 
-​	For the SoA layout, the respective speedups are $23 \times$ and $4.75\times$ which are greater then the speedups for the AoS layout, specially in the case of the naïve implementation, which the ratio jumped from $1.17 \times$ to $2.11\times$, indicating that the SoA transformation has a bigger importance than first anticipated only looking at the results from the previous section.
+​	For the SoA layout, the respective speedups are $11.2 \times$ and $5\times$ 
 
-​	One nice indicator to point out, the difference of $13\times$ to $23 \times$ from the AoS to SoA versions of the openMP implementation is an indication of the memory bandwidth issue mentioned in the previous section: While one thread might not be enough to pull so much data from the RAM such as to gob all the available bandwidth, 24 threads quite likely are. Therefore, if you are wasting bandwidth with unused struct fields, you are consuming resources in a way to form a bottleneck in the possible performance. 
+--- which are greater then the speedups for the AoS layout, specially in the case of the naïve implementation, which the ratio jumped from $1.17 \times$ to $2.11\times$, indicating that the SoA transformation has a bigger importance than first anticipated only looking at the results from the previous section.
+
+--- One nice indicator to point out, the difference of $13\times$ to $23 \times$ from the AoS to SoA versions of the openMP implementation is an indication of the memory bandwidth issue mentioned in the previous section: While one thread might not be enough to pull so much data from the RAM such as to gob all the available bandwidth, 24 threads quite likely are. Therefore, if you are wasting bandwidth with unused struct fields, you are consuming resources in a way to form a bottleneck in the possible performance. 
 
 ​	We also note that the speedup provided the parallelization is quite different between the naïve version and the Cell Linked List versions. This is an indication of a suboptimal implementation of the Cell Linked List parallelization, which is not too difficult to see why: Function `compute_density_3d_chunk` calculates the density contribution to `node` cell from `nb` cell, and it is called inside two loops iterating over each cell pair of a given cell. 
 

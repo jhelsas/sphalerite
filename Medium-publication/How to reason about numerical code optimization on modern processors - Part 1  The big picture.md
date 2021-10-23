@@ -1,6 +1,6 @@
 # How to reason about numerical code optimization on modern processors - Part 1 : The problem and choosing a good algorithm
 
-​	This article is for anyone that would like to know how to reason about the performance of their numerical code, and how to improve it. To do so I would like to invite you, the reader, to follow me through the steps I went through to optimize a single computation: the computation of the density of a particle system in the Smoothed Particle Hydrodynamics (SPH) method. In this first part I would like to present the problem, the naïve implementation and a very common optimization used in the SPH literature called the fast neighbour search method, sometimes also called cell linked list search method. 	
+​	This article is for anyone that would like to know how to reason about the performance of their numerical code, and how to improve it. To do so I would like to invite you, the reader, to follow me through the steps I went through to optimize a single computation: the computation of the density of a particle system in the Smoothed Particle Hydrodynamics (SPH) method. In this first part I would like to present the problem, the naïve implementation and a very common optimization used in the SPH literature called the Cell Linked List method. 	
 
 ​	For most users, most of the complexity involved in implementing fast and efficient algorithms is hidden behind frameworks and libraries, such as Numpy, Pandas, Tensorflow or even mapReduce. Nevertheless, for any problem bigger than prototype, it is important to know to correctly use those libraries and understand which premises they are built upon, so to not slow down your code unnecessarily. 
 
@@ -8,10 +8,33 @@
 
 ​	This serie's topics are divided in four parts: In the first part we will cover the problem we wish to solve, present its most basic implementation and and discuss an algorithm to speed it up by skipping a majority of unnecessary computations in advance, called Cell Linked List. This will allow us to overview some of the major concepts related to accelerating numerical code, and in special focus on the importance of choosing good algorithms to begin with as a necessary step to implementing efficient numerical codes. As a preview of the remainder of the article the timings for the two cases explored here are presented in the table below:
 
-|          Algorithm / Implementation / Configuration          |  Time (Seconds)   | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :---------------: | :-----------------------: |
-| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  187.7 +- 2.083   |          **1 x**          |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.489 +- 0.003958 |         **53 x**          |
+|     Part 1 : Algorithm / Implementation / Configuration      |     Time (Seconds)     | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :--------------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |    186.64 +- 0.9799    |          **1 x**          |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.654219 +- 0.02075348 |         **51 x**          |
+
+| Part 2 (Compilers, Data Layout and Threads) : Algorithm / Implementation / Configuration |   Time (Seconds)    | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :-----------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 |    51.55 +- 0.24    |        **3,62 x**         |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall -O3 |    1.57 +- 0.02     |         **118 x**         |
+| Naive Calculation (i.e. direct two loop) / SoA, single thread / gcc -std=c11 -Wall -O3 |   43.894 +- 0.349   |        **4.25 x**         |
+| Cell Linked List / SoA, single thread / gcc -std=c11 -Wall -O3 |  1.5902  +- 0.0096  |         **117 x**         |
+| Naive Calculation (i.e. direct two loop) / SoA, OpenMP / gcc -std=c11 -Wall -O3 |   4.220 +- 0.046    |         **44 x**          |
+|   Cell Linked List / SoA, OpenMP / gcc -std=c11 -Wall -O3    | 0.24816  +- 0.00934 |         **750 x**         |
+
+| Part 3 (SIMD, Architecture and Strip Mining) : Algorithm / Implementation / Configuration |   Time (Seconds)   | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :----------------: | :-----------------------: |
+| Naive Calculation / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  4.449 +- 0.00607  |         **42 x**          |
+| Cell Linked List / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.2124 +- 0.01735  |         **883 x**         |
+| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.7584 +- 0.01363  |         **247 x**         |
+| Cell Linked List / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1511 +- 0.008954 |        **1242 x**         |
+
+| Part 4 (Loops, Load Bal. and Symmetrization) : Algorithm / Implementation / Configuration |    Time (Seconds)    | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :------------------: | :-----------------------: |
+| CLL / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.04152 +- 0.0006297 |        **4520 x**         |
+| CLL / SoA, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.03151 +- 0.001819  |        **5956 x**         |
+| CLL / SoA, Symmetrical LB OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.02613 +- 0.002346  |        **7183 x**         |
+| CLL / SoA, SymmLB OpenMP, CountSort SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.01784 +- 0.00097  |        **10521 x**        |
 
 ​	The second part explores the relevance of compiler flags to code performance, the interplay of data representation in memory in the choice between Array of Structs and Stuct of Arrays, and finally a first implementation of multi-threaded programming using openMP library. The third part is concerned with the use of Instruction Level Paralelism in modern CPUs, in the form of code Vectorization with SIMD instructions (AVX2 in our case), and how to properly utilize them with a proper choice of compiler flags and judiciously choosing what goes in the most critical section of the code. Finally, the fourth part deals with improvements of thread-level parallelism in the form of loop re-writting, loop tiling for cache blocking, exposing hidden parallelism and load balancing. Each optimization will be discussed in the context of its implementation in real code, alongside with its impact to the final performance. 
 
@@ -354,7 +377,7 @@ int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *bo
 
 ## Analyzing the Gains:
 
-​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **180 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing a $53\times$! 
+​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **180 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing an over $ 50\times$ speedup! 
 
 ​	The back of envelope calculation goes like this: Supposing each box has an equal number of particles, there are:
 $$
@@ -366,7 +389,7 @@ $$
 
 ​	As with anything, the actual speedup depends on the actual distribution of particles in space, the smoothing length, and might well vary during the simulation. Nevertheless, this simplified case showcases how much impact this approach can contribute to enable the use of this method in realistic scenarios. 
 
-​	This result represents over a **50 x ** performance improvement which is, arguably, more than enough to justify the extra mile to implement the additional structures and modifying the code. More importantly and sometimes overlooked, this is an improvement gained from re-thinking the way the calculation is performed, and as such it is **not something that can be gained by tweaking** the original code. This fact will become more apparent as we progress through the next parts of this series, since most of the techniques that can be used to improve the original code can also be applied to this cell linked list search version of it, therefore this performance gain comes **on top** of everything else that can be done to improve the performance of this calculation. 
+​	This result represents over **50 x ** performance improvement which is, arguably, more than enough to justify the extra mile to implement the additional structures and modifying the code. More importantly and sometimes overlooked, this is an improvement gained from re-thinking the way the calculation is performed, and as such it is **not something that can be gained by tweaking** the original code. This fact will become more apparent as we progress through the next parts of this series, since most of the techniques that can be used to improve the original code can also be applied to this cell linked list search version of it, therefore this performance gain comes **on top** of everything else that can be done to improve the performance of this calculation. 
 
 ​	The main lesson from this section is: **Choosing good algorithms matter**.
 

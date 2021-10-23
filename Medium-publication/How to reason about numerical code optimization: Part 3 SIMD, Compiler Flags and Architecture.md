@@ -12,16 +12,16 @@
 
 ​	Similarly as done with the previous parts, we present a summary of the results of this part in comparison with the previous ones:
 
-|          Algorithm / Implementation / Configuration          |   Time (Seconds)   | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :----------------: | :-----------------------: |
-| Naive Calculation / AoS, simple, no optimizations / gcc -std=c11 |   187.7 +- 2.083   |          **1 x**          |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 | 3.489 +- 0.003958  |         **53 x**          |
-|      Naive Calculation / SoA, OpenMP / gcc -std=c11 -O3      |  4.119 +- 0.05435  |        **45.6 x**         |
-|      Cell Linked List / SoA, OpenMP / gcc -std=c11 -O3       |  0.336 +- 0.05685  |         **558 x**         |
-| Naive Calculation / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  4.449 +- 0.00607  |         **42 x**          |
-| Cell Linked List / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.2124 +- 0.01735  |         **883 x**         |
-| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.7584 +- 0.01363  |         **247 x**         |
-| Cell Linked List / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1511 +- 0.008954 |        **1242 x**         |
+|          Algorithm / Implementation / Configuration          |   Time (Seconds)    | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :-----------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  186.64 +- 0.9799   |          **1 x**          |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.654219 +- 0.02075 |         **51 x**          |
+|      Naive Calculation / SoA, OpenMP / gcc -std=c11 -O3      |  4.119 +- 0.05435   |        **45.6 x**         |
+|      Cell Linked List / SoA, OpenMP / gcc -std=c11 -O3       |  0.336 +- 0.05685   |         **558 x**         |
+| Naive Calculation / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  4.449 +- 0.00607   |         **42 x**          |
+| Cell Linked List / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.2124 +- 0.01735  |         **883 x**         |
+| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.7584 +- 0.01363  |         **247 x**         |
+| Cell Linked List / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1511 +- 0.008954  |        **1242 x**         |
 
 ​	
 
