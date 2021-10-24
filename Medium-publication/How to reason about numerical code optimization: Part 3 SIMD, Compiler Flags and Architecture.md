@@ -4,26 +4,24 @@
 
 ​	We now turn to a more restricted topic that is related to extracting performance of **one given architecture**, though it is possible to make it portable to other CPUs. We will do so by exploiting existing hardware that is cable to perform parallel computations **inside the core** instead of among cores, most notably we will explore functionality to enable code vectorization using **SIMD units**. These units are designed to provide high performance, in the form of high-throughput, in a set of repetitive and restrictive types of calculations that are very common in practice, like adding and multiplying numbers together. These units allow for a very large increase of floating point performance by being able to execute multiple calculations through the use of a single instruction.
 
-​	Though very rare in the past, and at times restricted to specialty hardware, this kind of hardware-level parallelism is quite common in the present day because of the limitations of further increasing clock speed of processors. I can have a 12 core desktop CPU that is capable of executing 16 floating point instructions per clock per core at $4\ \mbox{GHz}$, but it is basically unfeasible to built a single-core CPU that can run at $700+\ \mbox{GHz}$ without it melting. 
+​	Though very rare in the past, and at times restricted to specialty hardware, this kind of hardware-level parallelism is quite common in the present day because of the limitations of further increasing clock speed of processors. I can have a 12 core desktop CPU that is capable of executing 8 floating point instructions per clock per core at $4\ \mbox{GHz}$, but it is basically unfeasible to built a single-core CPU that can run at $700+\ \mbox{GHz}$ without it melting. 
 
 ​	Contrary to what used to happen in the past, in which performance increases with increasing frequency translated directly into execution performance without the developer needing to do anything, resources like SIMD units require explicit programmer awareness to correctly create code that execute on the available hardware. The need for this awareness is, to some extent, a reasonable demand for the existence of this series of articles. 
 
-​	To effectively utilize these SIMD units, it is necessary to annotate your code to correctly warn the compiler that is can be translated to vectorized code and also instruct the compiler directly to do so, in the form of correct compiler flags, both topics being the subject of this part of the series. By the end of this part, I hope you come to appreciate the amazing evolution and cleverness of modern CPU architectures, and also realize that, though not free, it is not overly complex to adapt your code to take advantage of these resources. We will also make a first foray into advanced performance techniques, like strip mining, and how to map them into your code. Some of these more advanced techniques will be covered in the next part of this series..
+​	To effectively utilize these SIMD units, it is necessary to annotate your code to correctly warn the compiler that is can be translated to vectorized code and also instruct the compiler directly to do so, in the form of correct compiler flags, both topics being the subject of this part of the series. By the end of this part, I hope you come to appreciate the amazing evolution and cleverness of modern CPU architectures, and also realize that, though not free, it is not overly complex to adapt your code to take advantage of these resources. We will also make a first foray into advanced performance techniques, like strip mining, and how to map them into your code. Some of these more advanced techniques will be covered in the next part of this series.
 
 ​	Similarly as done with the previous parts, we present a summary of the results of this part in comparison with the previous ones:
 
-|          Algorithm / Implementation / Configuration          |   Time (Seconds)    | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :-----------------: | :-----------------------: |
-| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  186.64 +- 0.9799   |          **1 x**          |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.654219 +- 0.02075 |         **51 x**          |
-|      Naive Calculation / SoA, OpenMP / gcc -std=c11 -O3      |  4.119 +- 0.05435   |        **45.6 x**         |
-|      Cell Linked List / SoA, OpenMP / gcc -std=c11 -O3       |  0.336 +- 0.05685   |         **558 x**         |
-| Naive Calculation / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  4.449 +- 0.00607   |         **42 x**          |
-| Cell Linked List / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.2124 +- 0.01735  |         **883 x**         |
-| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.7584 +- 0.01363  |         **247 x**         |
-| Cell Linked List / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1511 +- 0.008954  |        **1242 x**         |
-
-​	
+|          Algorithm / Implementation / Configuration          |  Time (Seconds)  | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :--------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  188.46 +- 0.71  |          **1 x**          |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.642  +- 0.043  |         **51 x**          |
+| Naive Calculation (i.e. direct two loop) / SoA, OpenMP / gcc -std=c11 -Wall -O3 |  4.267 +- 0.049  |         **44 x**          |
+|   Cell Linked List / SoA, OpenMP / gcc -std=c11 -Wall -O3    |  0.313 +- 0.033  |         **600 x**         |
+| Naive Calculation / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  4.408 +- 0.009  |         **42 x**          |
+| Cell Linked List / AoS, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.274 +- 0.059  |         **687 x**         |
+| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.7507 +- 0.0018 |         **251 x**         |
+| Cell Linked List / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1598 +- 0.0122 |        **1179 x**         |
 
 ## Understanding and Enabling SIMD 
 
@@ -43,19 +41,18 @@
 
 ### Ending compiler divination: `-fopt-info-vec-missed`
 
-​	At first glance, it should be the compiler's job do produce the code that runs on the underlying hardware, even somewhat "exotic" hardware like these SIMD units. Unfortunately, it can be quite complicated to divine what the compiler is doing, so actually **making the compiler print** some reports on how it is optimizing the code is quite important. The main flag I used to report on vectorization of the code was the flag `-fopt-info-vec-missed` of `gcc`. The flags make the compiler print a report on which loops it failed to vectorize and why. Tracing back to the code, it is possible to read what is says and try to understand. In our case, for the `compute_density_3d_AoS_naive_omp-100k.c` file have the following report:
+​	At first glance, it should be the compiler's job do produce the code that runs on the underlying hardware, even somewhat "exotic" hardware like these SIMD units. Unfortunately, it can be quite complicated to divine what the compiler is doing, so actually **making the compiler print** some reports on how it is optimizing the code is quite important. The main flag I used to report on vectorization of the code was the flag `-fopt-info-vec-missed` of `gcc`. The flags make the compiler print a report on which loops it failed to vectorize and why. Tracing back to the code, it is possible to read what is says and try to understand. In our case, for the `exec/example_02-ArrayOfStructs-Naive-Omp.c` file have the following report:
 
 ```
-exec/compute_density_3d_AoS_naive_omp-100k.c:21:5: missed: statement clobbers memory: exit (10);
-exec/compute_density_3d_AoS_naive_omp-100k.c:36:9: missed: couldn't vectorize loop
-exec/compute_density_3d_AoS_naive_omp-100k.c:36:9: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_AoS_naive_omp-100k.c:40:26: missed: couldn't vectorize loop
-exec/compute_density_3d_AoS_naive_omp-100k.c:40:26: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_AoS_naive_omp-100k.c:44:14: missed: statement clobbers memory: dist_65 = sqrt (dist_35);
-exec/compute_density_3d_AoS_naive_omp-100k.c:21:5: missed: statement clobbers memory: exit (10);
+exec/example_02-ArrayOfStructs-Naive-Omp.c:200:9: missed: couldn't vectorize loop
+exec/example_02-ArrayOfStructs-Naive-Omp.c:200:9: missed: not vectorized: control flow in loop.
+exec/example_02-ArrayOfStructs-Naive-Omp.c:204:26: missed: couldn't vectorize loop
+exec/example_02-ArrayOfStructs-Naive-Omp.c:204:26: missed: not vectorized: control flow in loop.
+exec/example_02-ArrayOfStructs-Naive-Omp.c:208:14: missed: statement clobbers memory: dist_83 = sqrt (dist_46);
+exec/example_02-ArrayOfStructs-Naive-Omp.c:232:5: missed: statement clobbers memory: exit (10);
 ```
 
-​	The key loop starts at line 36 which says: `36:9: missed: not vectorized: control flow in loop.`, which is quite the telling information. By control flow in the loop, the compiler means `if` and `for` statements, specially if it can produce results that can't be absorbed into the computation itself. In our case the kernel utilized is defined below:
+​	The key loop starts at line 201. The three major warnings are `204:26: missed: not vectorized: control flow in loop.`, ` 208:14: missed: statement clobbers memory: dist_83 = sqrt (dist_46);` and `232:5: missed: statement clobbers memory: exit (10);`. By control flow in the loop, the compiler means `if` and `for` statements, specially if it can produce results that can't be absorbed into the computation itself. In our case the kernel utilized is defined below:
 
 ```C
 double w_bspline_3d(double r,double h){
@@ -75,7 +72,7 @@ double w_bspline_3d(double r,double h){
 }
 ```
 
-​	The kernel has a complex branching in the form of `if(r<0||h<=0.) exit(10)`, which makes things very difficult for the compiler to produce vectorized code as indicated by `21:5: missed: statement clobbers memory: exit (10)`. The kernel also has some internal `if` statements, but those can be absorbed in the behavior of the kernel because all they do is to change the `return` value. The compiler also doesn't like `sqrt(dist)`, but this will be dealt as a consequence of the other modifications. Our goal now is to make our code more amenable to vectorization.
+​	The kernel has a complex branching in the form of `if(r<0||h<=0.) exit(10)`, which makes things very difficult for the compiler to produce vectorized code as indicated by `232:5: missed: statement clobbers memory: exit (10);`. The kernel also has some internal `if` statements, but those can be absorbed in the behavior of the kernel because all they do is to change the `return` value. The compiler also doesn't like `sqrt(dist)`, but this will be dealt as a consequence of the other modifications. Our goal now is to make our code more amenable to vectorization.
 
 ​	The main lesson from this section is: **Don't try to guess what the compiler is doing, print reports and profile**. 
 
@@ -152,33 +149,39 @@ int compute_density_3d_naive_omp_simd(int N,double h,
 
 ​	Now, the results :
 
-- AoS / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.45\ \mbox{s} $
-- AoS /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.27\ \mbox{s} $
-- SoA / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.13\ \mbox{s}$
-- SoA /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.21\ \mbox{s}$
+- AoS / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.47\ \mbox{s} $
+- AoS /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.24\ \mbox{s} $
+- SoA / Naive / OpenMP / -O3 / SIMD : $\sim\ 2.12\ \mbox{s}$
+- SoA /  CLL  / OpenMP / -O3 / SIMD : $\sim\ 0.22\ \mbox{s}$
 
-​	Now, that are some curious results. The naïve implementations presented an speedup of just under $2 \times$ , but the fast neighbor search either barely budge or had a much more modest speedup, under $50\%$. The speedup is real, and yet it seems a bit less than it should be. Looking at the compiler report for :
+​	Now, that are some curious results. The naïve implementations presented an speedup of just under $2 \times$ , but the cell linked list had a much more modest speedup, around $25\%$. The speedup is real, and yet it seems a bit less than it should be. Looking at the compiler report for :
 
 ```
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:26:5: missed: not vectorized: control flow in loop.
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: couldn't vectorize loop
-exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:206:22: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:206:22: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:215:28: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:215:28: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:223:11: missed: statement clobbers memory: _80 = sqrt (q_50);
+
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:266:5: missed: not vectorized: control flow in loop.
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: couldn't vectorize loop
+exec/example_03-ArrayOfStructs-Naive-Omp-SIMD.c:261:8: missed: not vectorized: control flow in loop.
 ```
 
-​	 It is complaining about:
+​	 In line 266, iIt is complaining about `266:5: missed: not vectorized: control flow in loop`, which refers to:
 
 ```c
   if(q<2.)
@@ -190,7 +193,7 @@ exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: 
 
 ​	Which interfere with the parallelization process. The compiler was able to vectorize the computations `q += xij*xij;` and `q = sqrt(q)*inv_h;`, but it still has problems with the kernel because of the conditionals. The exact reason for this limitation will be discussed down below, but it has to do with how the compiler chooses which hardware instructions to map your code to. Some ways to vectorize your code can cope with conditionals, others can't. So, to improve the present results, what we need to do is return to the compiler. 
 
-​	The main lesson from this section is: **Critical sections are called "critical" for a reason, pay attention to them**. 
+​	The main lesson from this section is: **Adapting your code to ease the compiler's job is not easy, but it may be necessary.** This is probably one of the less tasteful parts of optimizing code for the traditional developer, but it is part of writing fast code. 
 
 ### Flexibilizing Compiler's Morals: `-ffast-math`
 
@@ -206,7 +209,7 @@ exec/compute_density_3d_SoA_naive_omp_simd-100k.c:21:8: missed: not vectorized: 
 
 ​	Regarding the CPU, each core hash two floating point units, with 4 "pipes" each, supporting a "single-op AVX256". What this means is that the CPU can process those FMA3 instructions mentioned before, on 4 blocks of 64-bit floats. The deal is: Not all CPUs support AVX256, specially older CPUs. The first introduction of AVX256 to x86 processors was in the Intel Haswell micro-architecture, which is why AVX2 is sometimes referred as Haswell New Instructions. 
 
-​	As mentioned, the compiler will produce by default the best code it can for the **broadest possible** range of CPU architectures, and since AVX2 is not that available, it **will not produce** AVX2 code **unless explicitly instructed**. What the compiler actually does is produce is code for an older set of of SIMD instructions [called SSE](https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), which are more widely available. SSE happen to be a SIMD standard that can process 2 streams of floats (called pipes), while AVX256 can process 4 streams simultaneously for potentially twice the performance. 
+​	As mentioned, the compiler will produce by default the best code it can for the **broadest possible** range of CPU architectures, and since AVX2 is not that available, it **will not produce** AVX2 code **unless explicitly instructed**. What the compiler actually does is produce is code for an older set of of SIMD instructions [called SSE](https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), which are more widely available. SSE happen to be a SIMD standard that can process 2 streams of floats (called pipes), while AVX256 can process 4 streams simultaneously for potentially twice the performance. Contrary to AVX, SSE wasn't able to vectorize code with conditionals in the vectorization path, greatly limiting what was available for vectorization. Though not arbitraty, it is possible to vectorize code with some simplified conditionals, which happens to be enough to provide us with great performance gains. 
 
 ##### ![Zen2 Micro-architecture Anandtech](https://images.anandtech.com/doci/14525/Mike_Clark-Next_Horizon_Gaming-CPU_Architecture_06092019-page-003.jpg)
 
@@ -216,10 +219,10 @@ Extracted from [Anandtech](https://www.anandtech.com/show/14525/amd-zen-2-microa
 
 ​	The `-ffast-math` had some, though limited effect, but how did it perform alongside with `-O3` and `-march=native`?
 
-- AoS / Naive / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 4.5\ \mbox{s}$
-- AoS /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.25\ \mbox{s}$
+- AoS / Naive / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 4.4\ \mbox{s}$
+- AoS /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.27\ \mbox{s}$
 - SoA / Naive / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.75\ \mbox{s}$
-- SoA /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.17\ \mbox{s}$
+- SoA /  CLL  / OpenMP / SIMD / -O3 -ffast-math -march=native : $\sim 0.16\ \mbox{s}$
 
 ​	These are some promising, if not puzzling, results. We actually observed a **regression** of performance with the AoS layout, which is unexpected to say the least since we do not expect to have **worse** performance by **enabling** further optimizations on the compiler. On the other hand, the SoA layout presented quite the **performance improvement** with the AVX2 SIMD enabling, with the Naive and CLL versions presenting a $2.6 \times$ and $1.3\times$ respectively. 
 
@@ -229,7 +232,7 @@ Extracted from [Anandtech](https://www.anandtech.com/show/14525/amd-zen-2-microa
 
 ## Naïve on Steroids: Loop Tiling and Cache Utilization
 
-​	As of this moment, the naive implementation is both parallelized with openMP threads and vectorized with SIMD, which would suggests that is has reached the limit of what was available to it. The number of calculations hasn't changed, therefore it is still $\mathcal{O}(N^2)$, so we should expect a $100\times$ increase in the time for each $10\times$ increase in the size of the particle array. If we run for $10^5$ particles we take around $\sim 0.77\ \mbox{s}$, but running for $10^6$ takes over $220\ \mbox{s}$! It was expected to take closer to $80 \mbox{s}$ to run this example, so why the dramatic decrease in performance?
+​	As of this moment, the naive implementation is both parallelized with openMP threads and vectorized with SIMD, which would suggests that is has reached the limit of what was available to it. The number of calculations hasn't changed, therefore it is still $\mathcal{O}(N^2)$, so we should expect a $100\times$ increase in the time for each $10\times$ increase in the size of the particle array. If we run for $10^5$ particles we take $\sim 0.75\ \mbox{s}$, but running for $10^6$ takes over $220\ \mbox{s}$! It was expected to take closer to $80 \mbox{s}$ to run this example, so why the dramatic decrease in performance?
 
 ​	As explained before, there is a big gap in memory performance and CPU performance. Under normal circumstances it is not possible for the main memory to feed enough data to the CPU to keep all hardware busy. The solution found to bridge this gap was to introduce a variety of intermediary memories **in between** the storage the CPU uses to perform calculations, called the **register**, and the **main system memory**. These memories are called caches, and are numbered according to how far away they are from the actual processing units, ALU and FPU, and therefore how large and slower they are. Level 1 cache (L1) is the fastest in-chip memory, and L3 is usually the slowest. They have varying sizes and speed, but they are always **smaller and faster** than main memory. Most of the time they are automatically managed by the CPU itself, but in some processors [they can be programmable](https://en.wikipedia.org/wiki/Scratchpad_memory), requiring you to program. The most widely know example is Nvidia Cuda's Shared Memory, which corresponds to a programmable L1 cache. 
 
@@ -299,4 +302,3 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
 ​	The CPU ordinarily would get the data for `x[ii]` from the main memory but, since this data was requested in a previous iteration, it already resides inside the CPU cache and it can be re-used. For $N\sim 10^5$ , the data is so small that it is possible to simply store the full array in cache, thus making so that the tiling technique is somewhat redundant for this small case. 
 
 ​	The main lesson from this section is: **Memory bandwidth is a finite resource and imposes real constraints for performance. Understanding the memory hierarchy of your particular hardware does make a difference, and this means that writing your program considering temporal locality of your data is Important**.
-

@@ -10,17 +10,17 @@
 
 ​	Similarly as done with the previous parts, we present a summary of the results of this part in comparison with the previous ones:
 
-|          Algorithm / Implementation / Configuration          |    Time (Seconds)    | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :------------------: | :-----------------------: |
-| Naive Calculation / AoS, simple, no optimizations / gcc -std=c11 |    187.7 +- 2.083    |          **1 x**          |
-| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 |  3.489 +- 0.003958   |         **53 x**          |
-|      Naive Calculation / SoA, OpenMP / gcc -std=c11 -O3      |   4.119 +- 0.05435   |        **45.6 x**         |
-|      Cell Linked List / SoA, OpenMP / gcc -std=c11 -O3       |   0.336 +- 0.05685   |         **558 x**         |
-| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.7584 +- 0.01363   |         **247 x**         |
-| CLL / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.04152 +- 0.0006297 |        **4520 x**         |
-| CLL / SoA, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.03151 +- 0.001819  |        **5956 x**         |
-| CLL / SoA, Symmetrical LB OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.02613 +- 0.002346  |        **7183 x**         |
-| CLL / SoA, SymmLB OpenMP, CountSort SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.01784 +- 0.00097  |        **10521 x**        |
+|          Algorithm / Implementation / Configuration          |  Time (Seconds)  | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :--------------: | :-----------------------: |
+| Naive Calculation (i.e. direct two loop) / AoS, simple, no optimizations / gcc -std=c11 -Wall |  188.46 +- 0.71  |          **1 x**          |
+| Cell Linked List / AoS, simple, no optimizations / gcc -std=c11 -Wall | 3.642  +- 0.043  |         **51 x**          |
+| Naive Calculation (i.e. direct two loop) / SoA, OpenMP / gcc -std=c11 -Wall -O3 |  4.267 +- 0.049  |         **44 x**          |
+|   Cell Linked List / SoA, OpenMP / gcc -std=c11 -Wall -O3    |  0.313 +- 0.033  |         **600 x**         |
+| Naive Calculation / SoA, OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.7507 +- 0.0018 |         **251 x**         |
+| CLL / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0412 +- 0.0003 |        **4574 x**         |
+| CLL / SoA, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0307  +- 0.001 |        **6138 x**         |
+| CLL / SoA, Symmetrical LB OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0236 +- 0.0006 |        **7985 x**         |
+| CLL / SoA, SymmLB OpenMP, CountSort SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0193 +- 0.0021 |        **9764 x**         |
 
 ## OpenMP: A practical guideline 
 
@@ -74,10 +74,10 @@ int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBo
 
 ​	The performance results are encouraging: 
 
-|          Algorithm / Implementation / Configuration          |    Time (Seconds)    | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :------------------: | :-----------------------: |
-| Cell Linked List / AoS, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.1618 +- 0.002736  |        **1160 x**         |
-| Cell Linked List / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.04152 +- 0.0006297 |        **4520 x**         |
+|          Algorithm / Implementation / Configuration          |  Time (Seconds)  | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :--------------: | :-----------------------: |
+| Cell Linked List / AoS, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1762 +- 0.0066 |        **1069 x**         |
+| Cell Linked List / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0412 +- 0.0003 |        **4574 x**         |
 
 ​	Just by moving the openMP loop up we managed to gain considerable performance in the Cell Linked List version, corroborating our first impression regarding the cost of repeatedly creating threads. Though this makes it much closer to the expected speedup, this is not yet all it could be, but it quite a bit better than it was. This also showcases what is it not simply a matter of "calling the threading library" that will allow us to extract maximum performance, but also how and where it is called. Understanding that there are costs, beside benefits, related to running in parallel is key to write good parallel code. 
 
@@ -116,7 +116,7 @@ $$
 
           compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,// and compute the density contribution from 
                                lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);    // the contributing cell to the receiver cell
-   }}
+      }}
 ```
 
 ​	In this section, each thread uses `neighbour_hash_3d` to get a list of valid neighbor cell to work on. If you are in the bulk of the domain, this list is $27$ elements long, but if your cell is in one of the 8 corners the number of valid neighbors can be as low as $8$, which is just $30\%$ of the original workload. This means that threads will be executing wildly different amounts of work depending on whether they get assigned a box in a face, edge, corner or in the bulk. If a thread is assigned a bunch of face cells and the number of cells ends while it finished its work, it can sit idle waiting a thread that was assigned a several cells in the bulk. 
@@ -174,39 +174,39 @@ int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linked
 
 ![Peek-1](Peek-1.gif)
 
-​	 Which is a much nicer and cleaner result. Contrary to what happened in the first cast, all core's utilization rise together, stay way up during the whole computation (i.e. there are no idling cores), and come down together. This shows that this way to parallelize **saturate** the cores much better then before, and also that the total load is more evenly divided among all cores. This visually exemplifies 
+​	 Which is a much nicer and cleaner result. Contrary to what happened in the first cast, all core's utilization rise together, stay way up during the whole computation (i.e. there are no idling cores), and come down together. This shows that this way to parallelize **saturate** the cores much better then before, and also that the total load is more evenly divided among all cores. 
 
 ​	The problem of load balancing parallel workloads is nothing new as can be seen [by this tutorial on how to identify and fix this issue](https://software.intel.com/content/www/us/en/develop/documentation/vtune-cookbook/top/tuning-recipes/openmp-imbalance-and-scheduling-overhead.html), and is a major topic of research and engineering design even for newer and highly parallelized architectures as is the case with very large computer clusters, but also with newer specialized many-core architectures with recent examples featuring [Esperanto](https://www.servethehome.com/esperanto-et-soc-1-1092-risc-v-ai-accelerator-solution-at-hot-chips-33/)'s 1092 RISC-V cores "AI Inference Accelerator" and [SambaNova](https://www.servethehome.com/sambanova-sn10-rdu-at-hot-chips-33/)'s 640 core "Reconfigurable Dataflow Unit". 
 
 ​	So how did this change impact the code performance? From the last outer loop parallelization, it went down from $0.04\ \mbox{s}$​ to $0.33\ \mbox{s}$​ ! The summary table follows:  
 
-|          Algorithm / Implementation / Configuration          |    Time (Seconds)    | Speedup (Rel. to slowest) |
-| :----------------------------------------------------------: | :------------------: | :-----------------------: |
-| Cell Linked List / AoS, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.1618 +- 0.002736  |        **1160 x**         |
-| Cell Linked List / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.04152 +- 0.0006297 |        **4520 x**         |
-| Cell Linked List / AoS, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native |  0.115 +- 0.001577   |        **1632 x**         |
-| Cell Linked List / SoA, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.03151 +- 0.001819  |        **5956 x**         |
+|          Algorithm / Implementation / Configuration          |  Time (Seconds)   | Speedup (Rel. to slowest) |
+| :----------------------------------------------------------: | :---------------: | :-----------------------: |
+| Cell Linked List / AoS, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1762 +- 0.0066  |        **1069 x**         |
+| Cell Linked List / SoA, Outer Loop OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0412 +- 0.0003  |        **4574 x**         |
+| Cell Linked List / AoS, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.1152 +- 0.0028  |        **1635 x**         |
+| Cell Linked List / SoA, Load Balanced OpenMP, SIMD / gcc -std=c11 -O3 -ffast-math -march=native | 0.0307  +- 0.0011 |        **6138 x**         |
 
 #### Scaling up : How does parallelism depends on problem size
 
 ​	Though very good, these numbers don't tell the whole story. Decomposing the timings for the different parts of the calculation, we get: 
 
 ```bash
-========  Outer-Loop Parallelized Fast Neigbor Search Timings :  24 thread   ========
-compute_hash_MC3D         : 0.0006908 +- 1.399e-05  :   1.7%
-sorting                   : 0.009597 +- 0.0001722   :  23.1%
-reorder_lsph_SoA          : 0.001823 +- 0.0001151   :   4.4%
-setup_interval_hashtables : 0.0001486 +- 6.986e-06  :   0.4%
-compute_density           : 0.02926 +- 0.0004074    :  70.4%
-Total Time                : 0.04152 +- 0.0006297    : 100.0%
+========  Outer-Loop Parallelized Cell Linked List Timings :  24 thread   ========
+compute_hash_MC3D         : 0.0007178 +- 2.072921e-05 :   1.742%  
+sorting                   : 0.0093654 +- 0.0002155117 :  22.73%   
+reorder_lsph_SoA          : 0.001761 +- 5.903389e-05  :   4.275%  
+setup_interval_hashtables : 0.0001448 +- 6.379655e-06 :   0.3515% 
+compute_density           : 0.0292074 +- 0.0001081702 :  70.9%    
+Total Time                : 0.0411964 +- 0.0003004452 : 100.00%      
 
-======== Load-Ballanced Parallelized Fast Neigbor Search Timings :  24 thread ========
-compute_hash_MC3D         : 0.0006934 +- 2.408e-05 :   2.2%
-sorting                   : 0.009408 +- 0.0002254  :  29,8%
-reorder_lsph_SoA          : 0.001794 +- 0.0001166  :   5,7%
-setup_interval_hashtables : 0.00013 +- 1.709e-05   :   0,4%
-compute_density           : 0.01949 +- 0.001903    :  61,8%
-Total Time                : 0.03151 +- 0.001819    : 100.0%
+======== Load-Ballanced Parallelized Cell Linked List Timings :  24 thread ========
+compute_hash_MC3D         : 0.0007186 +- 1.51921e-05  :   2.34%   
+sorting                   : 0.0094074 +- 0.0001614847 :  30.63%   
+reorder_lsph_SoA          : 0.0017494 +- 0.0001863151 :   5.697%  
+setup_interval_hashtables : 0.000134  +- 1.650757e-05 :   0.4364% 
+compute_density           : 0.0186996 +- 0.001091231  :  60.89%   
+Total Time                : 0.030709  +- 0.001065418  : 100%      
 ```
 
 ​	We notice that there almost $40\%$ improvement in the `compute_density_3d` section, which is the section we re-wrote pre-computing the cell pairs, but it only translates to a $20\%$​ improvement in performance in the entire program timing. This is related to [Amdahl's Law](https://en.wikipedia.org/wiki/Amdahl%27s_law). Amdahl's law says that the maximum speedup $S$ for any given task can be written as:
@@ -219,12 +219,12 @@ $$
 
 ```bash
 ======== Load-Ballanced Parallelized Fast Neigbor Search Timings : 1 thread ========
-compute_hash_MC3D calculation time          : 0.00066 s : 0.29%
-qsort calc time                             : 0.00908 s : 3.96%
-reorder_lsph_SoA calc time                  : 0.00204 s : 0.89%
-setup_interval_hashtables calc time         : 0.00017 s : 0.07%
-compute_density_3d load balanced calc time  : 0.21765 s : 94.80%
-compute_density_3d load balanced total time : 0.22960 s : 100.00%
+compute_hash_MC3D         : 0.0006754 +- 6.188699e-06  : 0.3025% 
+sorting                   : 0.0090964 +- 0.0001509513  : 4.074% 
+reorder_lsph_SoA          : 0.0018386 +- 0.0001943047  : 0.8235% 
+setup_interval_hashtables : 0.0001272 +- 1.85661e-05   : 0.05697% 
+compute_density           : 0.2115248 +- 0.0001271405  : 94.74% 
+Total Time                : 0.2232624 +- 0.0001998207  : 100% 
 ```
 
 ​	We observe that in the single thread execution, `qsort` calculation only takes $4\%$ of the computation time, but when the parallelism in `compute_density_3d` is enabled and, therefore, this section get sped up, the `qsort` calculation takes up a much bigger space in the time budget of the execution and hinders the potential for total speedup. If you are wondering, $p=0.948$ in the data above, corresponding to the fraction taken `compute_density_3d`. 
@@ -232,22 +232,21 @@ compute_density_3d load balanced total time : 0.22960 s : 100.00%
 ​	So, to what extent this `qsort` limitation is really a problem? For realistic scenarios, we are more interested in being capable of simulating **more particles in a fixed time frame** than we are interested in simulating a **fixed number number of particles in a decreasing time frame**. To understand what this means in practice, we show the same timings but for a calculation with $10^6$ particles instead of $10^5$.  We observe that all sections of the code increase in time, which is totally expected, but what is more interesting is that the time taken by `compute_density_3d` increases much faster than anything and everything else. The consequence of this is that **bigger problems have larger parallel fractions** than smaller ones. We can observe that $p = 99.18\%$, which is substantially larger than the $94.80\%$ for the same section with $10^5$ particles. 
 
 ```bash
-======== Load-Ballanced Parallelized Fast Neigbor Search Timings :  1 threads ========
-fast neighbour search / SoA / outer-openMP / load balanced
-compute_hash_MC3D calc time                 : 0.00665 s : 0.03%
-qsort calc time                             : 0.10543 s : 0.51%
-reorder_lsph_SoA calc time                  : 0.05316 s : 0.26%
-setup_interval_hashtables calc time         : 0.00201 s : 0.01%
-compute_density_3d load balanced calc time  : 20.32240 s : 99.18%
-compute_density_3d load balanced total time : 20.48965 s : 100.00%
+======== Load-Ballanced Parallelized Cell Linked List Timings :  1 threads ========
+compute_hash_MC3D         : 0.0067934 +- 0.0001579788 :   0.03389%
+sorting                   : 0.1011656 +- 0.004205714  :   0.5047%
+reorder_lsph_SoA          : 0.053625  +- 0.002626178  :   0.2676%
+setup_interval_hashtables : 0.0016252 +- 0.000161424  :   0.008109%
+compute_density           : 19.87953  +- 0.1527253    :  99.19% 
+Total Time                : 20.04274  +- 0.1523234    : 100% 
 
-======== Load-Ballanced Parallelized Fast Neigbor Search Timings : 24 threads ========
-compute_hash_MC3D calc time                 : 0.00654 s : 0.36%
-qsort calc time                             : 0.10300 s : 5.66%
-reorder_lsph_SoA calc time                  : 0.06482 s : 3.56%
-setup_interval_hashtables calc time         : 0.00171 s : 0.09%
-compute_density_3d load balanced calc time  : 1.64395 s : 90.33%
-compute_density_3d load balanced total time : 1.82001 s : 100.00%
+======== Load-Ballanced Parallelized Cell Linked List Timings : 24 threads ========
+compute_hash_MC3D         : 0.0071538 +- 0.0001472674 :   0.3985%
+sorting                   : 0.1067364 +- 0.001255978  :   5.945%
+reorder_lsph_SoA          : 0.0514906 +- 0.001522073  :   2.868%
+setup_interval_hashtables : 0.0015322 +- 0.0001118557 :   0.08534%
+compute_density           : 1.628421  +- 0.003663233  :  90.7% 
+Total Time                : 1.795334  +- 0.00396116   : 100% 
 ```
 
 ​	This nice feature is related to the Gustafson's Law. [Gustafson's Law](https://en.wikipedia.org/wiki/Gustafson%27s_law) says that the maximum theoretical speedup $S$ of executing an task by utilizing more system's resources (i.e. cores) is given by:
@@ -258,7 +257,7 @@ $$
 
 ​	If you come from a **latency sensitive** background, such as is the case of **computer gaming**, you actually **want ** to solve a fixed problem, corresponding to rendering or evolving a given scene in the game, in a decreasing amount of time because the lower the time the higher the frame-rate. In this case, you could argue that squeezing extra performance from `qsort` and `reorder_lsph_SoA` is well worth. If this is your case, all I can say is: Do it, you squeezed performance  from one section, squeeze it from another. 
 
-​	Another example of **latency focused** high performance computing is High Frequency Trading, in which the actual success or loss of a given trading strategy is linked to how fast your code can respond to an external change in the markets. If you wish to see how different optimizing for this kind of application can be, you can watch [this piece of head trauma](https://www.youtube.com/watch?v=NH1Tta7purM) on Youtube. In a very real sense, optimizing for latency is much less forgiving than optimizing for throughput, and requires a considerable deal more of paranoia from the compiler. 
+​	Another example of **latency focused** high performance computing is High Frequency Trading, in which the actual success or loss of a given trading strategy is linked to how fast your code can respond to an external change in the markets. If you wish to see how different optimizing for this kind of application can be, you can watch [this piece of head trauma](https://www.youtube.com/watch?v=NH1Tta7purM) on Youtube. In a very real sense, optimizing for latency is much less forgiving than optimizing for throughput, and requires a considerable deal more of paranoia in what concerns the compiler. 
 
 ​	For anyone wondering whether we should make a tiled version of this code in order to improve cache utilization, you might notice that the code **is already cache blocked by construction**. The computation is done in chucks and the `node` chunks are re-used several times because there are several consecutive pairs with the same `node_begin` and `node_end` values. 
 
@@ -266,9 +265,9 @@ $$
 
 ## When marginal improvements are not marginal: Symmetrization and Improved Sorting
 
-​	Though a lot was achieved already, there is yet some extra performance that can be squeezed. To find where, we come back to the first rule of thumb that was mentioned in this series:  **If it doesn't need to be done, don't do it**. To find where, we return to the density calculation. 
+​	Though a lot was achieved already, there is yet some extra performance that can be squeezed out of this code. To find where, we come back to the first rule of thumb that was mentioned in this series:  **If it doesn't need to be done, don't do it**. To find where, we return to the density calculation. 
 
-​	For two different indices, $i$ and $j$, the actual density calculations are not the same because the coefficients $\nu_i$ are not the same in the same sum. That said it is possible to break the density calculation in the following way:
+​	For two different indexes, $i$ and $j$, the actual density calculations are not the same because the coefficients $\nu_i$ are not the same in the same sum. That said it is possible to break the density calculation in the following way:
 $$
 \rho_i = \sum_{k=0}^N \nu_k W(|{\mathbf r }_i  - {\mathbf r }_k |,h) = \sum_{k=0}^N \nu_k W_{ik} = \nu_j W_{ij} + \sum_{k\neq j} \nu_k W_{ik}\\
 
@@ -379,34 +378,35 @@ int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *l
 ​	The contributions for the density are joined seperately in a critical section, which serialized the computation to avoid a race condition, in which threads running in parallel could clash and cause unintended behavior ou miss data writes. The resulting timings are as follows:
 
 ```bash
-compute_hash_MC3D :         0.0006806 +- 1.596e-05 :
-sorting :                   0.009303  +- 0.000144  :
-reorder_lsph_SoA :          0.001894  +- 8.095e-05 :
-setup_interval_hashtables : 0.0001286 +- 1.534e-05 :
-compute_density :           0.01153   +- 0.0004252 :
-Total Time :                0.02354   +- 0.0005262 :
+compute_hash_MC3D         : 0.0007182 +- 1.413153e-05  :   3.038%  
+sorting                   : 0.0094544 +- 0.0001682864  :  39.99%   
+reorder_lsph_SoA          : 0.0019024 +- 0.0002503174  :   8.047%  
+setup_interval_hashtables : 0.0001318 +- 1.861988e-05  :   0.5575% 
+compute_density           : 0.0114336 +- 0.0002826638  :  48.36%   
+Total Time                : 0.0236404 +- 0.0006127486  : 100%      
 ```
 
-​	Which yielded a nice improvement of $43\%$ on the compute_density step, and around $20\%$ on the entire program execution! This is very impressive considering that the code is already very optimized, so getting another $40\%$ in the most important part of the code is quite significant, and yet it is somewhat unfortunate that this $40\%$ improvement only translated into $20\%$ for the overall execution time. 
+​	Which yielded a nice improvement of $63\%$ on the compute_density step, and around $30\%$ on the entire program speedup! This is very impressive considering that the code is already very optimized, so getting another $60\%$ in the most important part of the code is quite significant, and yet it is somewhat unfortunate that this $ 60\%$ improvement only translated into $30\%$ for the overall execution time for this problem size. This is not too much of a problem, as mentioned before, because this will probably shift in favor of the $60\%$ improvement for bigger problem sizes. 
 
 ### Bonus Section: Improved Sorting
 
-​	This is related to the fact mentioned before that, as the parallel section of the program is improved, the non-parallel section of the code becomes a drag in the maximum speedup attainable. In our case, the biggest drag is represented by the sorting procedure, which consumes around $36.7\%$ of the execution time, which explains why half of the possible improvement was not realized at this problem size. 
+​	As the parallel section of the program is improved, the non-parallel section of the code becomes a drag in the maximum speedup attainable. In our case, the biggest drag is represented by the sorting procedure, which consumes around $40\%$ of the execution time, which explains why half of the possible improvement was not realized at this problem size. 
 
-​	As explained before, this can be seen as a non-issue if the problem size is very small, because for large problem sizes the `compute_density` time increases much faster than all other sections, so this is somewhat mitigated for larger problem sizes. Still, there is something that can be done to improve this matter of affairs: Improve the sorting section!
+​	This can be seen as a non-issue if the problem size is very small, because for large problem sizes the `compute_density` time increases much faster than all other sections, so this is somewhat mitigated for larger problem sizes. Still, there is something that can be done to improve this matter of affairs: Improve the sorting section!
 
-​	As is done today, the sorting procedure is done using `stdlib`'s `qsort` function, which incurs in some overhead because of the type conversions needed in each call to the comparison function, besides being thought to be able to cope efficient with the general sorting problem. Knowledge of the specifics of our problem can be exploited to choose an alternative version which is **more performant in our specific case**, this specific feature is the fact that there are a lot of repeated hashes coming from the creation of the cells. This allows us to conceptualize this as a [histogram](https://en.wikipedia.org/wiki/Histogram) + sort of unique hashes + [prefix sum](https://en.wikipedia.org/wiki/Prefix_sum) problem, which happens to be considerably faster in our case, with the added bonus that is is parallelizable this way if needed. After melding the sorting, reordering and interval setup sections, the resulting timing can be found below:	
+​	As is done till this section, the sorting procedure is done using `stdlib`'s `qsort` function, which incurs in some overhead because of the type conversions needed in each call to the comparison function, besides being thought to be able to cope efficient with the general sorting problem. Knowledge of the specifics of our problem can be exploited to choose an alternative version which is **faster in our specific case**.
+
+​    The specific feature, or quirk, we exploit is the fact that there are a lot of repeated hashes coming from the creation of the cells, which exactly the feature we use to implement an implicit cell linked list using a combination of hashing, sorting and a hash table. This allows us to alternatively conceptualize this sorting process as a [histogram](https://en.wikipedia.org/wiki/Histogram) + sort of unique hashes + [prefix sum](https://en.wikipedia.org/wiki/Prefix_sum) problem, which happens to be considerably faster in our case, with the added bonus that it is parallelizable this form, if need arises. After fusing the sorting, reordering and interval setup sections, the resulting timing can be found below:	
 
 ```bash
-compute_hash_MC3D             : 0.00072327 +- 1.135635e-05 :   4.05%
-sorting +
-setup_interval_hashtable 
-reorder_lsph_SoA              : 0.00502013 +- 0.0001429321:  28.14%
-compute_density               : 0.01209671 +- 0.0009560548:  67.81%
-Total Time                    : 0.01784011 +- 0.0009680918: 100.00%
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D         : 0.0008112 +- 0.0001846935  :  4.211% +- 0.9587%
+    sorting reorder hashtable : 0.0051562 +- 0.0002937119  :  26.77% +- 1.525%
+    compute_density           : 0.013297 +- 0.002261179    :  69.02% +- 11.74%
+    Total Time                : 0.0192644 +- 0.002142758   : 100%    +- 11.12%
 ```
 
-​	Which is a nice $32\%$ improvement in performance on the lower particle number of $N=10^5$ , even though the marginal fractional gain will be less for larger particle numbers. Nevertheless, this final result pushes the total speedup just over $10,000 \times$ and allows me to post this meme:
+​	Which is a nice $22\%$ improvement in performance on the lower particle number of $N=10^5$ , even though the marginal fractional gain will be less for larger particle numbers. Nevertheless, this final result pushes the total speedup just over $9,000 \times$ and allows me to post this meme:
 
 ![](https://external-content.duckduckgo.com/iu/?u=http%3A%2F%2Fi0.kym-cdn.com%2Fentries%2Ficons%2Fmobile%2F000%2F000%2F056%2Fitsover1000.jpg&f=1&nofb=1)
 
@@ -417,25 +417,27 @@ Total Time                    : 0.01784011 +- 0.0009680918: 100.00%
 ​	"A journey of a thousand miles begins with a single step", or so the saying goes. We have gone a few steps since the first, and learned a lot in the way, looking back on each technique utilized to improve performance. The main points can be boiled down to 12 lessons I gained while doing this journey:
 
 - Choosing **good algorithms** matter: don't execute computations that do not add any meaningful results. 
-- **Always measure** the performance of your code, either by benchmarking or by profiling. **Don't try to guess** the performance, and only optimize the performance of parts **you measured to be the bottlenecks** for the execution of your code. 
+- **Always measure** the performance of your code, either by benchmarking or by profiling. **Don't try to guess** the performance, and only optimize the performance of parts **you measured to be the bottlenecks** for the execution of your code. Also: Critical sections **are called "critical" for a reason**.
 - Knowing **how to use** the compiler matter: Compilers translate code into executable and it is necessary knowing how to use them. 
 - Data layout in memory matter: This means that thinking about **spatial locality** of data is important and how to store the data used in computation.
 - Utilizing the **available cores** matter: Modern CPU cores require work to be **explicitly distributed** among different execution units
 - Don't try to guess what the compiler is doing, **print reports and profile**. Any compiler has features to profile the compiling process, but some compilers can be easier and more informative then others. 
-- Critical sections **are called "critical" for a reason**, pay attention to them. The deeper a given section is a sequence of nested loops, the more important it is in terms of total performance, because it will be executed that many more times. 
+- **Adapting your code to ease the compiler's job is not easy, but it may be necessary.** This is probably one of the less tasteful parts of optimizing code for the traditional developer, but it is part of writing fast code. 
 - Know your hardware, know your compiler, **understand flags and use them correctly**, not all flags are important, but the ones that are, *really* are important. For me, using flags that direct compilation to target my CPU specifically, enable SIMD and not be too worried about floating point math were the key ones. 
 - All resources have a cost, **don't overpay for them**, think carefully how and where threads are being used. Launching threads is expensive, launching threads over and over unless otherwise needed is a waste of resource and costs performance. 
 - Memory bandwidth is a finite resource and imposes real constraints for performance. **Understanding the memory hierarchy** of your particular hardware does make a difference, and this means that writing your program considering **temporal locality** of your data is Important.
 - **Your are only as fast as your slowest thread**, so how you divide your workload matters. It can be difficult to divide the workload among different threads, and this can cause trailing cores. **Exposing hidden parallelism** and parallelizing in a more granular scale can improve performance and load balancing.
 - **When you speedup enough the parallel section of your code, sections that were not important may become bottlenecks**. Therefore, always go back to the basics, revisit your hypothesis after each improvement, and check what else can be improved, either by skipping computations or by improving other sections of your code. 
 
-​	These lessons are nothing new, and many of them can be found one way or another in this wonderful presentation by [Dr. Yelick from NERSC](http://isca09.cs.columbia.edu/ISCA09-WasteParallelComputer.pdf) on "Ten Ways to Waste a Parallel Computer". Neverheless, these lessons allowed me to achieve an speedup of over $10,000\times$ comparing the simplest unoptimized code against the code with the best algorithm and best implementation, which is an astounding achievement by any measure. Even comparing against what would be a reasonable simple implementation of the density calculation with cell linked list algorithm, it was possible to achieve over $80\times$ speedup by exploiting the available hardware correctly. This code can be recompiled in other x86 CPUs and be **performance portable** in these other CPUs, which is very important both for the longevity and usefulness of the code.
+​	These lessons are nothing new, and many of them can be found one way or another in this wonderful presentation by [Dr. Yelick from NERSC](http://isca09.cs.columbia.edu/ISCA09-WasteParallelComputer.pdf) on "Ten Ways to Waste a Parallel Computer". Another amazing resource for learning how to design and implement efficient code is [MIT 6.172 Performance Engineering of Software Systems](https://www.youtube.com/watch?v=o7h_sYMk_oc&list=PLUl4u3cNGP63VIBQVWguXxZZi0566y7Wf) lectures on Youtube, which covers most of the general techniques utilized in this series, and many others not covered here. 
+
+​	Nevertheless, these lessons allowed me to achieve an speedup of over $9,000\times$ comparing the simplest unoptimized code against the code with the best algorithm and best implementation, which is an astounding achievement by any measure. Even comparing against what would be a reasonable simple implementation of the density calculation with cell linked list algorithm, it was possible to achieve over $80\times$ speedup by exploiting the available hardware correctly. This code can be recompiled in other x86 CPUs and be **performance portable** in these other CPUs, which is very important both for the longevity and usefulness of the code.
 
 ​	I also learned some lessons on what **did not work**, which can be just as important in some cases:
 
 - Don't try to outsmart the compiler re-arranging the contents **of the critical section**. Choosing what goes inside the section is fine, but trying to do things like guessing the best way to write `(1./6.)*(2.-q)*(2.-q)*(2.-q)` is usually counter-productive, at least was in my case. Just try to write whatever goes there in the simplest way possible.
 - Doing Look-up Tables in the critical section to replace a simple function in the critical section. If your function is just a fair amount of arithmetic operations (in my case 12), it is not worth the trouble replacing it for a lookup table, it is simply faster to directly compute. If you have very complex function inside, such as a complex integration in the inner-most section, it might be worth it. This also applies for functions that can be translated efficiently to machine code, such as $\mbox{sinc}(x) = \sin(x)/x$. 
-- Very complex rewrites is usually perform worse then simple re-writes. The first try of the code that became the load-balanced outer-loop version involved manually reordering and trying to recycle the old `nblist` structure as a base for facilitating the parallelization, this introduced a lot of confusing logic that was really hard to debug and I ended giving up before making it work. Turns out that simply call the complex logic twice, once to get the number of cell pairs and allocate arrays to store the indexes, and another to actually store the precomputed indexes was much easier, simpler and faster. Outside the hot region of your code, it usually doesn't matter too much what you do, so making it so it is easier is usually a good idea. The final version actually was done by introducing the `if(node_begin <= nb_begin)` in the original pairs calculation, bypassing the two extra functions and additionally simplifying the logic.
+- Very complex rewrites is usually perform worse then simpler re-writes. The first try of the code that became the load-balanced outer-loop version involved manually reordering and trying to recycle the old `nblist` structure as a base for facilitating the parallelization, this introduced a lot of confusing logic that was really hard to debug and I ended giving up before making it work. Turns out that simply call the complex logic twice, once to get the number of cell pairs and allocate arrays to store the indexes, and another to actually store the precomputed indexes was much easier, simpler and faster. Outside the hot region of your code, it usually doesn't matter too much what you do, so making it so it is easier is usually a good idea. The final version actually was done by introducing the `if(node_begin <= nb_begin)` in the original pairs calculation, bypassing the two extra functions and additionally simplifying the logic.
 - Guessing how to use compiler flags usually don't work. I lost a lot of time trying to figure which flags did what without reading the manual. If whenever possible **just read the manual**, specially because flags are different for each compiler. 
 
 ## How far can we still go?
@@ -452,14 +454,10 @@ Total Time                    : 0.01784011 +- 0.0009680918: 100.00%
 
 ​	This allows for the workload to be split similarly as what is done with threads, but with the additional complexity for the developer in that the data does **not lie in the same memory space** and thus must be explicitly managed and transmitted to whichever processes needs it. The advantage of this approach for scaling your code is that it is theoretically boundless: The biggest super-computers on the planet run MPI code, which splits the problem among several servers which execute **a big parallel task** and communicate among them to step through the computation steps. 
 
-​	Writing distributed code using MPI requires not only many of the techniques discussed here, but also awareness of how to [split the domain](https://en.wikipedia.org/wiki/Domain_decomposition_methods) among all the different nodes. Much of the actual extension from what we have here is focused in coordinating the work that is already being done and exchanging key information between nodes. With numerically intensive code, it is also possible that **communication between nodes** becomes a bottleneck, and it is not uncommon to see excessive communication hindering scalability for very large number of nodes. Though may look cumbersome, this is usually the way to go if you wish to run large scientific or numerical applications. Note that if you run **multiple analysis of a problem that fits inside a single node**, you *don't need* to do this, and you can much easier get away with a [job scheduler](https://en.wikipedia.org/wiki/Job_scheduler) and/or [dataflow scripting language](https://en.wikipedia.org/wiki/Swift_(parallel_scripting_language)). 
+​	Writing distributed code using MPI requires not only many of the techniques discussed here, but also awareness of how to [split the domain](https://en.wikipedia.org/wiki/Domain_decomposition_methods) among all the different nodes. Much of the actual extension from what we have here is focused in coordinating the work that is already being done and exchanging key information between nodes. With numerically intensive code, it is also possible that **communication between nodes** becomes a bottleneck, and it is not uncommon to see excessive communication hindering scalability for very large number of nodes. Though may look cumbersome, this is usually the way to go if you wish to run large, tightly coupled, scientific or numerical applications. Note that if you run **multiple analysis of a problem that fits inside a single node**, you *don't need* to do this, and you can much easier get away with a [job scheduler](https://en.wikipedia.org/wiki/Job_scheduler) and/or [dataflow scripting language](https://en.wikipedia.org/wiki/Swift_(parallel_scripting_language)). 
 
 ​	If your application allows it, it is also possible to abstract away the communication details by leaving it to the library developer. This is the case with the [Horovod](https://horovod.ai/) and [Dask](https://dask.org/) libraries. Horovod was created to facilitate distributed learning and utilizes MPI underneath the hood to distribute tasks and data among different computers through a network. Dask provides a seamless interface for common data primitives, such as numpy arrays and pandas dataframes, to operate in a distributed environment without overloading the developer with implementation details. They are able to do so by offering a **restricted set** of primitives and operations, known a priori to the library developer, which can be then parallelized beforehand while being expressive enough to cover vast swathes of practical applications. Even if you don't develop yourself MPI code, it is good to understand what is **going on inside** these very large applications. 
 
 ## Dear reader:
 
 ​	Thanks for joining me in this journey, I hope you enjoyed going through this mental and practical exercise in math, programming and computer architecture. If anything that was discussed in this series was new to you, I hope it can be useful to your projects in the future. Every article, be it technical or scientific, is as much a work of fiction as it is a way to convey the concepts and results desired. This is so because it is impossible to exactly replicate the thought process that led to such discoveries or results, and as such it is up to the author to cover the missing parts in retrospect, and also to re-arrange the order of the events so that is actually readable instead of a convoluted sequence of stumbles. Nevertheless, I hope that I could guide you through a small journey through my reasoning on a uncommon subject that underlies much of the common work done nowadays in science and data-science. 
-
-===
-
-​	OpenMP uses [Linux Posix-Threads](https://en.wikipedia.org/wiki/POSIX_Threads) (or pthreads) to create several instruction streams from our code, these pthreads are created using OS [system calls](https://en.wikipedia.org/wiki/System_call) in order to split the workload while preserving the [address space](https://en.wikipedia.org/wiki/Address_space) of the original program, such that the child threads can access the original data and read/write accordingly. These system calls are not free and, though very fast, still take [several micro-seconds](https://stackoverflow.com/questions/8247331/syscall-overhead) to execute, see for example [this](https://www.codeblueprint.co.uk/2016/11/05/measuring-linux-system-call-latency.html) and [this](https://www.linuxfordevices.com/wp-content/uploads/2020/02/rh-rtpaper.pdf) which refer to other syscalls that are simpler than the ones necessary to launch threads. This has improved for more recent hardware, but it can still be [quite substantial](https://gms.tf/on-the-costs-of-syscalls.html), . 

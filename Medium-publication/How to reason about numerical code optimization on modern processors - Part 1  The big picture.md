@@ -54,7 +54,7 @@
 
 ​	For the original, [compressible](https://en.wikipedia.org/wiki/Compressible_flow), version of the SPH method, the fluid is discretized using a set of nodes without any connectivity function turning them into a mesh (therefore referred as a mesh-free method), in which such nodes can move during the evolution of the simulation and, consequently, behaving somewhat like "particles" of fluid. A given particle $i$ have a mass $\nu_i$ and is at position ${\mathbf r}_i$, but having other particles around it contribute to the density around it. The density $\rho_i = \rho({\mathbf r}_i )$ is computed as a weighted sum from the masses of and around the particle of interest, the weight given by the smoothing kernel $w(r,h)$:
 $$
-\rho_i = \sum_{j=0}^N \nu_j W(|{\mathbf r }_i  - {\mathbf r }_j |,h) = \sum_{j=0}^N \nu_j W_{ij}
+\rho_i = \rho({\bf r}_i) = \sum_{j=0}^N \nu_j W(|{\mathbf r }_i  - {\mathbf r }_j |,h) = \sum_{j=0}^N \nu_j W_{ij}
 $$
 ​	The weight depend on the distance between particles and it is regulated by the smoothing length h. For those interested in knowing how this calculation arises, this from comes from the discretization of the convolution of a smoothed field, which is an [finite-length approximation](https://en.wikipedia.org/wiki/Dirac_delta_function#Representations_of_the_delta_function) of the convolution with the [Dirac Delta](https://en.wikipedia.org/wiki/Dirac_delta_function#As_a_measure), allowing for a finite unstructured set of nodes to approximate a complex function. 
 
@@ -68,9 +68,9 @@ $$
 
 ## The Problem: Density calculation
 
-​	The basic calculation can be translated pretty much literally to a double loop. Before anything else, it is important to start defining the data structures that will be operated upon. The simplest solution to begin with is to conceptualize each particle as an entity in itself, and the particle system work as an array of particles. The implementation I started with was using the C programming language, without any of the extra help coming from high-level abstractions such as STL Vectors in C++. I did so because I am much more familiarized with the C language than with the C++ language, and this was my first project in a C-like language in a very long time, and since I did my original SPH code, of which this is a re-writing of, in C, I felt much more comfortable doing it this way. 
+​	The basic calculation can be translated pretty much literally as a double loop. Before anything else, it is important to start defining the data structures that will be operated upon. The simplest solution to begin with is to conceptualize each particle as an entity in itself, and the particle system work as an array of particles. The implementation I started with was using the C programming language, without any of the extra help coming from high-level abstractions such as STL Vectors in C++. I did so because I am much more familiarized with the C language than with the C++ language, and this was my first project in a C-like language in a very long time, and since I did my original SPH code, of which this is a re-writing of, in C, I felt much more comfortable doing it this way. 
 
-​	The basic data structure is a single particle, that has positions `r`, velocities `u`, forces `F`, mass `nu`, density `rho` and additional integer fields named `id` and `hash`. Each of the vector fields can have up to four values stored, one for each dimension, and one for time keeping or for computations that are specific for [relativistic hydrodynamics](https://en.wikipedia.org/wiki/Relativistic_Euler_equations), but are unrelated to this example. All the data for a given particle is packed together, and the overall feel is that what should be together is being moved together. 
+​	The basic data structure is a single particle, that has positions `r`, velocities `u`, forces `F`, mass `nu`, density `rho` and additional integer fields named `id` and `hash`. Each of the vector fields can have up to four values stored, one for each dimension. All the data for a given particle is packed together, and the overall feel is that what should be together is being moved together. 
 
 ```c
 typedef struct double4 {
@@ -169,7 +169,7 @@ for i in range(N):
 
 ​	Though it is usually self-evident that choosing good algorithms is a **good practice**, when implementing good algorithms involves revamping or re-structuring your entire code-base to incorporate the added logic, it usually is easier than not to left aside them in favor of having a working prototype **going as soon as possible**, an approach that can be easily found in the [agile mindset](https://en.wikipedia.org/wiki/Agile_software_development) of software development. When dealing with numerically intensive code, which is usually meant to be of high performance, this is a mistake because it under-emphasizes important early planning in the project where it would be optimal to find the best algorithm to structure your code around, in favor of a very high number of incremental steps that might lead to easier choices in the beginning that will later make overly cumbersome to switch to the optimal solution. 	
 
-This is not usually a problem in most of software development because most of the software being written **is not performance sensitive**, therefore the developers' efforts as measured in terms of development time, ease of maintenance and reliability are much more important than whether the code runs a bit faster or slower, which justifies many of the premises related to Agile and related mindsets. A common, very cited, related quote is the following one by Knuth, in which it explains his reasoning why **premature** optimization is the root of all evil:
+​	This is not usually a problem in most of software development because most of the software being written **is not performance sensitive**, therefore the developers' efforts as measured in terms of development time, ease of maintenance and reliability are much more important than whether the code runs a bit faster or slower, which justifies many of the premises related to Agile and related mindsets. A common, very cited, related quote is the following one by Knuth, in which it explains his reasoning why **premature** optimization is the root of all evil:
 
 "The conventional wisdom shared by many of today’s software engineers calls for ignoring efficiency in the small; **but I believe this is simply an overreaction to the abuses they see being practiced by pennywise- and-pound-foolish programmers, who can’t debug or maintain their “optimized” programs**. In established engineering disciplines a 12% improvement, easily obtained, is never considered marginal; and I believe the same viewpoint should prevail in software engineering. Of  course I wouldn’t bother making such optimizations on a one-shot job, but when it’s a question of preparing quality programs, I don’t want to  restrict myself to tools that deny me such efficiencies.
 
@@ -177,13 +177,11 @@ There is no doubt that the grail of efficiency leads to abuse. Programmers waste
 
 **Yet we should not pass up our opportunities in that critical 3%**. A  good programmer will not be lulled into complacency by such reasoning,  he will be wise to look carefully at the critical code; but only after  that code has been identified. It is often a mistake to make a priori judgments  about what parts of a program are really critical, since the universal  experience of programmers who have been using measurement tools has been that their intuitive guesses fail. (Computing Surveys, Vol. 6, No. 4, December 1974, p. 268 [p. 8 of the [PDF](http://pplab.snu.ac.kr/courses/adv_pl05/papers/p261-knuth.pdf)])" - Emphasis on my part, extracted from [Premature optimization is the root of all evil](https://scottdorman.blog/2009/08/28/premature-optimization-is-the-root-of-all-evil/). 
 
-​	I would like to argue that this is not our case, exactly because we benchmarked so to assert that is calculation one of these "critical 3%", and also because the application itself is performance sensitive. Two similar examples can be sound in the two cases mentioned in the introduction: Computational Fluid Dynamics and Deep Neural Networks Training.
-
-​	It is not uncommon to find modest fluid simulations that take **from hours to days** to run in clusters possessing from hundreds to thousands of CPU cores, and even small simplified simulations can take several hours in modern desktops and workstations. If a very simple simulation would take **a week, or even a year**, to complete every single time it would execute, nobody would do it. 
+​	I would like to argue that this is not our case, exactly because we benchmarked so to assert that is calculation one of these "critical 3%", and also because the application itself is performance sensitive. By performance sensitive, what is meant is: It is not uncommon to find modest fluid simulations that take **from hours to days** to run in clusters possessing from hundreds to thousands of CPU cores, and even small simplified simulations can take several hours in modern desktops and workstations. If a very simple simulation would take **a week, or even a year**, to complete every single time it would execute, nobody would do it. 
 
 ​	The equivalent case with DNN training goes as follows: The end of the second [AI winter](https://en.wikipedia.org/wiki/AI_winter) and the beginning of the current AI spring came in the back of, though not exclusively, **newer and better algorithms** (e.g. CNNs, backpropagation, stochastic gradient descent), availability of cheap computing power to the masses in the form of retrofitted semi-specialized hardware (**GPGPUs with CUDA**) and existence of **good enough implementations** of these algorithms in these commodity semi-specialized hardware that are also usable by non-specialists (e.g. **CuDNN wrapped by Tensorflow, pyTorch and the like**). 
 
-​	Before gradient learning, it was very difficult to train large and/or deep neural networks because the available optimization methods, like simplex methods, were very poorly suited for optimization in very high dimensionality needed for these neural networks. Gradient learning with symbolic differentiation, e.g. as implemented by Tensorflow, basically bypasses most of the thorniest issues and makes it possible to write, train and perform inference on arbitrarily complex neural network architectures in a manageable time frame without completely overloading the libary user, i.e. the "Deep Learning Practitioner". This is the power of correctly implementing good algorithms, and case in point Tensorflow was [designed to be like that](http://download.tensorflow.org/paper/whitepaper2015.pdf) from scratch even if it since improved incrementally, many of the major design considerations had to be put in from the start, and a significant part of these considerations were performance related. 
+​	Before gradient learning, it was very difficult to train large and/or deep neural networks because the available optimization methods, like simplex methods, were very poorly suited for optimization in very high dimensionality needed for these neural networks. Gradient learning with symbolic differentiation, e.g. as implemented by Tensorflow, basically bypasses many of the thorniest issues and makes it possible to write, train and perform inference on arbitrarily complex neural network architectures in a manageable time frame without completely overloading the libary user, i.e. the "Deep Learning Practitioner". This is the power of correctly implementing good algorithms, and case in point Tensorflow was [designed to be like that](http://download.tensorflow.org/paper/whitepaper2015.pdf) from scratch even if it was since improved incrementally, many of the major design considerations had to be put in from the start, and a significant part of these considerations were performance related. 
 
 ​	For the subject of this article, the important thing to notice is: If Tensorflow/Keras/pyTorch existed but it was $1000 \times$ slower, very few people would use it. Easily getting the answer is not sufficient, easily getting the answer in manageable time is necessary. In case you still can't relate to my examples, please read the XKCD cartoon below and exchange "compiling" for "running". 
 
@@ -201,7 +199,7 @@ There is no doubt that the grail of efficiency leads to abuse. Programmers waste
 
   ![CellLists](https://upload.wikimedia.org/wikipedia/en/6/62/CellLists.png)  
 
-​	A simple example can be seen in the images above: We want to compute the contributions to the particle the arrays radiate from, but only a limited number of particles can contribute a non-zero value in the first place. By overlaying a grid with width equals to the *range* of the kernel (officially known as support among the mathematicians), it is possible to simply go through the particles that within the green and red boxes, skipping the rest. 
+​	A simple example can be seen in the images above: We want to compute the contributions to the particle the arrays radiate from, but only a limited number of particles can contribute a non-zero value in the first place. By overlaying a grid with width equals to the diameter of the [support](https://en.wikipedia.org/wiki/Support_(mathematics)) of the kernel, $2h$, it is possible to simply go through the particles that within the green and red boxes, skipping the rest. 
 
 ​	The way most people would approach implementing this overlay structure is through a *explicit* data structure, such as a [real linked list](https://en.wikipedia.org/wiki/Linked_list), and using pointers to reference the particles that are in each box. For **Python only or Python first users**, think of pointers as a reference to another object, only a bit *more raw* as it is managed entirely by the developer. A potential implementation using pointers would be as follows: 
 
@@ -243,7 +241,7 @@ hash = kx + Nx*( ky + Ny*kz )
 
 ​	![600px-Z-curve.svg](https://upload.wikimedia.org/wikipedia/commons/3/30/Z-curve.svg)
 
-​	In possession of a good hash, the next step it to quickly find which are the surrounding boxes to a given box of interest. For any given particle, or cell, it is essentially **free** to compute its spatial indexes `kx`, `ky` and `kz`, and the associated hash. the same is true for computing the spatial indexes and hashes of the adjacent boxes and, from thereon, all it is needed is a fast way to translate hashes into indices in the ordered array of particles. To perform such task I chose an old fashioned [hash table](https://en.wikipedia.org/wiki/Hash_table) with integer indexes for the hashes, and with values as pair of integers for the index ranges for each virtual cell. The hash table implementation chosen was the [khash](https://stackoverflow.com/questions/3300525/super-high-performance-c-c-hash-map-table-dictionary) from [klib](https://github.com/attractivechaos/klib), mostly because it is a very fast C hash table, but for C++ users Google's [Dense Hash Map](http://goog-sparsehash.sourceforge.net/doc/dense_hash_map.html) would be a good alternative.
+​	In possession of a good hash, the next step it to quickly find which are the surrounding boxes to a given box of interest. For any given particle, or cell, it is essentially **free** to compute its spatial indexes `kx`, `ky` and `kz`, and the associated hash. the same is true for computing the spatial indexes and hashes of the adjacent boxes and, from thereon, all it is needed is a fast way to translate hashes into indexes in the ordered array of particles. To perform such task I chose an old fashioned [hash table](https://en.wikipedia.org/wiki/Hash_table) with integer indexes for the hashes, and with values as pair of integers for the index ranges for each virtual cell. The hash table implementation chosen was the [khash](https://stackoverflow.com/questions/3300525/super-high-performance-c-c-hash-map-table-dictionary) from [klib](https://github.com/attractivechaos/klib), mostly because it is a very fast C hash table, but for C++ users Google's [Dense Hash Map](http://goog-sparsehash.sourceforge.net/doc/dense_hash_map.html) would be a good alternative.
 
 ​	Ultimately, some form of more complex container or data-structure is necessary to implement this more complex logic, but the key insight is to use it to store the information on the **indexes to the data** , and **not the data itself**, which is kept separated in a **flat memory layout**. This allows us to use smart and flexible data structures, which can be use to implement smart and cost-saving logic, while also being overall simpler in logic and more friendly to the CPU underneath. 
 
@@ -308,31 +306,28 @@ int compute_density_3d_chunk(int64_t node_begin, int64_t node_end,
                              int64_t nb_begin, int64_t nb_end,double h,
                              SPHparticle *lsph)
 {
-  const double inv_h = 1./h;
-  const double kernel_constant = w_bspline_3d_constant(h);
-
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){
-    double xii = lsph[ii].r.x;
-    double yii = lsph[ii].r.y;
-    double zii = lsph[ii].r.z;
-    double rhoii = 0.0;
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){ // Iterate over the ii index of the chunk
+    double xii = lsph[ii].r.x;                  // Load the X component of the ii particle position
+    double yii = lsph[ii].r.y;                  // Load the Y component of the ii particle position
+    double zii = lsph[ii].r.z;                  // Load the Z component of the ii particle position
+    double rhoii = 0.0;                         // Initialize the chunk contribution to density 
    
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){
-      double q = 0.;
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){   // Iterate over the each other particle in jj loop
+      double q = 0.;                            // Initialize the distance
 
-      double xij = xii-lsph[jj].r.x;
-      double yij = yii-lsph[jj].r.y;
-      double zij = zii-lsph[jj].r.z;  
+      double xij = xii-lsph[jj].r.x;            // Load and subtract jj particle's X position component
+      double yij = yii-lsph[jj].r.y;            // Load and subtract jj particle's Y position component
+      double zij = zii-lsph[jj].r.z;            // Load and subtract jj particle's Z position component
 
-      q += xij*xij;
-      q += yij*yij;
-      q += zij*zij;
+      q += xij*xij;                             // Add the jj contribution to the ii distance in X
+      q += yij*yij;                             // Add the jj contribution to the ii distance in Y
+      q += zij*zij;                             // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q)*inv_h;
+      q = sqrt(q);                              // Sqrt to compute the distance
 
-      rhoii += lsph[jj].nu*w_bspline_3d_simd(q);
-    }
-    lsph[ii].rho = kernel_constant*rhoii;
+      rhoii += lsph[jj].nu*w_bspline_3d(q,h);   // Add up the contribution from the jj particle
+    }                                           // to the intermediary density and then
+    lsph[ii].rho += rhoii;                      // add the intermediary density to the full density
   }
 
   return 0;
@@ -344,29 +339,30 @@ And the code for the outer loops is:
 ```c
 int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *box){
   khiter_t kbegin,kend;
-  int64_t node_hash=-1,node_begin=0, node_end=0;
-  int64_t nb_begin= 0, nb_end = 0;
-  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)];
+  int64_t node_hash=-1,node_begin=0, node_end=0;                      // Start initializing the node indexes on the array 
+  int64_t nb_begin= 0, nb_end = 0;                                    // initialize the neighbor indexes 
+  int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)]; // prepare a list of potential neighbor hashes
 
-  for (kbegin = kh_begin(box->hbegin); kbegin != kh_end(box->hbegin); kbegin++){
-    
-    if (kh_exist(box->hbegin, kbegin)){
-      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));
-      node_hash = kh_key(box->hbegin, kbegin);
-      node_begin = kh_value(box->hbegin, kbegin);
-      node_end   = kh_value(box->hend, kend);
+  for (kbegin = kh_begin(box->hbegin); 
+       kbegin != kh_end(box->hbegin); kbegin++){                   // Iterate over each receiver cell begin index 
+    if (kh_exist(box->hbegin, kbegin)){                            // verify if that given iterator actually exists
+      kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));    // Then get the end of the receiver cell iterator
+      node_hash = kh_key(box->hbegin, kbegin);                     // Then get the hash corresponding to it
+      node_begin = kh_value(box->hbegin, kbegin);                  // Get the receiver cell begin index in the array
+      node_end   = kh_value(box->hend, kend);                      // Get the receiver cell end index in the array
 
-      for(int64_t ii=node_begin;ii<node_end;ii+=1) 
-        lsph[ii].rho = 0.0; 
+      for(int64_t ii=node_begin;ii<node_end;ii+=1)                               // iterate over the receiver cell particles
+        lsph[ii].rho = 0.0;                                                      // and initialize its densities to zero
 
-      neighbour_hash_3d(node_hash,nblist,box->width,box);
-      for(unsigned int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){
-        if(nblist[j]>=0){
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                        // then find the hashes of its neighbors 
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){    // and the iterate over them
+        if(nblist[j]>=0){                                                        // if a given neighbor actually has particles
+          
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );  // then get the contributing cell begin index
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );  // and get the contributing cell end index 
 
-          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,lsph);
-        }
+          compute_density_3d_chunk(node_begin,node_end,nb_begin,nb_end,h,lsph);  // and compute the density contribution from 
+        }                                                                        // the contributing cell to the receiver cell
       }
     }
   }
@@ -379,7 +375,7 @@ int compute_density_3d_cll(int N, double h, SPHparticle *lsph, linkedListBox *bo
 
 ​	So, for all this trouble, what performance gain do we get? For the same calculation that took around **180 seconds**  in the naive implementation, this version takes only around **3.5 seconds** to arrive at the same result, representing an over $ 50\times$ speedup! 
 
-​	The back of envelope calculation goes like this: Supposing each box has an equal number of particles, there are:
+​	To understand where this speedup comes from, a back of envelope calculation goes like this: Supposing each box has an equal number of particles, there are:
 $$
 \left[\frac{X_\mbox{max}-X_\mbox{min}}{2\times h}\right] \times \left[\frac{Y_\mbox{max}-Y_\mbox{min}}{2\times h}\right] \times \left[\frac{Z_\mbox{max}-Z_\mbox{min}}{2\times h}\right]= \left[\frac{1-0}{2\times 0.05}\right]^3 = 1000
 $$
