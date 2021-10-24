@@ -8,8 +8,10 @@
 # (C) Copyright 2021 José Hugo Elsas
 # Author: José Hugo Elsas <jhelsas@gmail.com>
 #
-rm AoS/data/*
 mkdir -p AoS/data/
+mkdir -p SoA/data/
+rm AoS/data/*
+rm SoA/data/*
 cp makefiles/Makefile_CFLAGS0 AoS/Makefile
 cd AoS/
 make clean

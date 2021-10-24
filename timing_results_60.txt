@@ -1,0 +1,86 @@
+ex03,naive,AoS,omp,simd,runs=5 :
+    compute_density : 4.461999 +- 0.07738351 : 100% +- 1.734%
+    Total Time : 4.461999 +- 0.07738351 : 100% +- 1.734%
+ex06,cll,AoS,innerOmp,runs=5 :
+    compute_hash_MC3D : 0.0008038 +- 9.022583e-05 : 0.3911% +- 0.0439%
+    sorting : 0.012568 +- 0.0008541232 : 6.115% +- 0.4156%
+    setup_interval_hashtables : 0.000257 +- 2.596151e-05 : 0.125% +- 0.01263%
+    compute_density : 0.1918894 +- 0.01163397 : 93.37% +- 5.661%
+    Total Time : 0.2055182 +- 0.0122339 : 100% +- 5.953%
+ex09,cll,AoS,outerOmp,SIMD,loadBallance,runs=5 :
+    compute_hash_MC3D : 0.000775 +- 3.868462e-05 : 0.6751% +- 0.0337%
+    sorting : 0.011977 +- 0.0002725353 : 10.43% +- 0.2374%
+    setup_interval_hashtables : 0.0002418 +- 3.368531e-05 : 0.2106% +- 0.02934%
+    compute_density : 0.101803 +- 0.001578616 : 88.68% +- 1.375%
+    Total Time : 0.1147968 +- 0.001505989 : 100% +- 1.312%
+ex04,naive,AoS,omp,simd,tiled,runs=5 :
+    compute_density : 4.544305 +- 0.01429554 : 100% +- 0.3146%
+    Total Time : 4.544305 +- 0.01429554 : 100% +- 0.3146%
+ex08,cll,AoS,outerOmp,SIMD,runs=5 :
+    compute_hash_MC3D : 0.000787 +- 2.988311e-05 : 0.477% +- 0.01811%
+    sorting : 0.0117394 +- 0.0003014039 : 7.115% +- 0.1827%
+    setup_interval_hashtables : 0.0002592 +- 2.465157e-05 : 0.1571% +- 0.01494%
+    compute_density : 0.1522158 +- 0.007929065 : 92.25% +- 4.805%
+    Total Time : 0.1650014 +- 0.007748423 : 100% +- 4.696%
+ex07,cll,AoS,innerOmp,SIMD,runs=5 :
+    compute_hash_MC3D : 0.000769 +- 5.980385e-05 : 0.3151% +- 0.02451%
+    sorting : 0.011707 +- 0.0002539724 : 4.797% +- 0.1041%
+    setup_interval_hashtables : 0.0002474 +- 2.629258e-05 : 0.1014% +- 0.01077%
+    compute_density : 0.2313008 +- 0.02040179 : 94.79% +- 8.361%
+    Total Time : 0.2440242 +- 0.02047795 : 100% +- 8.392%
+
+
+
+ex03,naive,SoA,omp,simd,runs=5 :
+    compute_density : 0.7546794 +- 0.004546059  : 100% +- 0.6024%
+    Total Time : 0.7546794 +- 0.004546059  : 100% +- 0.6024%
+
+ex04,naive,SoA,omp,simd,tiled,runs=5 :
+    compute_density : 0.7585404 +- 0.006693077  : 100% +- 0.8824%
+    Total Time : 0.7585404 +- 0.006693077  : 100% +- 0.8824%
+
+ex06,cll,SoA,inner,runs=5 :
+    compute_hash_MC3D : 0.0007202 +- 6.610598e-06  : 0.3476% +- 0.003191%
+    sorting : 0.009931 +- 0.0001624808  : 4.793% +- 0.07843%
+    reorder_lsph_SoA : 0.0018562 +- 6.849234e-05  : 0.8959% +- 0.03306%
+    setup_interval_hashtables : 0.0001382 +- 1.55467e-05  : 0.06671% +- 0.007504%
+    compute_density : 0.194533 +- 0.01398312  : 93.9% +- 6.749%
+    Total Time : 0.2071786 +- 0.01397249  : 100% +- 6.744%
+
+ex07,cll,SoA,inner,simd,runs=5 :
+    compute_hash_MC3D : 0.0007134 +- 1.108152e-05  : 0.4752% +- 0.007382%
+    sorting : 0.0097774 +- 0.0001612895  : 6.513% +- 0.1074%
+    reorder_lsph_SoA : 0.0017876 +- 9.43361e-05  : 1.191% +- 0.06284%
+    setup_interval_hashtables : 0.0001338 +- 1.599062e-05  : 0.08913% +- 0.01065%
+    compute_density : 0.1376988 +- 0.0164985  : 91.73% +- 10.99%
+    Total Time : 0.150111 +- 0.01637891  : 100% +- 10.91%
+
+ex08,cll,SoA,outer,simd,runs=5 :
+    compute_hash_MC3D : 0.0007224 +- 1.441527e-05  : 1.743% +- 0.03478%
+    sorting : 0.0096264 +- 0.0001649706  : 23.23% +- 0.398%
+    reorder_lsph_SoA : 0.0016988 +- 0.000101048  : 4.099% +- 0.2438%
+    setup_interval_hashtables : 0.0001502 +- 6.83374e-06  : 0.3624% +- 0.01649%
+    compute_density : 0.0292488 +- 0.0001400793  : 70.57% +- 0.338%
+    Total Time : 0.0414466 +- 0.0003412577  : 100% +- 0.8234%
+
+ex09,cll,SoA,outer,simd,loadBallance,runs=5 :
+    compute_hash_MC3D : 0.000728 +- 1.954482e-05  : 2.211% +- 0.05936%
+    sorting : 0.0097614 +- 0.0001670054  : 29.65% +- 0.5072%
+    reorder_lsph_SoA : 0.0019028 +- 0.0001178631  : 5.779% +- 0.358%
+    setup_interval_hashtables : 0.0001322 +- 1.667933e-05  : 0.4015% +- 0.05066%
+    compute_density : 0.0203994 +- 0.002347934  : 61.96% +- 7.131%
+    Total Time : 0.0329238 +- 0.002334139  : 100% +- 7.09%
+
+ex10,cll,SoA,outer,simd,symmLB,runs=5 :
+    compute_hash_MC3D         : 0.0007184 +- 7.635444e-06 : 2.788% +- 0.02963%
+    sorting                   : 0.0096482 +- 0.0001852045 : 37.44% +- 0.7186%
+    reorder_lsph_SoA          : 0.0018732 +- 9.878613e-05 : 7.268% +- 0.3833%
+    setup_interval_hashtables : 0.0001308 +- 1.633095e-05 : 0.5075% +- 0.06337%
+    compute_density           : 0.0134014 +- 0.00452728   : 52% +- 17.57%
+    Total Time                : 0.025772  +- 0.004646302  : 100% +- 18.03%
+    
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D : 0.0007152 +- 1.520526e-05  : 4.027% +- 0.08562%
+    sorting           : 0.0051136 +- 0.0002821051  : 28.8% +- 1.589%
+    compute_density   : 0.0119298 +- 0.0002360396  : 67.18% +- 1.329%
+    Total Time        : 0.0177586 +- 0.0004783987  : 100% +- 2.694%
