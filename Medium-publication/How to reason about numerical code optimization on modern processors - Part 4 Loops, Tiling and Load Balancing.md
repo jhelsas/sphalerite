@@ -40,30 +40,44 @@
 
 ```C
 int compute_density_3d_outerOmp(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  memset(lsph->rho,(int)0,N*sizeof(double));                            // Pre-initialize the density to zero
+  // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                            
 
-  #pragma omp parallel for                                              // Execute the iteration in parallel
+  #pragma omp parallel for  // Execute the iteration in parallel
   for (khint32_t kbegin = kh_begin(box->hbegin); 
-       kbegin != kh_end(box->hbegin); kbegin++){                        // Iterate over each receiver cell begin index 
-    int64_t node_hash=-1,node_begin=0, node_end=0;                      // Start initializing the node indexes on the array 
-    int64_t nb_begin= 0, nb_end = 0;                                    // initialize the neighbor indexes 
-    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)]; // prepare a list of potential neighbor hashes
+       // Iterate over each receiver cell begin index 
+       kbegin != kh_end(box->hbegin); kbegin++){                        
+    int64_t node_hash=-1,node_begin=0, node_end=0;                      
+    int64_t nb_begin= 0, nb_end = 0;                                    
+    int64_t nblist[(2*box->width+1)*(2*box->width+1)*(2*box->width+1)]; 
 
-    if (kh_exist(box->hbegin, kbegin)){                                      // verify if that given iterator actually exists
-      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));    // Then get the end of the receiver cell iterator
+    // verify if that given iterator actually exists
+    if (kh_exist(box->hbegin, kbegin)){     
+      // Then get the end of the receiver cell iterator
+      khint32_t kend = kh_get(1, box->hend, kh_key(box->hbegin, kbegin));    
 
-      node_hash = kh_key(box->hbegin, kbegin);                               // Then get the hash corresponding to it
-      node_begin = kh_value(box->hbegin, kbegin);                            // Get the receiver cell begin index in the array
-      node_end   = kh_value(box->hend, kend);                                  // Get the receiver cell end index in the array
+      // Then get the hash corresponding to it
+      node_hash = kh_key(box->hbegin, kbegin);                               
+      // Get the receiver cell begin index in the array
+      node_begin = kh_value(box->hbegin, kbegin);                            
+      // Get the receiver cell end index in the array
+      node_end   = kh_value(box->hend, kend);                                  
 
-      neighbour_hash_3d(node_hash,nblist,box->width,box);                      // then find the hashes of its neighbors 
-      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){  // and the iterate over them 
-        if(nblist[j]>=0){                                                      // if a given neighbor actually has particles
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );// then get the contributing cell begin index
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );// and get the contributing cell end index 
+      // then find the hashes of its neighbors 
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                      
+      // and the iterate over them 
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){  
+        // if a given neighbor actually has particles
+        if(nblist[j]>=0){                                                      
+          // then get the contributing cell begin index
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          // and get the contributing cell end index 
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,// and compute the density contribution from 
-                               lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);    // the contributing cell to the receiver cell
+          // and compute the density contribution from 
+          // the contributing cell to the receiver cell
+          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,
+                               lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);    
    }}}}
 
   return 0;
@@ -108,14 +122,20 @@ $$
 ​	In our case, the work imbalance comes from the way each thread find which work to do. In our case, the interior of the parallelized loop contain the following section:
 
 ```c
-      neighbour_hash_3d(node_hash,nblist,box->width,box);                      // then find the hashes of its neighbors 
-      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){  // and the iterate over them 
-        if(nblist[j]>=0){                                                      // if a given neighbor actually has particles
-          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );// then get the contributing cell begin index
-          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );// and get the contributing cell end index 
+      // then find the hashes of its neighbors 
+      neighbour_hash_3d(node_hash,nblist,box->width,box);                      
+      // and the iterate over them 
+      for(int j=0;j<(2*box->width+1)*(2*box->width+1)*(2*box->width+1);j+=1){  
+        if(nblist[j]>=0){   // if a given neighbor actually has particles
+          // then get the contributing cell begin index
+          nb_begin = kh_value(box->hbegin, kh_get(0, box->hbegin, nblist[j]) );
+          // and get the contributing cell end index 
+          nb_end   = kh_value(box->hend  , kh_get(1, box->hend  , nblist[j]) );
 
-          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,// and compute the density contribution from 
-                               lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);    // the contributing cell to the receiver cell
+          // and compute the density contribution from 
+          // the contributing cell to the receiver cell
+          compute_density_3d_chunk_noomp(node_begin,node_end,nb_begin,nb_end,h,
+                               lsph->x,lsph->y,lsph->z,lsph->nu,lsph->rho);    
       }}
 ```
 
@@ -133,23 +153,27 @@ $$
 
 ```C
 int compute_density_3d_load_ballanced(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int64_t *node_begin,*node_end,*nb_begin,*nb_end;                    // Define the arrays for cell boundaries 
-  int64_t max_cell_pair_count = 0;                                    // and the number of cell pairs
+  // Define the arrays for cell boundaries
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end; 
+  int64_t max_cell_pair_count = 0;          // and the number of cell pairs
 
-  max_cell_pair_count = count_box_pairs(box);                         // compute the number of cell pairs
+  max_cell_pair_count = count_box_pairs(box); // compute the number of cell pairs
   
-  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); // allocate space for node_begin
-  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); // allocate space for node_end
-  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); // allocate space for nb_begin
-  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); // allocate space for nb_end
+  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); 
+  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); 
+  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); 
+  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t)); 
 
-  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           // set the values for cell pairs
+  // set the values for cell pairs
+  setup_box_pairs(box,node_begin,node_end,nb_begin,nb_end);           
 
-  memset(lsph->rho,(int)0,N*sizeof(double));                          // Pre-initialize the density to zero
+  // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));                          
 
-  #pragma omp parallel for                                            // execute in parallel 
-  for(size_t i=0;i<max_cell_pair_count;i+=1){                         // iterate over cell pairs' array
-    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],         // compute the cell pair contribution
+  #pragma omp parallel for                   // execute in parallel 
+  for(size_t i=0;i<max_cell_pair_count;i+=1){// iterate over cell pairs' array
+                                            // compute the cell pair contribution
+    compute_density_3d_chunk_noomp(node_begin[i],node_end[i],         
                                    nb_begin[i],nb_end[i],           
                                    h,lsph->x,lsph->y,lsph->z,
                                    lsph->nu,lsph->rho);
@@ -201,12 +225,12 @@ compute_density           : 0.0292074 +- 0.0001081702 :  70.9%
 Total Time                : 0.0411964 +- 0.0003004452 : 100.00%      
 
 ======== Load-Ballanced Parallelized Cell Linked List Timings :  24 thread ========
-compute_hash_MC3D         : 0.0007186 +- 1.51921e-05  :   2.34%   
-sorting                   : 0.0094074 +- 0.0001614847 :  30.63%   
+compute_hash_MC3D         : 0.0007186 +- 1.51921e-05  :   2.34%
+sorting                   : 0.0094074 +- 0.0001614847 :  30.63%
 reorder_lsph_SoA          : 0.0017494 +- 0.0001863151 :   5.697%  
 setup_interval_hashtables : 0.000134  +- 1.650757e-05 :   0.4364% 
-compute_density           : 0.0186996 +- 0.001091231  :  60.89%   
-Total Time                : 0.030709  +- 0.001065418  : 100%      
+compute_density           : 0.0186996 +- 0.001091231  :  60.89%
+Total Time                : 0.030709  +- 0.001065418  : 100%
 ```
 
 ​	We notice that there almost $40\%$ improvement in the `compute_density_3d` section, which is the section we re-wrote pre-computing the cell pairs, but it only translates to a $20\%$​ improvement in performance in the entire program timing. This is related to [Amdahl's Law](https://en.wikipedia.org/wiki/Amdahl%27s_law). Amdahl's law says that the maximum speedup $S$ for any given task can be written as:
@@ -284,29 +308,31 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
                                          double* restrict rhoi, double* restrict rhoj){
   const double inv_h = 1./h;
 
-  for(int64_t ii=node_begin;ii<node_end;ii+=1){ // Iterate over the ii index of the chunk
-    double xii = x[ii];                         // Load the X component of the ii particle position
-    double yii = y[ii];                         // Load the Y component of the ii particle position
-    double zii = z[ii];                         // Load the Z component of the ii particle position
+  // Iterate over the ii index of the chunk
+  for(int64_t ii=node_begin;ii<node_end;ii+=1){ 
+    double xii = x[ii];       // Load the X component of the ii particle position
+    double yii = y[ii];       // Load the Y component of the ii particle position
+    double zii = z[ii];       // Load the Z component of the ii particle position
    
-    #pragma omp simd                            // Hint at the compiler to vectorize the inner most loop
-    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){   // Iterate over the each other particle in jj loop
-      double q = 0.;                            // Initialize the distance
+    #pragma omp simd   // Hint at the compiler to vectorize the inner most loop
+    for(int64_t jj=nb_begin;jj<nb_end;jj+=1){   
+      double q = 0.;                     // Initialize the distance
 
-      double xij = xii-x[jj];                   // Load and subtract jj particle's X position component
-      double yij = yii-y[jj];                   // Load and subtract jj particle's Y position component
-      double zij = zii-z[jj];                   // Load and subtract jj particle's Z position component
+      double xij = xii-x[jj]; // Load and subtract jj X position component
+      double yij = yii-y[jj]; // Load and subtract jj Y position component
+      double zij = zii-z[jj]; // Load and subtract jj Z position component
 
-      q += xij*xij;                             // Add the jj contribution to the ii distance in X
-      q += yij*yij;                             // Add the jj contribution to the ii distance in Y
-      q += zij*zij;                             // Add the jj contribution to the ii distance in Z
+      q += xij*xij;      // Add the jj contribution to the ii distance in X
+      q += yij*yij;      // Add the jj contribution to the ii distance in Y
+      q += zij*zij;      // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q)*inv_h;                        // Sqrt to compute the normalized distance, measured in h
+      q = sqrt(q)*inv_h;// Sqrt to compute the normalized distance, measured in h
 
-      double wij = w_bspline_3d_simd(q);        // compute the smoothing kernel separately for re-use
+      // compute the smoothing kernel separately for re-use
+      double wij = w_bspline_3d_simd(q);        
 
-      rhoi[ii-node_begin] += nu[jj]*wij;        // add the jj contribution to ii density
-      rhoj[jj-nb_begin]   += nu[ii]*wij;        // add the ii contribution to jj density
+      rhoi[ii-node_begin] += nu[jj]*wij;  // add jj contribution to ii density
+      rhoj[jj-nb_begin]   += nu[ii]*wij;  // add ii contribution to jj density
     }
   }
 
@@ -318,50 +344,65 @@ int compute_density_3d_chunk_symmetrical(int64_t node_begin, int64_t node_end,
 
 ```C
 int compute_density_3d_symmetrical_load_ballance(int N, double h, SPHparticle *lsph, linkedListBox *box){
-  int64_t *node_begin,*node_end,*nb_begin,*nb_end;                        // Define the arrays for cell boundaries 
-  int64_t max_cell_pair_count = 0;                                        // and the number of cell pairs
+  // Define the arrays for cell boundaries 
+  int64_t *node_begin,*node_end,*nb_begin,*nb_end;                        
+  int64_t max_cell_pair_count = 0;  // and the number of cell pairs
   const double kernel_constant = w_bspline_3d_constant(h);               
 
-  max_cell_pair_count = count_box_pairs(box);                             // compute the maximum number of cell pairs
+  // compute the maximum number of cell pairs
+  max_cell_pair_count = count_box_pairs(box);                             
   
-  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for node_begin
-  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for node_end
-  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for nb_begin
-  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     // allocate space for nb_end
+  // allocate space for node_begin, node_end, nb_begin, nb_end
+  node_begin = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));     
+  node_end   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));
+  nb_begin   = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));
+  nb_end     = (int64_t*)malloc(max_cell_pair_count*sizeof(int64_t));
 
-  max_cell_pair_count = setup_unique_box_pairs(box,                       // set the values for cell pairs
+  // set the values for cell pairs
+  max_cell_pair_count = setup_unique_box_pairs(box,                       
                                                node_begin,node_end,
                                                nb_begin,nb_end); 
   
-  memset(lsph->rho,(int)0,N*sizeof(double));                             // Pre-initialize the density to zero
+  // Pre-initialize the density to zero
+  memset(lsph->rho,(int)0,N*sizeof(double));  
 
-                                                                          // Parallelism was moved 
-                                                                          // to the level of unique pairs
-  #pragma omp parallel for schedule(dynamic,5) proc_bind(master)          // Execute in parallel 
-  for(size_t i=0;i<max_cell_pair_count;i+=1){                             // over the unique pairs' array
-    double local_rhoi[node_end[i] - node_begin[i]];                       // partial density array for node indexs
-    double local_rhoj[  nb_end[i] -   nb_begin[i]];                       // partial density array for nb   indexs
+  // Parallelism was moved 
+  // to the level of unique pairs
+  // Execute in parallel 
+  #pragma omp parallel for schedule(dynamic,5) proc_bind(master)          
+  for(size_t i=0;i<max_cell_pair_count;i+=1){ // over the unique pairs' array
+    double local_rhoi[node_end[i] - node_begin[i]]; // partial node density array
+    double local_rhoj[  nb_end[i] -   nb_begin[i]]; // partial nb density array
 
-    memset(local_rhoi,(int)0,(node_end[i]-node_begin[i])*sizeof(double)); // initialize node partial density to zero
-    memset(local_rhoj,(int)0,    (nb_end[i]-nb_begin[i])*sizeof(double)); // initialize nb partial density to zero
+    // initialize node and nb partial density to zero
+    memset(local_rhoi,(int)0,(node_end[i]-node_begin[i])*sizeof(double)); 
+    memset(local_rhoj,(int)0,    (nb_end[i]-nb_begin[i])*sizeof(double)); 
 
-    compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],       // Compute the density contribution
-                                         nb_begin[i],nb_end[i],h,         // from this particular cell pair
-                                         lsph->x,lsph->y,lsph->z,         // for both node and nb partial density
+    // Compute the density contribution
+    // from this particular cell pair
+    // for both node and nb partial density
+    compute_density_3d_chunk_symmetrical(node_begin[i],node_end[i],       
+                                         nb_begin[i],nb_end[i],h,         
+                                         lsph->x,lsph->y,lsph->z,         
                                          lsph->nu,local_rhoi,          
                                          local_rhoj);
 
-    // merging the results can result in race conditions, therefore needs to be serialized
-    #pragma omp critical                                                  // this serializes this code section
+    // merging the results can result in race conditions, needs serialization
+    #pragma omp critical    // this serializes this code section
     {
 
-      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1){                  // iterate over the node_ cell
-        lsph->rho[ii] += kernel_constant*local_rhoi[ii-node_begin[i]];    // add the partial density contribution
+      // iterate over the node_ cell
+      for(size_t ii=node_begin[i];ii<node_end[i];ii+=1){                  
+        // add the partial density contribution
+        lsph->rho[ii] += kernel_constant*local_rhoi[ii-node_begin[i]];    
       }
       
-      if(node_begin[i] != nb_begin[i])                                    // if sender and receiver are different
-        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1){                    // iterate over the nb_ cell
-          lsph->rho[ii] += kernel_constant*local_rhoj[ii-nb_begin[i]];    // add the partial density contribution
+      // if sender and receiver are different
+      if(node_begin[i] != nb_begin[i])                                    
+        // iterate over the nb_ cell
+        for(size_t ii=nb_begin[i];ii<nb_end[i];ii+=1){                    
+          // add the partial density contribution
+          lsph->rho[ii] += kernel_constant*local_rhoj[ii-nb_begin[i]];    
         }
     }
   }
@@ -400,10 +441,10 @@ Total Time                : 0.0236404 +- 0.0006127486  : 100%
 
 ```bash
 ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
-    compute_hash_MC3D         : 0.0008112 +- 0.0001846935  :  4.211% +- 0.9587%
-    sorting reorder hashtable : 0.0051562 +- 0.0002937119  :  26.77% +- 1.525%
-    compute_density           : 0.013297 +- 0.002261179    :  69.02% +- 11.74%
-    Total Time                : 0.0192644 +- 0.002142758   : 100%    +- 11.12%
+    compute_hash_MC3D         : 0.0008112 +- 0.0001846935  :  4.211%
+    sorting reorder hashtable : 0.0051562 +- 0.0002937119  :  26.77%
+    compute_density           : 0.013297 +- 0.002261179    :  69.02%
+    Total Time                : 0.0192644 +- 0.002142758   : 100%
 ```
 
 ​	Which is a nice $22\%$ improvement in performance on the lower particle number of $N=10^5$ , even though the marginal fractional gain will be less for larger particle numbers. Nevertheless, this final result pushes the total speedup just over $9,000 \times$ and allows me to post this meme:

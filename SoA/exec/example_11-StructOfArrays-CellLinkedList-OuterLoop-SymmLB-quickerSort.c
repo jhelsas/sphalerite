@@ -440,7 +440,7 @@ void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_a
       kh_value(box->hbegin, k) = val + 1;
     }
     else{
-      printf("error radixSort init");
+      printf("error counting_sort init");
       return;
     }
   }

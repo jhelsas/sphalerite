@@ -57,10 +57,10 @@ exec/example_02-ArrayOfStructs-Naive-Omp.c:232:5: missed: statement clobbers mem
 ```C
 double w_bspline_3d(double r,double h){
   const double A_d = 3./(2.*M_PI*h*h*h);      // The 3d normalization constant 
-  double q=0.;                                // normalized distance, initialized to zero
+  double q=0.;                       // normalized distance, initialized to zero
   
-  if(r<0||h<=0.)                              // If either distance or smoothing length
-    exit(10);                                 // are negative, declare an emergency
+  if(r<0||h<=0.)                     // If either distance or smoothing length
+    exit(10);                        // are negative, declare an emergency
   
   q = r/h;                                    // Compute the normalized distance
   if(q<=1)                                    // If the distance is small
@@ -86,18 +86,18 @@ double w_bspline_3d_constant(double h){
 }
 
 #pragma omp declare simd
-double w_bspline_3d_simd(double q){                                // Use as input the normalized distance
+double w_bspline_3d_simd(double q){    // Use as input the normalized distance
   double wq = 0.0;
-  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);             // The first polynomial of the spline
-  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q);           // The second polynomial of the spline
+  double wq1 = (0.6666666666666666 - q*q + 0.5*q*q*q);   // The first polynomial 
+  double wq2 = 0.16666666666666666*(2.-q)*(2.-q)*(2.-q); // The second polynomial 
   
-  if(q<2.)                                                         // If the distance is below 2
-    wq = wq2;                                                      // Use the 2nd polynomial for the spline
+  if(q<2.)                               // If the distance is below 2
+    wq = wq2;                            // Use the 2nd polynomial for the spline
 
-  if(q<1.)                                                         // If the distance is below 1
-    wq = wq1;                                                      // Use the 1nd polynomial for the spline
+  if(q<1.)                               // If the distance is below 1
+    wq = wq1;                            // Use the 1nd polynomial for the spline
   
-  return wq;                                                       // return which ever value corresponds to the distance
+  return wq;               // return which ever value corresponds to the distance
 }
 ```
 
@@ -112,35 +112,37 @@ int compute_density_3d_naive_omp_simd(int N,double h,
                                       double* restrict x, double* restrict y,
                                       double* restrict z, double* restrict nu,
                                       double* restrict rho){
-  const double inv_h = 1./h;                                // Pre-invert the smoothing distance 
-  const double kernel_constant = w_bspline_3d_constant(h);  // Pre-compute the 3d normalization constant
+  const double inv_h = 1./h;      // Pre-invert the smoothing distance 
+  const double kernel_constant = w_bspline_3d_constant(h);  
+    // Pre-compute the 3d normalization constant
 
-  memset(rho,(int)0,N*sizeof(double));                      // Pre-initialize the density to zero
+  memset(rho,(int)0,N*sizeof(double)); // Pre-initialize the density to zero
 
-  #pragma omp parallel for                                  // Run the iteration in i in parallel 
-  for(int64_t ii=0;ii<N;ii+=1){                             // Iterate over i
-    double xii = x[ii];                                     // Load the position in X for ii
-    double yii = y[ii];                                     // Load the position in Y for ii 
-    double zii = z[ii];                                     // Load the position in Z for ii
+  #pragma omp parallel for           // Run the iteration in i in parallel 
+  for(int64_t ii=0;ii<N;ii+=1){      // Iterate over i
+    double xii = x[ii];              // Load the position in X for ii
+    double yii = y[ii];              // Load the position in Y for ii 
+    double zii = z[ii];              // Load the position in Z for ii
     double rhoii=0.;
     
-    #pragma omp simd                                        // Hint at the compiler to vectorize this loop
-    for(int64_t jj=0;jj<N;jj+=1){                           // and iterate over the jj part of the block
-      double q = 0.;                                        // initialize the distance variable
+    #pragma omp simd                // Hint at the compiler to vectorize this loop
+    for(int64_t jj=0;jj<N;jj+=1){   // and iterate over the jj part of the block
+      double q = 0.;                // initialize the distance variable
 
-      double xij = xii-x[jj];                               // Load and subtract the position in X for jj
-      double yij = yii-y[jj];                               // Load and subtract the position in Y for jj
-      double zij = zii-z[jj];                               // Load and subtract the position in Z for jj
+      double xij = xii-x[jj];       // Load and subtract the position in X for jj
+      double yij = yii-y[jj];       // Load and subtract the position in Y for jj
+      double zij = zii-z[jj];       // Load and subtract the position in Z for jj
 
-      q += xij*xij;                                         // Add the jj contribution to the ii distance in X
-      q += yij*yij;                                         // Add the jj contribution to the ii distance in Y
-      q += zij*zij;                                         // Add the jj contribution to the ii distance in Z
+      q += xij*xij;             // Add the jj contribution to the ii distance in X
+      q += yij*yij;             // Add the jj contribution to the ii distance in Y
+      q += zij*zij;             // Add the jj contribution to the ii distance in Z
 
-      q = sqrt(q)*inv_h;                                    // compute the normalized distance, measured in h
+      q = sqrt(q)*inv_h;        // compute the normalized distance, measured in h
 
-      rhoii += nu[jj]*w_bspline_3d_simd(q);                 // Add up the contribution from the jj particle
-    }                                                       // to the intermediary density and then
-    rho[ii] = kernel_constant*rhoii;                        // set the intermediary density to the full density
+      // Add up the contribution from the jj particle
+      rhoii += nu[jj]*w_bspline_3d_simd(q);                 
+    } // to the intermediary density and then
+    rho[ii] = kernel_constant*rhoii;   // set the full density
   }
 
   return 0;
@@ -249,38 +251,43 @@ int compute_density_3d_naive_omp_simd_tiled(int N,double h,
                                             double* restrict x, double* restrict y,
                                             double* restrict z, double* restrict nu,
                                             double* restrict rho){
-  const double inv_h = 1./h;                                       // Pre-invert the smoothing distance 
-  const double kernel_constant = w_bspline_3d_constant(h);         // Pre-compute the 3d normalization constant
-  const int64_t STRIP = 500;                                       // Setting the size of the strip or block 
+  const double inv_h = 1./h;    // Pre-invert the smoothing distance 
+  // Pre-compute the 3d normalization constant
+  const double kernel_constant = w_bspline_3d_constant(h);         
+  const int64_t STRIP = 500;    // Setting the size of the strip or block 
 
-  memset(rho,(int)0,N*sizeof(double));                             // Pre-initialize the density to zero
+  memset(rho,(int)0,N*sizeof(double));  // Pre-initialize the density to zero
 
-  #pragma omp parallel for                                         // Run the iteration in i in parallel
-  for(int64_t i=0;i<N;i+=STRIP){                                   // Breaking up the i and j iterations in blocks
-    for(int64_t j=0;j<N;j+=STRIP){                                 // of size STRIP to do data re-use and cache blocking
-      for(int64_t ii=i;ii < ((i+STRIP<N)?(i+STRIP):N); ii+=1){     // Iterate a block over ii       
-        double xii = x[ii];                                        // Load the position in X for ii
-        double yii = y[ii];                                        // Load the position in Y for ii
-        double zii = z[ii];                                        // Load the position in Z for ii
-        double rhoii = 0.0;                                        // Initialize partial density ii to zero
+  #pragma omp parallel for          // Run the iteration in i in parallel
+  for(int64_t i=0;i<N;i+=STRIP){    // Breaking up the i and j iterations in blocks
+    for(int64_t j=0;j<N;j+=STRIP){  // of size STRIP for data re-use / cache blocking
+      // Iterate a block over ii       
+      for(int64_t ii=i;ii < ((i+STRIP<N)?(i+STRIP):N); ii+=1){     
+        double xii = x[ii];       // Load the position in X for ii
+        double yii = y[ii];       // Load the position in Y for ii
+        double zii = z[ii];       // Load the position in Z for ii
+        double rhoii = 0.0;       // Initialize partial density ii to zero
 
-        #pragma omp simd                                           // Hint at the compiler to vectorize this loop
-        for(int64_t jj=j;jj < ((j+STRIP<N)?(j+STRIP):N); jj+=1 ){  // and iterate over the jj part of the block
-          double q = 0.;                                           // initialize the distance variable
+        #pragma omp simd          // Hint at the compiler to vectorize this loop
+        // and iterate over the jj part of the block
+        for(int64_t jj=j;jj < ((j+STRIP<N)?(j+STRIP):N); jj+=1 ){  
+          double q = 0.;                // initialize the distance variable
 
-          double xij = xii-x[jj];                                  // Load and subtract jj particle's X position component
-          double yij = yii-y[jj];                                  // Load and subtract jj particle's Y position component
-          double zij = zii-z[jj];                                  // Load and subtract jj particle's Z position component
+          double xij = xii-x[jj];  // Load and subtract jj X position component
+          double yij = yii-y[jj];  // Load and subtract jj Y position component
+          double zij = zii-z[jj];  // Load and subtract jj Z position component
 
-          q += xij*xij;                                            // Add the jj contribution to the ii distance in X
-          q += yij*yij;                                            // Add the jj contribution to the ii distance in Y
-          q += zij*zij;                                            // Add the jj contribution to the ii distance in Z
+          q += xij*xij;      // Add the jj contribution to the ii distance in X
+          q += yij*yij;      // Add the jj contribution to the ii distance in Y
+          q += zij*zij;      // Add the jj contribution to the ii distance in Z
 
-          q = sqrt(q)*inv_h;                                       // Sqrt and normalizing the distance by the smoothing lengh
+          q = sqrt(q)*inv_h; // Sqrt and normalizing by the smoothing lengh
 
-          rhoii += nu[jj]*w_bspline_3d_simd(q);                    // Add up the contribution from the jj particle
-        }                                                          // to the intermediary density and then
-        rho[ii] += kernel_constant*rhoii;                          // add the intermediary density to the full density
+          // Add up the contribution from the jj particle
+          rhoii += nu[jj]*w_bspline_3d_simd(q);                    
+        } // to the intermediary density and then
+        // add the intermediary density to the full density
+        rho[ii] += kernel_constant*rhoii; 
       } 
     }
   }
