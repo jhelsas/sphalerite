@@ -1,0 +1,80 @@
+============================================================
+N = 1e5
+============================================================ 
+new_qsort:
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D : 0.0008514 +- 3.523e-05
+    sorting : 0.004818 +- 0.0002011
+    reorder_lsph_SoA : 0.001865 +- 0.0002161
+    setup_interval_hashtables : 0.0001366 +- 1.311e-05
+    compute_density : 0.01237 +- 0.001718
+    Total Time : 0.02004 +- 0.001889
+
+stdlib_qsort: 
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D : 0.000775 +- 5.361e-05
+    sorting : 0.009456 +- 7.06e-05
+    reorder_lsph_SoA : 0.002117 +- 0.0002938
+    setup_interval_hashtables : 0.0001308 +- 1.602e-05
+    compute_density : 0.01314 +- 0.004376
+    Total Time : 0.02562 +- 0.004366
+
+counting_sort:
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=100 :
+    compute_hash_MC3D : 0.00073554 +- 3.918395e-05
+    sorting : 0.00536023 +- 0.0002648815
+    reorder_lsph_SoA : 0 +- 0
+    setup_interval_hashtables : 0 +- 0
+    compute_density : 0.01268294 +- 0.001729517
+    Total Time : 0.01877871 +- 0.001816551
+
+============================================================
+N = 3e5
+============================================================ 
+new_qsort:
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D : 0.002605 +- 0.0001154
+    sorting : 0.03757 +- 0.0007342
+    reorder_lsph_SoA : 0.008732 +- 0.0002129
+    setup_interval_hashtables : 0.0003248 +- 2.238e-05
+    compute_density : 0.08874 +- 0.0009728
+    Total Time : 0.138 +- 0.001052
+
+stdlib_qsort: 
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=5 :
+    compute_hash_MC3D : 0.002371 +- 0.0001393
+    sorting : 0.02885 +- 0.0003201
+    reorder_lsph_SoA : 0.008726 +- 9.704e-05
+    setup_interval_hashtables : 0.0003294 +- 1.992e-05
+    compute_density : 0.08884 +- 0.001202
+    Total Time : 0.1291 +- 0.001006
+
+counting_sort:
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=25 :
+    compute_hash_MC3D : 0.00215 +- 3.396199e-05
+    sorting : 0.019149 +- 0.0003946629
+    reorder_lsph_SoA : 0 +- 0
+    setup_interval_hashtables : 0 +- 0
+    compute_density : 0.09041152 +- 0.002874916
+    Total Time : 0.1117105 +- 0.003018785
+
+
+============================================================
+N = 1e6
+============================================================ 
+ex10,cll,SoA,outer,simd,symmLB,runs=25 :
+    compute_hash_MC3D : 0.00727516 +- 0.0001061295
+    sorting : 0.1053192 +- 0.0007820124
+    reorder_lsph_SoA : 0.05433972 +- 0.002239364
+    setup_interval_hashtables : 0.00167016 +- 0.0001199384
+    compute_density : 0.9735567 +- 0.007440098
+    Total Time : 1.142161 +- 0.008273117
+
+counting_sort:
+ex11,cll,SoA,outer,simd,symmLB,quicker,runs=25:
+    compute_hash_MC3D : 0.00704908 +- 0.000214982
+    sorting : 0.09780668 +- 0.002475875
+    reorder_lsph_SoA : 0 +- 0
+    setup_interval_hashtables : 0 +- 0
+    compute_density : 0.9688698 +- 0.004658194
+    Total Time : 1.073726 +- 0.005324948

@@ -1,0 +1,65 @@
+ex03,naive,AoS,omp,simd,runs=5 :
+    compute_density : 2.477345 +- 0.02333804 : 100% +- 0.9421%
+    Total Time : 2.477345 +- 0.02333804 : 100% +- 0.9421%
+ex06,cll,AoS,innerOmp,runs=5 :
+    compute_hash_MC3D : 0.0009362 +- 3.040888e-05 : 0.2991% +- 0.009715%
+    sorting : 0.0124934 +- 0.0003960774 : 3.991% +- 0.1265%
+    setup_interval_hashtables : 0.000273 +- 2.709243e-05 : 0.08722% +- 0.008655%
+    compute_density : 0.2993102 +- 0.03286753 : 95.62% +- 10.5%
+    Total Time : 0.3130128 +- 0.0327376 : 100% +- 10.46%
+ex01,naive,AoS,simple,runs=5 :
+    compute_density : 54.51773 +- 0.2430417 : 100% +- 0.4458%
+    Total Time : 54.51773 +- 0.2430417 : 100% +- 0.4458%
+ex04,naive,AoS,omp,simd,tiled,runs=5 :
+    compute_density : 2.151341 +- 0.04768348 : 100% +- 2.216%
+    Total Time : 2.151341 +- 0.04768348 : 100% +- 2.216%
+ex07,cll,AoS,innerOmp,SIMD,runs=5 :
+    compute_hash_MC3D : 0.0009434 +- 1.970533e-05 : 0.3853% +- 0.008048%
+    sorting : 0.0127688 +- 0.000265754 : 5.215% +- 0.1085%
+    setup_interval_hashtables : 0.000302 +- 7.024244e-05 : 0.1233% +- 0.02869%
+    compute_density : 0.2308292 +- 0.02345667 : 94.28% +- 9.58%
+    Total Time : 0.2448434 +- 0.02342241 : 100% +- 9.566%
+ex02,naive,AoS,omp,runs=5 :
+    compute_density : 4.267251 +- 0.04927007 : 100% +- 1.155%
+    Total Time : 4.267251 +- 0.04927007 : 100% +- 1.155%
+ex05,cll,AoS,simple,runs=5 :
+    compute_hash_MC3D : 0.0009542 +- 5.500182e-05 : 0.05846% +- 0.00337%
+    sorting : 0.0125314 +- 0.0007017787 : 0.7677% +- 0.04299%
+    setup_interval_hashtables : 0.0002918 +- 4.948434e-05 : 0.01788% +- 0.003032%
+    compute_density : 1.618517 +- 0.02900055 : 99.16% +- 1.777%
+    Total Time : 1.632294 +- 0.02967306 : 100% +- 1.818%
+
+
+ex03,naive,SoA,omp,simd,runs=5 :
+    compute_density : 2.065054 +- 0.01301273  : 100% +- 0.6301%
+    Total Time : 2.065054 +- 0.01301273  : 100% +- 0.6301%
+ex05,cll,SoA,simple,runs=5 :
+    compute_hash_MC3D : 0.0006892 +- 4.604346e-06  : 0.04297% +- 0.0002871%
+    sorting : 0.0090884 +- 0.0002313878  : 0.5666% +- 0.01443%
+    reorder_lsph_SoA : 0.0017442 +- 6.829129e-05  : 0.1087% +- 0.004258%
+    setup_interval_hashtables : 0.000128 +- 1.906568e-05  : 0.00798% +- 0.001189%
+    compute_density : 1.592354 +- 0.004753405  : 99.27% +- 0.2963%
+    Total Time : 1.604004 +- 0.004942345  : 100% +- 0.3081%
+ex02,naive,SoA,omp,runs=5 :
+    compute_density : 4.041301 +- 0.008768605  : 100% +- 0.217%
+    Total Time : 4.041301 +- 0.008768605  : 100% +- 0.217%
+ex04,naive,SoA,omp,simd,tiled,runs=5 :
+    compute_density : 2.124375 +- 0.03525607  : 100% +- 1.66%
+    Total Time : 2.124375 +- 0.03525607  : 100% +- 1.66%
+ex07,cll,SoA,inner,simd,runs=5 :
+    compute_hash_MC3D : 0.000719 +- 1.197915e-05  : 0.3267% +- 0.005443%
+    sorting : 0.0094566 +- 0.0001662778  : 4.296% +- 0.07555%
+    reorder_lsph_SoA : 0.0018974 +- 9.384189e-05  : 0.8621% +- 0.04264%
+    setup_interval_hashtables : 0.0001368 +- 1.561089e-05  : 0.06215% +- 0.007093%
+    compute_density : 0.2078918 +- 0.02574741  : 94.45% +- 11.7%
+    Total Time : 0.2201016 +- 0.02563894  : 100% +- 11.65%
+ex01,naive,SoA,simple,runs=5 :
+    compute_density : 44.71123 +- 0.4095855  : 100% +- 0.9161%
+    Total Time : 44.71123 +- 0.4095855  : 100% +- 0.9161%
+ex06,cll,SoA,inner,runs=5 :
+    compute_hash_MC3D : 0.0007124 +- 2.557929e-05  : 0.2593% +- 0.00931%
+    sorting : 0.0090856 +- 0.0001973051  : 3.307% +- 0.07181%
+    reorder_lsph_SoA : 0.001805 +- 8.903089e-05  : 0.6569% +- 0.0324%
+    setup_interval_hashtables : 0.0001276 +- 1.700882e-05  : 0.04644% +- 0.00619%
+    compute_density : 0.26303 +- 0.02741803  : 95.73% +- 9.979%
+    Total Time : 0.2747606 +- 0.02727856  : 100% +- 9.928%
