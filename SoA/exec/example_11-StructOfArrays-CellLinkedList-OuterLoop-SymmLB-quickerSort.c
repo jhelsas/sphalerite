@@ -423,6 +423,24 @@ int cmp_int64_t(const void *p,const void *q){
                                                   (temp_swap)[i] = (lsph)->member[(lsph)->hash[2*i+1]];\
                                                 memcpy((lsph)->member,temp_swap,(N)*sizeof(type))
 
+/*
+ *  Function counting_sort:
+ *    
+ *    
+ *    Arguments:
+ *     N            <int64_t>    : 
+ *     box      <linkedListBox*> :
+ *     lsph       <SPHparticle*> :
+ *     swap_arr     <double*>    :
+ *     temp_hash   <int64_t*>    :
+ *    Returns: 
+ *     box      <linkedListBox*> :
+ * 
+ *    Observation: 
+ *       Why not else if(q<2.)? 
+ *       Because if you use "else if", the compiler refuses to vectorize, 
+ *       This results in a large slowdown, as of 2.5x slower for example_04
+ */
 void counting_sort(int64_t N, linkedListBox *box, SPHparticle *lsph,void *swap_arr,int64_t *temp_hash){
 
   double t0,t1,t2,t3,t4,t5,t6;
